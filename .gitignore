@@ -1,0 +1,6 @@
+.env
+venv
+__pycache__/
+# Byte-compiled files doesn't make sense to be tracked
+*.py[cod]
+# C extensions
