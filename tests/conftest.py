@@ -10,9 +10,10 @@ from typing import Generator
 sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 
 from infrastructure.db.base import Base, get_db
-# Import models to register them with SQLAlchemy
+# Import ALL models to register them with SQLAlchemy
 from api.main import app
 from domain.entities.user import User, UserRole, UserStatus
+from domain.entities.tenant import Tenant, SubscriptionTier
 
 # Use in-memory SQLite for testing
 SQLALCHEMY_DATABASE_URL = "sqlite:///./test.db"
@@ -50,10 +51,7 @@ def client(db_session: Session) -> Generator[TestClient, None, None]:
     # Override the database dependency
     app.dependency_overrides[get_db] = override_get_db
     
-    # Use the app directly for testing
-    app_for_testing = app
-    
-    with TestClient(app_for_testing) as test_client:
+    with TestClient(app) as test_client:
         yield test_client
     
     # Clear dependency overrides after test
@@ -83,4 +81,22 @@ def sample_user_data() -> dict[str, str]:
         "last_name": "User",
         "phone": "+1234567890",
         "role": "sales_rep"
+    }
+
+@pytest.fixture
+def sample_tenant() -> Tenant:
+    """Create a sample tenant entity for testing."""
+    return Tenant(
+        name="Test Company",
+        slug="test-company",
+        subscription_tier=SubscriptionTier.BASIC
+    )
+
+@pytest.fixture
+def sample_tenant_data() -> dict[str, str]:
+    """Create sample tenant data for API requests."""
+    return {
+        "name": "Test Company",
+        "slug": "test-company",
+        "subscription_tier": "basic"
     }

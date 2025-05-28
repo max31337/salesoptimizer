@@ -7,8 +7,15 @@ psycopg2-binary==2.9.9
 python-dotenv==1.0.0
 alembic==1.13.1
 email-validator==2.1.0
+python-multipart==0.0.6
 
-# Optional dependencies for testing and development
+# Authentication & Security
+passlib[bcrypt]==1.7.4
+pyjwt==2.8.0
+python-multipart==0.0.6
+cryptography==41.0.7 
+
+# Testing
 pytest==7.4.3
 pytest-asyncio==0.21.1
 httpx==0.25.2

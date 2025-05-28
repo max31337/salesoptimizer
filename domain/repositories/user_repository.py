@@ -1,15 +1,17 @@
 from abc import ABC, abstractmethod
 from typing import List, Optional
-from domain.entities.user import User
+from uuid import UUID
+
+from domain.entities.user import User, UserRole
+
 
 class UserRepository(ABC):
-    
     @abstractmethod
     def create(self, user: User) -> User:
         pass
     
     @abstractmethod
-    def get_by_id(self, user_id: int) -> Optional[User]:
+    def get_by_id(self, user_id: UUID) -> Optional[User]:
         pass
     
     @abstractmethod
@@ -21,6 +23,14 @@ class UserRepository(ABC):
         pass
     
     @abstractmethod
+    def get_by_invitation_token(self, token: str) -> Optional[User]:
+        pass
+    
+    @abstractmethod
+    def get_by_tenant(self, tenant_id: UUID, skip: int = 0, limit: int = 100) -> List[User]:
+        pass
+    
+    @abstractmethod
     def get_all(self, skip: int = 0, limit: int = 100) -> List[User]:
         pass
     
@@ -29,7 +39,7 @@ class UserRepository(ABC):
         pass
     
     @abstractmethod
-    def delete(self, user_id: int) -> bool:
+    def delete(self, user_id: UUID) -> bool:
         pass
     
     @abstractmethod
@@ -38,4 +48,8 @@ class UserRepository(ABC):
     
     @abstractmethod
     def exists_by_username(self, username: str) -> bool:
+        pass
+    
+    @abstractmethod
+    def count_by_tenant_and_role(self, tenant_id: UUID, role: UserRole) -> int:
         pass

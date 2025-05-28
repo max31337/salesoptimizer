@@ -1,6 +1,6 @@
 from datetime import datetime
 from typing import Optional
-from pydantic import BaseModel, EmailStr, Field, ConfigDict, computed_field
+from pydantic import BaseModel, EmailStr, Field, computed_field
 from domain.entities.user import UserRole, UserStatus
 
 class UserCreateDTO(BaseModel):
@@ -19,9 +19,7 @@ class UserUpdateDTO(BaseModel):
     status: Optional[UserStatus] = None
 
 class UserResponseDTO(BaseModel):
-    model_config = ConfigDict(from_attributes=True)
-    
-    id: int
+    id: str 
     email: str
     username: str
     first_name: str
@@ -30,11 +28,27 @@ class UserResponseDTO(BaseModel):
     role: UserRole
     status: UserStatus
     is_email_verified: bool
-    created_at: datetime
+    created_at: Optional[datetime]
     updated_at: Optional[datetime]
     last_login: Optional[datetime]
     
-    @computed_field  # This automatically computes the field
+    @computed_field
     @property
     def full_name(self) -> str:
         return f"{self.first_name} {self.last_name}".strip()
+
+class UserListResponseDTO(BaseModel):
+    users: list[UserResponseDTO]
+    total: int
+    skip: int
+    limit: int
+
+class UserCreateResponseDTO(BaseModel):
+    id: str
+    email: str
+    username: str
+    first_name: str
+    last_name: str
+    role: UserRole
+    status: UserStatus
+    message: str = "User created successfully"
