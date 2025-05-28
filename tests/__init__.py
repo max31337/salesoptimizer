@@ -1,1 +1,1 @@
-"""Test package for Sales Optimizer CRM."""
+"""Test package for SalesOptimizer CRM."""
