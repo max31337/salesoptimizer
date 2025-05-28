@@ -17,7 +17,7 @@ SalesOptimizer leverages machine learning to predict sales opportunity success r
 ## 🚀 Quick Start
 
 ### Prerequisites
-- Node.js 18+ or Python 3.9+
+- Python 3.9+
 - PostgreSQL 14+
 - Redis 6+
 - Docker (recommended)
