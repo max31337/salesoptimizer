@@ -60,54 +60,64 @@ class AuthService:
         """Complete user registration using invitation token."""
         if not invitation_token or not password or not first_name or not last_name:
             raise AuthenticationError("All fields are required")
-        
+
         # Verify invitation token
         token_payload: Optional[Dict[str, Any]] = self.jwt_service.verify_token(invitation_token)
         if not token_payload or token_payload.get("type") != "invitation":
             raise AuthenticationError("Invalid or expired invitation token")
-        
+
         email: str = token_payload.get("email", "")
         tenant_id_str: Optional[str] = token_payload.get("tenant_id")
         role_str: str = token_payload.get("role", "sales_rep")
-        
+
         if not email:
             raise AuthenticationError("Invalid invitation token - missing email")
-        
-        # Check if user already exists
-        if self.user_repository.exists_by_email(email):
-            raise AuthenticationError("User already exists with this email")
-        
+
+        # Get existing user (should be pending)
+        existing_user: Optional[User] = self.user_repository.get_by_email(email)
+        if existing_user:
+            # If user exists and is already active, registration is already completed
+            if existing_user.status == UserStatus.ACTIVE:
+                raise AuthenticationError("User registration already completed")
+            
+            # If user exists but is not pending, cannot complete registration
+            if existing_user.status != UserStatus.PENDING:
+                raise AuthenticationError("User account is not in pending status")
+                
+            # Use existing pending user
+            user: User = existing_user
+        else:
+            # User doesn't exist, this shouldn't happen with valid invitation
+            raise AuthenticationError("User not found")
+
         # Parse tenant_id
-        tenant_id: Optional[UUID] = None
         if tenant_id_str:
             try:
-                tenant_id = UUID(tenant_id_str)
+                UUID(tenant_id_str)
             except ValueError:
                 raise AuthenticationError("Invalid tenant ID in invitation token")
-        
+
         # Parse role
         try:
-            role: UserRole = UserRole(role_str)
+            UserRole(role_str)
         except ValueError:
-            role = UserRole.SALES_REP
-        
+            pass
+
         # Hash password
         password_hash: str = self.password_service.hash_password(password)
-        
-        # Create user
-        user: User = User(
-            email=email,
-            first_name=first_name.strip(),
-            last_name=last_name.strip(),
-            password_hash=password_hash,
-            role=role,
-            status=UserStatus.ACTIVE,
-            tenant_id=tenant_id,
-            is_email_verified=True  # Email is verified through invitation
-        )
-        
-        created_user: User = self.user_repository.create(user)
-        return created_user
+
+        # Update user fields
+        user.first_name = first_name.strip()
+        user.last_name = last_name.strip()
+        user.password_hash = password_hash
+        user.status = UserStatus.ACTIVE
+        user.is_email_verified = True
+        user.invitation_token = None
+        user.invitation_expires_at = None
+
+        # Update user in repository
+        updated_user: User = self.user_repository.update(user)
+        return updated_user
     
     def create_user_tokens(self, user: User) -> Tuple[str, str]:
         """Create access and refresh tokens for user."""

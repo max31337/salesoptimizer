@@ -100,6 +100,18 @@ class JWTService:
             return None
         except Exception:
             return None
+        
+
+    def decode_token(self, token: str) -> Dict[str, Any]:
+        """Decode a JWT token and return the payload."""
+        # Replace 'your-secret-key' and 'HS256' with your actual secret and algorithm
+        try:
+            payload = jwt.decode(token, self.secret_key, algorithms=[self.algorithm])
+            return payload
+        except jwt.PyJWTError:
+            raise
+        except Exception:
+            raise
 
     def decode_token_without_verification(self, token: str) -> Optional[Dict[str, Any]]:
         """Decode token without verification (for debugging only)."""

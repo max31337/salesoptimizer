@@ -1,6 +1,6 @@
 from datetime import datetime
 from typing import Optional
-from pydantic import BaseModel, EmailStr, Field, computed_field
+from pydantic import BaseModel, EmailStr, Field, computed_field, ConfigDict
 from domain.entities.user import UserRole, UserStatus
 
 class UserCreateDTO(BaseModel):
@@ -19,6 +19,8 @@ class UserUpdateDTO(BaseModel):
     status: Optional[UserStatus] = None
 
 class UserResponseDTO(BaseModel):
+    model_config = ConfigDict(from_attributes=True)
+    
     id: str 
     email: str
     username: str

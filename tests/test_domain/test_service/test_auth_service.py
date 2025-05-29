@@ -110,13 +110,14 @@ class TestAuthService:
         
         # Setup mocks
         mock_user_repo.get_by_email.return_value = None
+        mock_user_repo.get_by_username.return_value = None
         
-        # Execute
-        result = auth_service.authenticate_user(email, password)
+        # Execute & Assert
+        with pytest.raises(AuthenticationError, match="Invalid credentials"):
+            auth_service.authenticate_user(email, password)
         
-        # Assert
-        assert result is None
         mock_user_repo.get_by_email.assert_called_once_with(email)
+        mock_user_repo.get_by_username.assert_called_once_with(email)
 
     def test_authenticate_user_no_password_hash(
         self, 
@@ -125,16 +126,15 @@ class TestAuthService:
         pending_user: User
     ) -> None:
         """Test authentication when user has no password hash (pending registration)."""
-        email = "pending@example.com"
-        password = "password"
-        
+        email = pending_user.email
+        password = "any_password"
         # Setup mocks
         mock_user_repo.get_by_email.return_value = pending_user
-        
+
         # Execute & Assert
-        with pytest.raises(AuthenticationError, match="User has not completed registration"):
+        with pytest.raises(AuthenticationError, match="Account is not active"):
             auth_service.authenticate_user(email, password)
-        
+
         mock_user_repo.get_by_email.assert_called_once_with(email)
 
     def test_authenticate_user_wrong_password(
@@ -152,11 +152,10 @@ class TestAuthService:
         mock_user_repo.get_by_email.return_value = active_user
         mock_password_service.verify_password.return_value = False
         
-        # Execute
-        result = auth_service.authenticate_user(email, password)
-        
-        # Assert
-        assert result is None
+        # Execute & Assert
+        with pytest.raises(AuthenticationError, match="Invalid credentials"):
+            auth_service.authenticate_user(email, password)
+    
         mock_user_repo.get_by_email.assert_called_once_with(email)
         mock_password_service.verify_password.assert_called_once_with(password, active_user.password_hash)
 
@@ -179,11 +178,10 @@ class TestAuthService:
         mock_password_service.verify_password.return_value = True
         
         # Execute & Assert
-        with pytest.raises(AuthenticationError, match="User account is inactive"):
+        with pytest.raises(AuthenticationError, match="Account is not active"):
             auth_service.authenticate_user(email, password)
-        
+    
         mock_user_repo.get_by_email.assert_called_once_with(email)
-        mock_password_service.verify_password.assert_called_once_with(password, active_user.password_hash)
 
     def test_authenticate_user_suspended_status(
         self, 
@@ -204,7 +202,7 @@ class TestAuthService:
         mock_password_service.verify_password.return_value = True
         
         # Execute & Assert
-        with pytest.raises(AuthenticationError, match="User account is suspended"):
+        with pytest.raises(AuthenticationError, match="Account is not active"):
             auth_service.authenticate_user(email, password)
 
     def test_create_user_tokens_success(
@@ -271,11 +269,10 @@ class TestAuthService:
         # Setup mocks
         mock_jwt_service.verify_token.return_value = None
         
-        # Execute
-        result = auth_service.verify_invitation_token(token)
-        
-        # Assert
-        assert result is None
+        # Execute & Assert
+        with pytest.raises(AuthenticationError, match="Invalid or expired invitation token"):
+            auth_service.verify_invitation_token(token)
+    
         mock_jwt_service.verify_token.assert_called_once_with(token)
 
     def test_verify_invitation_token_wrong_type(
@@ -293,11 +290,39 @@ class TestAuthService:
         # Setup mocks
         mock_jwt_service.verify_token.return_value = payload
         
-        # Execute
-        result = auth_service.verify_invitation_token(token)
+        # Execute & Assert
+        with pytest.raises(AuthenticationError, match="Invalid or expired invitation token"):
+            auth_service.verify_invitation_token(token)
+
+    def test_verify_invitation_token_empty_payload(
+        self, 
+        auth_service: AuthService, 
+        mock_jwt_service: Mock
+    ) -> None:
+        """Test verifying invitation token with empty payload."""
+        token = "token_with_empty_payload"
         
-        # Assert
-        assert result is None
+        # Setup mocks
+        mock_jwt_service.verify_token.return_value = {}  # Empty payload (no "type" field)
+        
+        # Execute & Assert
+        with pytest.raises(AuthenticationError, match="Invalid or expired invitation token"):
+            auth_service.verify_invitation_token(token)
+
+    def test_verify_invitation_token_empty_token(
+        self, 
+        auth_service: AuthService, 
+        mock_jwt_service: Mock
+    ) -> None:
+        """Test verifying empty invitation token."""
+        token = ""
+        
+        # Execute & Assert
+        with pytest.raises(AuthenticationError, match="Invitation token is required"):
+            auth_service.verify_invitation_token(token)
+    
+        # JWT service should not be called for empty token
+        mock_jwt_service.verify_token.assert_not_called()
 
     def test_complete_registration_success(
         self, 
@@ -487,23 +512,6 @@ class TestAuthService:
         # Instead of accessing private attributes, check that AuthService was initialized without error
         assert isinstance(auth_service, AuthService)
 
-    def test_verify_invitation_token_empty_payload(
-        self, 
-        auth_service: AuthService, 
-        mock_jwt_service: Mock
-    ) -> None:
-        """Test verifying invitation token with empty payload."""
-        token = "token_with_empty_payload"
-        
-        # Setup mocks
-        mock_jwt_service.verify_token.return_value = {}  # Empty payload
-        
-        # Execute
-        result = auth_service.verify_invitation_token(token)
-        
-        # Assert
-        assert result is None
-
     def test_complete_registration_updates_user_fields_correctly(
         self, 
         auth_service: AuthService, 
@@ -551,3 +559,36 @@ class TestAuthService:
         assert pending_user.is_email_verified != original_email_verified
         assert pending_user.invitation_token != original_invitation_token
         assert pending_user.invitation_expires_at != original_invitation_expires
+
+    def test_authenticate_user_no_password_hash_active_user(
+        self, 
+        auth_service: AuthService, 
+        mock_user_repo: Mock
+    ) -> None:
+        """Test authentication when active user has no password hash."""
+        email = "test@example.com"
+        password = "password"
+        
+        # Create an active user with no password hash
+        active_user_no_password = User(
+            id=uuid4(),
+            tenant_id=uuid4(),
+            email=email,
+            username="testuser",
+            first_name="Test",
+            last_name="User",
+            password_hash=None,  # No password hash
+            role=UserRole.SALES_REP,
+            status=UserStatus.ACTIVE,  # But user is active
+            is_email_verified=True
+        )
+        
+        # Setup mocks
+        mock_user_repo.get_by_email.return_value = active_user_no_password
+        
+        # Execute & Assert
+        with pytest.raises(AuthenticationError, match="Invalid credentials"):
+            auth_service.authenticate_user(email, password)
+
+        mock_user_repo.get_by_email.assert_called_once_with(email)
+

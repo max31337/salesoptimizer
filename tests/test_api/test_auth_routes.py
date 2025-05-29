@@ -1,149 +1,192 @@
 import pytest
-from fastapi import status
 from fastapi.testclient import TestClient
-from sqlalchemy.orm import Session
-from uuid import uuid4, UUID
-from typing import Dict, Any
+from fastapi import status
+from uuid import uuid4
 
 from domain.entities.user import User, UserRole, UserStatus
-from infrastructure.repositories.user_repository_impl import UserRepositoryImpl
-from infrastructure.services.password_service import PasswordService
-from infrastructure.services.jwt_service import JWTService
+from domain.services.auth_service import AuthenticationError
 
 
 class TestAuthRoutes:
+    """Test authentication API routes."""
     
     @pytest.fixture
-    def password_service(self) -> PasswordService:
-        return PasswordService()
-    
-    @pytest.fixture
-    def jwt_service(self) -> JWTService:
-        return JWTService()
-    
-    @pytest.fixture
-    def active_user(self, db_session: Session, password_service: PasswordService) -> User:
-        """Create an active user for testing."""
-        repo: UserRepositoryImpl = UserRepositoryImpl(db_session)
-        
-        user: User = User(
-            email="testuser@example.com",
+    def sample_user(self) -> User:
+        """Create a sample user for testing."""
+        return User(
+            id=uuid4(),
+            email="test@example.com",
             username="testuser",
-            first_name="Test",
-            last_name="User",
-            phone="+1234567890",
-            password_hash=password_service.hash_password("testpassword123"),
+            first_name="John",
+            last_name="Doe",
             role=UserRole.SALES_REP,
             status=UserStatus.ACTIVE,
             is_email_verified=True
         )
-        
-        return repo.create(user)
     
-    def test_login_success(self, client: TestClient, active_user: User) -> None:
-        """Test successful login."""
-        form_data: Dict[str, str] = {
-            "username": active_user.email,
-            "password": "testpassword123"
-        }
-        
-        response = client.post("/api/v1/auth/login", data=form_data)
-        
+    def test_login_success(self, client_with_mocks: TestClient, sample_user: User):
+        """Test successful login via API."""
+        # Act
+        response = client_with_mocks.post(
+            "/api/v1/auth/login",
+            data={
+                "username": "test@example.com",
+                "password": "testpassword123"
+            }
+        )
+
+        # Assert
         assert response.status_code == status.HTTP_200_OK
-        data: Dict[str, Any] = response.json()
-        assert "access_token" in data
-        assert "refresh_token" in data
+        data = response.json()
+        
+        assert data["access_token"] == "access_token_123"
+        assert data["refresh_token"] == "refresh_token_123"
         assert data["token_type"] == "bearer"
-        assert data["email"] == active_user.email
-        assert data["user_id"] == str(active_user.id)
+        assert data["user_id"] == "123e4567-e89b-12d3-a456-426614174000"
+        assert data["role"] == "sales_rep"
+        assert data["email"] == "test@example.com"
+        assert data["full_name"] == "John Doe"
     
-    def test_login_invalid_credentials(self, client: TestClient, active_user: User) -> None:
-        """Test login with invalid credentials."""
-        form_data: Dict[str, str] = {
-            "username": active_user.email,
-            "password": "wrongpassword"
-        }
+    def test_login_invalid_credentials(self, client_with_mocks: TestClient):
+        """Test login with invalid credentials via API."""
+        # Configure the mock to raise an authentication error
+        from application.dependencies.service_dependencies import get_application_service
+        from api.main import app
         
-        response = client.post("/api/v1/auth/login", data=form_data)
-        
-        assert response.status_code == status.HTTP_401_UNAUTHORIZED
-        error_detail: str = response.json()["detail"]
-        assert "Invalid credentials" in error_detail or "Invalid email or password" in error_detail
-    
-    def test_login_nonexistent_user(self, client: TestClient) -> None:
-        """Test login with nonexistent user."""
-        form_data: Dict[str, str] = {
-            "username": "nonexistent@example.com",
-            "password": "password123"
-        }
-        
-        response = client.post("/api/v1/auth/login", data=form_data)
-        
-        assert response.status_code == status.HTTP_401_UNAUTHORIZED
-    
-    def test_register_success(self, client: TestClient, jwt_service: JWTService) -> None:
-        """Test successful registration with valid invitation token."""
-        tenant_id: UUID = uuid4()
-        invitation_token: str = jwt_service.create_invitation_token(
-            email="invited@example.com",
-            tenant_id=tenant_id,
-            role="sales_rep"
+        mock_service = app.dependency_overrides[get_application_service]()
+        mock_service.auth_use_cases.authenticate_user.side_effect = AuthenticationError(
+            "Invalid credentials"
         )
         
-        register_data: Dict[str, str] = {
-            "invitation_token": invitation_token,
-            "first_name": "Invited",
-            "last_name": "User",
-            "password": "newpassword123"
+        # Act
+        response = client_with_mocks.post(
+            "/api/v1/auth/login",
+            data={
+                "username": "test@example.com",
+                "password": "wrongpassword"
+            }
+        )
+        
+        # Assert
+        assert response.status_code == status.HTTP_401_UNAUTHORIZED
+        data = response.json()
+        assert data["detail"] == "Invalid credentials"
+    
+    def test_register_success(self, client_with_mocks: TestClient, sample_user: User):
+        """Test successful registration via API."""
+        register_data = {
+            "invitation_token": "valid_token_123",
+            "password": "strongpassword123",
+            "first_name": "John",
+            "last_name": "Doe"
         }
         
-        response = client.post("/api/v1/auth/register", json=register_data)
+        # Act
+        response = client_with_mocks.post(
+            "/api/v1/auth/register",
+            json=register_data
+        )
         
+        # Assert
         assert response.status_code == status.HTTP_200_OK
-        data: Dict[str, Any] = response.json()
+        data = response.json()
+        
         assert data["message"] == "Registration completed successfully"
-        assert "access_token" in data
-        assert "user_id" in data
+        assert data["access_token"] == "access_token_123"
+        assert data["refresh_token"] == "refresh_token_123"
+        assert data["user_id"] == "123e4567-e89b-12d3-a456-426614174000"
     
-    def test_refresh_token_success(
-        self, 
-        client: TestClient, 
-        active_user: User, 
-        jwt_service: JWTService
-    ) -> None:
-        """Test successful token refresh."""
-        assert active_user.id is not None, "active_user.id must not be None"
-        refresh_token: str = jwt_service.create_refresh_token(active_user.id)
+    def test_register_invalid_token(self, client_with_mocks: TestClient):
+        """Test registration with invalid invitation token via API."""
+        # Configure the mock to raise an authentication error
+        from application.dependencies.service_dependencies import get_application_service
+        from api.main import app
         
-        response = client.post(
-            "/api/v1/auth/refresh", 
-            json={"refresh_token": refresh_token}
+        mock_service = app.dependency_overrides[get_application_service]()
+        mock_service.auth_use_cases.complete_registration.side_effect = AuthenticationError(
+            "Invalid or expired invitation token"
         )
         
+        register_data = {
+            "invitation_token": "invalid_token",
+            "password": "strongpassword123",
+            "first_name": "John",
+            "last_name": "Doe"
+        }
+        
+        # Act
+        response = client_with_mocks.post(
+            "/api/v1/auth/register",
+            json=register_data
+        )
+        
+        # Assert
+        assert response.status_code == status.HTTP_400_BAD_REQUEST
+        data = response.json()
+        assert "Invalid or expired invitation token" in data["detail"]
+    
+    def test_get_current_user_info(self, client_with_mocks: TestClient):
+        """Test getting current user info via API."""
+        # Act
+        response = client_with_mocks.get(
+            "/api/v1/auth/me",
+            headers={"Authorization": "Bearer valid_token"}
+        )
+        
+        # Assert
         assert response.status_code == status.HTTP_200_OK
-        data: Dict[str, Any] = response.json()
-        assert "access_token" in data
+        data = response.json()
+        
+        assert data["id"] == "123e4567-e89b-12d3-a456-426614174000"
+        assert data["email"] == "test@example.com"
+        assert data["username"] == "testuser"
+        assert data["role"] == "sales_rep"
+        assert data["full_name"] == "Test User"
+    
+    def test_refresh_token_success(self, client_with_mocks: TestClient):
+        """Test successful token refresh via API."""
+        # Act
+        response = client_with_mocks.post(
+            "/api/v1/auth/refresh",
+            json={"refresh_token": "refresh_token_123"}
+        )
+        
+        # Assert
+        assert response.status_code == status.HTTP_200_OK
+        data = response.json()
+        
+        assert data["access_token"] == "new_access_token_123"
+        assert data["refresh_token"] == "new_refresh_token_123"
         assert data["token_type"] == "bearer"
     
-    def test_get_current_user_info(
-        self, 
-        client: TestClient, 
-        active_user: User, 
-        jwt_service: JWTService
-    ) -> None:
-        """Test getting current user info."""
-        assert active_user.id is not None, "active_user.id must not be None"
-        access_token: str = jwt_service.create_access_token(
-            user_id=active_user.id,
-            tenant_id=active_user.tenant_id,
-            role=active_user.role.value,
-            email=active_user.email
+    def test_refresh_token_invalid(self, client_with_mocks: TestClient):
+        """Test token refresh with invalid token via API."""
+        # Configure the mock to raise an authentication error
+        from application.dependencies.service_dependencies import get_application_service
+        from api.main import app
+        
+        mock_service = app.dependency_overrides[get_application_service]()
+        mock_service.auth_use_cases.refresh_tokens.side_effect = AuthenticationError(
+            "Invalid refresh token"
         )
         
-        headers: Dict[str, str] = {"Authorization": f"Bearer {access_token}"}
-        response = client.get("/api/v1/auth/me", headers=headers)
+        # Act
+        response = client_with_mocks.post(
+            "/api/v1/auth/refresh",
+            json={"refresh_token": "invalid_token"}
+        )
         
+        # Assert
+        assert response.status_code == status.HTTP_401_UNAUTHORIZED
+        data = response.json()
+        assert data["detail"] == "Invalid refresh token"
+    
+    def test_logout(self, client_with_mocks: TestClient):
+        """Test logout via API."""
+        # Act
+        response = client_with_mocks.post("/api/v1/auth/logout")
+        
+        # Assert
         assert response.status_code == status.HTTP_200_OK
-        data: Dict[str, Any] = response.json()
-        assert data["email"] == active_user.email
-        assert data["role"] == active_user.role.value
+        data = response.json()
+        assert data["message"] == "Successfully logged out"

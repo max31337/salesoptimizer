@@ -37,8 +37,13 @@ class User:
 
     @property
     def full_name(self) -> str:
-        """Return the full name of the user."""
-        return f"{self.first_name} {self.last_name}".strip()
+        """Get the user's full name."""
+        first = self.first_name.strip() if self.first_name else ""
+        last = self.last_name.strip() if self.last_name else ""
+    
+        # Join non-empty parts with a single space
+        parts = [part for part in [first, last] if part]
+        return " ".join(parts)
 
     def is_admin(self) -> bool:
         """Check if user has admin privileges."""

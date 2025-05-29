@@ -196,7 +196,8 @@ class TestJWTService:
             mock_datetime.now.return_value = base_time
             mock_datetime.fromtimestamp = datetime.fromtimestamp
             
-            token = jwt_service.create_invitation_token(email, tenant_id, role)
+            # Pass the custom_hours parameter to the method
+            token = jwt_service.create_invitation_token(email, tenant_id, role, custom_hours)
         
         payload = jwt_service.verify_token(token)
         assert payload is not None

@@ -1,4 +1,4 @@
-from pydantic import BaseModel, EmailStr, field_validator
+from pydantic import BaseModel, EmailStr, field_validator, ConfigDict
 from typing import Optional
 from uuid import UUID
 
@@ -28,6 +28,7 @@ class RegisterRequest(BaseModel):
     password: str
     first_name: str
     last_name: str
+    
     @field_validator('password')
     @classmethod
     def password_must_be_strong(cls, v: str) -> str:
@@ -48,7 +49,6 @@ class RegisterRequest(BaseModel):
         if not v or not v.strip():
             raise ValueError('Invitation token cannot be empty')
         return v
-        return v
 
 class RegisterResponse(BaseModel):
     message: str
@@ -56,6 +56,7 @@ class RegisterResponse(BaseModel):
     refresh_token: str
     user_id: UUID
     tenant_id: Optional[UUID]
+    
     @field_validator('refresh_token')
     @classmethod
     def token_must_not_be_empty(cls, v: str) -> str:
@@ -69,6 +70,8 @@ class RefreshTokenResponse(BaseModel):
     token_type: str
 
 class UserInfoResponse(BaseModel):
+    model_config = ConfigDict(from_attributes=True)
+    
     id: UUID
     email: str
     username: Optional[str]
@@ -79,9 +82,6 @@ class UserInfoResponse(BaseModel):
     tenant_id: Optional[UUID]
     status: str
     is_email_verified: bool
-    
-    class Config:
-        from_attributes = True
 
 class LogoutResponse(BaseModel):
     message: str
