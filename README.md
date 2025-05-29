@@ -90,4 +90,4 @@ MIT License - see [LICENSE](LICENSE) for details.
 
 ---
 
-**Built with ❤️ by Max31337** | [Support](mailto:support@salesoptimizer.com) | [Issues](https://github.com/max31337/salesoptimizer/issues)
+**Built with ❤️ by Max31337** | [Support](mailto:navarro.markanthony.tud@gmail.com) | [Issues](https://github.com/max31337/salesoptimizer/issues)
