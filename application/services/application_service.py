@@ -3,7 +3,7 @@ from infrastructure.repositories.user_repository_impl import UserRepositoryImpl
 from infrastructure.repositories.tenant_repository_impl import TenantRepositoryImpl
 from infrastructure.services.password_service import PasswordService
 from infrastructure.services.jwt_service import JWTService
-from domain.services.auth_service import AuthService
+from domain.organization.services.auth_service import AuthService
 from application.use_cases.user_use_cases import UserUseCases
 from application.use_cases.tenant_use_cases import TenantUseCases
 from application.use_cases.auth_use_cases import AuthUseCases

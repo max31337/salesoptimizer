@@ -2,7 +2,7 @@ from abc import ABC, abstractmethod
 from typing import List, Optional
 from uuid import UUID
 
-from domain.entities.user import User, UserRole
+from domain.organization.entities.user import User, UserRole
 
 
 class UserRepository(ABC):

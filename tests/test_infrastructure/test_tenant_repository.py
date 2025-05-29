@@ -3,7 +3,7 @@ from sqlalchemy.orm import Session
 from uuid import uuid4
 
 from infrastructure.repositories.tenant_repository_impl import TenantRepositoryImpl
-from domain.entities.tenant import Tenant, SubscriptionTier
+from domain.organization.entities.tenant import Tenant, SubscriptionTier
 
 
 class TestTenantRepository:

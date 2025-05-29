@@ -6,7 +6,7 @@ from application.dependencies.service_dependencies import get_application_servic
 from application.services.application_service import ApplicationService
 from application.dtos.tenant_dto import TenantCreateDTO, TenantUpdateDTO, TenantResponseDTO
 from api.dependencies.auth import require_super_admin, require_org_admin, get_current_user
-from domain.entities.user import User
+from domain.organization.entities.user import User
 
 router = APIRouter(prefix="/tenants", tags=["tenants"])
 

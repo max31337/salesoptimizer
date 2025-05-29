@@ -3,8 +3,8 @@ from uuid import UUID
 from sqlalchemy.orm import Session
 from sqlalchemy.exc import IntegrityError
 
-from domain.entities.tenant import Tenant, SubscriptionTier
-from domain.repositories.tenant_repository import TenantRepository
+from domain.organization.entities.tenant import Tenant, SubscriptionTier
+from domain.organization.repositories.tenant_repository import TenantRepository
 from infrastructure.db.models.tenant_model import TenantModel
 
 

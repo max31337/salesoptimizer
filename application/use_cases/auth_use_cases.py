@@ -1,6 +1,6 @@
 from typing import Tuple
-from domain.entities.user import User
-from domain.services.auth_service import AuthService
+from domain.organization.entities.user import User
+from domain.organization.services.auth_service import AuthService
 from application.dtos.auth_dto import RegisterRequest
 
 

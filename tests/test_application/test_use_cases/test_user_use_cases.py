@@ -4,7 +4,7 @@ from uuid import uuid4, UUID
 
 from application.use_cases.user_use_cases import UserUseCases
 from application.dtos.user_dto import UserCreateDTO, UserResponseDTO
-from domain.entities.user import User, UserRole, UserStatus
+from domain.organization.entities.user import User, UserRole, UserStatus
 from infrastructure.repositories.user_repository_impl import UserRepositoryImpl
 
 

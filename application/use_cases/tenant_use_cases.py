@@ -1,7 +1,7 @@
 from typing import Optional
 from uuid import UUID
 
-from domain.entities.tenant import Tenant
+from domain.organization.entities.tenant import Tenant
 from infrastructure.repositories.tenant_repository_impl import TenantRepositoryImpl
 from application.dtos.tenant_dto import TenantCreateDTO, TenantUpdateDTO, TenantResponseDTO
 

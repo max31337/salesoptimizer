@@ -4,7 +4,7 @@ from fastapi.security import OAuth2PasswordRequestForm
 
 from application.dependencies.service_dependencies import get_application_service
 from application.services.application_service import ApplicationService
-from domain.services.auth_service import AuthenticationError
+from domain.organization.services.auth_service import AuthenticationError
 from application.dtos.auth_dto import (
     LoginResponse, 
     RegisterRequest, 
@@ -14,7 +14,7 @@ from application.dtos.auth_dto import (
     LogoutResponse
 )
 from api.dependencies.auth import get_current_user
-from domain.entities.user import User
+from domain.organization.entities.user import User
 
 router: APIRouter = APIRouter(prefix="/auth", tags=["authentication"])
 

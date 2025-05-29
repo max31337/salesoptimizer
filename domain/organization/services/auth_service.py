@@ -1,8 +1,8 @@
 from typing import Optional, Tuple, Dict, Any
 from uuid import UUID
 
-from domain.entities.user import User, UserRole, UserStatus
-from domain.repositories.user_repository import UserRepository
+from domain.organization.entities.user import User, UserRole, UserStatus
+from domain.organization.repositories.user_repository import UserRepository
 from infrastructure.services.password_service import PasswordService
 from infrastructure.services.jwt_service import JWTService
 

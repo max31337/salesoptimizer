@@ -6,7 +6,7 @@ from typing import Optional
 from infrastructure.db.base import get_db
 from infrastructure.services.jwt_service import JWTService
 from infrastructure.repositories.user_repository_impl import UserRepositoryImpl
-from domain.entities.user import User, UserRole
+from domain.organization.entities.user import User, UserRole
 
 security = HTTPBearer()
 

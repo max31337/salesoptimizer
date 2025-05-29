@@ -1,7 +1,7 @@
 from datetime import datetime
 from typing import Optional
 from pydantic import BaseModel, EmailStr, Field, computed_field, ConfigDict
-from domain.entities.user import UserRole, UserStatus
+from domain.organization.entities.user import UserRole, UserStatus
 
 class UserCreateDTO(BaseModel):
     email: EmailStr

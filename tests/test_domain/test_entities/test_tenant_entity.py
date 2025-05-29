@@ -2,7 +2,7 @@ from datetime import datetime, timezone
 from uuid import UUID
 from typing import Any, Dict
 
-from domain.entities.tenant import Tenant, SubscriptionTier
+from domain.organization.entities.tenant import Tenant, SubscriptionTier
 
 
 class TestTenantEntity:

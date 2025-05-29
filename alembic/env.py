@@ -28,10 +28,11 @@ try:
     from infrastructure.db.base import Base, get_database_url
     # Import ALL model files here to register them with SQLAlchemy
     from infrastructure.db.models.user_model import UserModel
+    from infrastructure.db.models.tenant_model import TenantModel
 
     # Reference UserModel to avoid "import not accessed" warning
-    _models = [UserModel]
-    
+    _models: list[type] = [UserModel, TenantModel]
+
     print(f"✅ Successfully imported Base and models")
     print(f"📋 Registered tables: {list(Base.metadata.tables.keys())}")
     

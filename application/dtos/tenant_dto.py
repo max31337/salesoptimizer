@@ -2,7 +2,7 @@ from datetime import datetime, timezone
 from typing import Optional, Dict, Any
 from uuid import UUID
 from pydantic import BaseModel, Field, ConfigDict
-from domain.entities.tenant import SubscriptionTier, Tenant
+from domain.organization.entities.tenant import SubscriptionTier, Tenant
 
 class TenantCreateDTO(BaseModel):
     name: str = Field(..., min_length=1, max_length=255)

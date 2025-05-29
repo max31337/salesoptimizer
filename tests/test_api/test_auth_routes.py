@@ -3,8 +3,8 @@ from fastapi.testclient import TestClient
 from fastapi import status
 from uuid import uuid4
 
-from domain.entities.user import User, UserRole, UserStatus
-from domain.services.auth_service import AuthenticationError
+from domain.organization.entities.user import User, UserRole, UserStatus
+from domain.organization.services.auth_service import AuthenticationError
 
 
 class TestAuthRoutes:

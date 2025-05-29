@@ -1,7 +1,7 @@
 from datetime import datetime, timezone
 from uuid import UUID, uuid4
 
-from domain.entities.user import User, UserRole, UserStatus
+from domain.organization.entities.user import User, UserRole, UserStatus
 
 
 class TestUserEntity:

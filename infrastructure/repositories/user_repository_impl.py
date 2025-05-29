@@ -3,8 +3,8 @@ from uuid import UUID
 from sqlalchemy.orm import Session
 from sqlalchemy.exc import IntegrityError
 
-from domain.entities.user import User, UserRole, UserStatus
-from domain.repositories.user_repository import UserRepository
+from domain.organization.entities.user import User, UserRole, UserStatus
+from domain.organization.repositories.user_repository import UserRepository
 from infrastructure.db.models.user_model import UserModel
 
 

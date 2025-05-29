@@ -1,7 +1,7 @@
 from typing import Optional
 from uuid import UUID
 from typing import List
-from domain.entities.user import User, UserStatus
+from domain.organization.entities.user import User, UserStatus
 from infrastructure.repositories.user_repository_impl import UserRepositoryImpl
 from application.dtos.user_dto import UserCreateDTO, UserResponseDTO, UserUpdateDTO
 

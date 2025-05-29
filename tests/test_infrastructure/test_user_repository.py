@@ -3,7 +3,7 @@ from sqlalchemy.orm import Session
 from uuid import uuid4
 
 from infrastructure.repositories.user_repository_impl import UserRepositoryImpl
-from domain.entities.user import User, UserRole, UserStatus
+from domain.organization.entities.user import User, UserRole, UserStatus
 
 
 class TestUserRepository:

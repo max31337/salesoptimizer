@@ -3,9 +3,9 @@ from unittest.mock import Mock
 from datetime import datetime, timezone, timedelta
 from uuid import uuid4
 
-from domain.services.auth_service import AuthService, AuthenticationError
-from domain.entities.user import User, UserRole, UserStatus
-from domain.repositories.user_repository import UserRepository
+from domain.organization.services.auth_service import AuthService, AuthenticationError
+from domain.organization.entities.user import User, UserRole, UserStatus
+from domain.organization.repositories.user_repository import UserRepository
 from infrastructure.services.password_service import PasswordService
 from infrastructure.services.jwt_service import JWTService
 

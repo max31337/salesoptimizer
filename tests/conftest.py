@@ -13,9 +13,11 @@ from unittest.mock import patch
 sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 
 # Import domain entities for fixtures
-from domain.entities.user import User, UserRole
-from domain.entities.tenant import Tenant, SubscriptionTier
+from domain.organization.entities.user import User, UserRole
+from domain.organization.entities.tenant import Tenant, SubscriptionTier
 from infrastructure.services.password_service import PasswordService
+from unittest.mock import Mock
+from domain.organization.services.auth_service import AuthService
 
 # Import ALL database models to ensure they're registered with SQLAlchemy
 from infrastructure.db.base import Base, get_db
@@ -377,8 +379,7 @@ def mock_tenant_repository():
 @pytest.fixture
 def mock_auth_service():
     """Create a mock auth service."""
-    from unittest.mock import Mock
-    from domain.services.auth_service import AuthService
+
     return Mock(spec=AuthService)
 
 
