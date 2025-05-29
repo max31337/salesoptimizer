@@ -27,8 +27,9 @@ def _import_models() -> list[type]:
     """Import all models to register them with SQLAlchemy metadata."""
     from infrastructure.db.models.user_model import UserModel
     from infrastructure.db.models.tenant_model import TenantModel
-    
-    return [UserModel, TenantModel]
+    from infrastructure.db.models.team_model import TeamModel
+
+    return [UserModel, TenantModel, TeamModel]
 
 
 # Test database setup

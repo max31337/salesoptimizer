@@ -21,3 +21,4 @@ class TenantModel(Base):
 
     # Relationships
     users = relationship("UserModel", back_populates="tenant")
+    teams = relationship("TeamModel", back_populates="tenant")
