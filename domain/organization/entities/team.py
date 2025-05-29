@@ -1,7 +1,7 @@
-from dataclasses import dataclass, field
+import uuid
 from datetime import datetime, timezone
 from typing import Optional
-from uuid import UUID, uuid4
+from dataclasses import dataclass, field
 
 
 
@@ -9,42 +9,34 @@ from uuid import UUID, uuid4
 class Team:
     """Team entity representing a sales team within an organization."""
     
+    tenant_id: uuid.UUID
     name: str
-    tenant_id: UUID
-    id: Optional[UUID] = field(default_factory=uuid4)
-    manager_id: Optional[UUID] = None
     description: Optional[str] = None
+    id: Optional[uuid.UUID] = field(default_factory=uuid.uuid4)
+    manager_id: Optional[uuid.UUID] = None  # Team Manager user ID
     is_active: bool = True
-    max_members: Optional[int] = None
     created_at: Optional[datetime] = field(default_factory=lambda: datetime.now(timezone.utc))
     updated_at: Optional[datetime] = None
     
-    def __post_init__(self) -> None:
-        """Validate team data after initialization."""
-        if not self.name or not self.name.strip():
-            raise ValueError("Team name is required")
-        
-        if not self.tenant_id:
-            raise ValueError("Tenant ID is required")
-        
-        # Clean up name
-        self.name = self.name.strip()
+    def update_info(self, name: Optional[str] = None, description: Optional[str] = None) -> None:
+        """Update team information."""
+        if name is not None:
+            self.name = name
+        if description is not None:
+            self.description = description
+        self.updated_at = datetime.now(timezone.utc)
     
-    @property
-    def display_name(self) -> str:
-        """Get display name for the team."""
-        return self.name
+    def assign_manager(self, manager_id: uuid.UUID) -> None:
+        """Assign a manager to this team."""
+        self.manager_id = manager_id
+        self.updated_at = datetime.now(timezone.utc)
     
-    def can_add_member(self, current_member_count: int) -> bool:
-        """Check if team can accept new members."""
-        if not self.is_active:
-            return False
-        
-        if self.max_members is None:
-            return True
-        
-        return current_member_count < self.max_members
+    def deactivate(self) -> None:
+        """Deactivate the team."""
+        self.is_active = False
+        self.updated_at = datetime.now(timezone.utc)
     
-    def has_manager(self) -> bool:
-        """Check if team has a manager assigned."""
-        return self.manager_id is not None
+    def activate(self) -> None:
+        """Activate the team."""
+        self.is_active = True
+        self.updated_at = datetime.now(timezone.utc)

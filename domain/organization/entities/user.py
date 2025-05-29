@@ -23,6 +23,7 @@ class User:
     last_name: str
     id: Optional[uuid.UUID] = field(default_factory=uuid.uuid4)
     tenant_id: Optional[uuid.UUID] = None
+    team_id: Optional[uuid.UUID] = None  # Added team assignment
     username: Optional[str] = None
     phone: Optional[str] = None
     password_hash: Optional[str] = None
@@ -160,3 +161,36 @@ class User:
         self.invitation_token = None
         self.invitation_expires_at = None
         self.updated_at = datetime.now(timezone.utc)
+
+    def assign_to_team(self, team_id: uuid.UUID) -> None:
+        """Assign user to a team."""
+        self.team_id = team_id
+        self.updated_at = datetime.now(timezone.utc)
+    
+    def remove_from_team(self) -> None:
+        """Remove user from current team."""
+        self.team_id = None
+        self.updated_at = datetime.now(timezone.utc)
+    
+    def can_manage_team(self, team_id: Optional[uuid.UUID] = None) -> bool:
+        """Check if user can manage a specific team."""
+        # Super admins can manage any team
+        if self.role == UserRole.SUPER_ADMIN:
+            return True
+        # Org admins can manage teams within their tenant
+        if self.role == UserRole.ORG_ADMIN:
+            return True
+        # Managers can only manage their assigned team
+        if self.role == UserRole.MANAGER:
+            if team_id is None:
+                return self.team_id is not None  # Can manage their own team
+            return self.team_id == team_id
+        return False
+    
+    def can_access_team_data(self, team_id: uuid.UUID) -> bool:
+        """Check if user can access team data."""
+        # Admins can access any team data
+        if self.is_admin():
+            return True
+        # Users can access their own team data
+        return self.team_id == team_id

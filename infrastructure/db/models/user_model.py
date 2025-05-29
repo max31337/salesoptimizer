@@ -64,6 +64,7 @@ class UserModel(Base):
 
     id = Column(GUID(), primary_key=True, default=uuid.uuid4)
     tenant_id = Column(GUID(), ForeignKey("tenants.id"), nullable=True)
+    team_id = Column(GUID(), ForeignKey("teams.id"), nullable=True)
     email = Column(String(255), unique=True, nullable=False, index=True)
     username = Column(String(50), unique=True, nullable=True, index=True)
     first_name = Column(String(100), nullable=False)
@@ -81,6 +82,6 @@ class UserModel(Base):
 
 
 
-
-    tenant = relationship("TenantModel", back_populates="users")    # Relationships    # Relationships
     tenant = relationship("TenantModel", back_populates="users")
+    team = relationship("TeamModel", foreign_keys=[team_id], back_populates="members")
+    managed_teams = relationship("TeamModel", foreign_keys="TeamModel.manager_id", back_populates="manager")
