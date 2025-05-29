@@ -80,8 +80,21 @@ class UserModel(Base):
     created_at = Column(DateTime(timezone=True), default=lambda: datetime.now(timezone.utc))
     updated_at = Column(DateTime(timezone=True), nullable=True, onupdate=lambda: datetime.now(timezone.utc))
 
-
-
+    # Relationships with explicit primaryjoin
     tenant = relationship("TenantModel", back_populates="users")
-    team = relationship("TeamModel", foreign_keys=[team_id], back_populates="members")
-    managed_teams = relationship("TeamModel", foreign_keys="TeamModel.manager_id", back_populates="manager")
+    
+    # User's team membership
+    team = relationship(
+        "TeamModel", 
+        foreign_keys=[team_id], 
+        back_populates="members"
+    )
+    
+    # Teams managed by this user (no FK constraint, so we need primaryjoin)
+    managed_teams = relationship(
+        "TeamModel",
+        primaryjoin="UserModel.id == TeamModel.manager_id",
+        foreign_keys="TeamModel.manager_id",
+        back_populates="manager",
+        post_update=True
+    )

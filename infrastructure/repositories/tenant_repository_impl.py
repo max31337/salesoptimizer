@@ -1,7 +1,8 @@
 from typing import List, Optional
 from uuid import UUID
-from sqlalchemy.orm import Session
 from sqlalchemy.exc import IntegrityError
+from sqlalchemy.ext.asyncio import AsyncSession
+from sqlalchemy import select
 
 from domain.organization.entities.tenant import Tenant, SubscriptionTier
 from domain.organization.repositories.tenant_repository import TenantRepository
@@ -9,13 +10,15 @@ from infrastructure.db.models.tenant_model import TenantModel
 
 
 class TenantRepositoryImpl(TenantRepository):
-    def __init__(self, db: Session):
+    def __init__(self, db: AsyncSession):
         self.db = db
-    
-    def create(self, tenant: Tenant) -> Tenant:
+
+    async def create(self, tenant: Tenant) -> Tenant:
         """Create a new tenant."""
         # Check for existing slug
-        existing = self.db.query(TenantModel).filter(TenantModel.slug == tenant.slug).first()
+        stmt = select(TenantModel).where(TenantModel.slug == tenant.slug)
+        result = await self.db.execute(stmt)
+        existing = result.scalar_one_or_none()
         if existing:
             raise ValueError("Tenant with this slug already exists")
         
@@ -30,31 +33,39 @@ class TenantRepositoryImpl(TenantRepository):
         
         try:
             self.db.add(db_tenant)
-            self.db.commit()
-            self.db.refresh(db_tenant)
+            await self.db.commit()
+            await self.db.refresh(db_tenant)
             return self._to_entity(db_tenant)
         except IntegrityError:
-            self.db.rollback()
+            await self.db.rollback()
             raise ValueError("Tenant with this slug already exists")
     
-    def get_by_id(self, tenant_id: UUID) -> Optional[Tenant]:
+    async def get_by_id(self, tenant_id: UUID) -> Optional[Tenant]:
         """Get tenant by ID."""
-        db_tenant = self.db.query(TenantModel).filter(TenantModel.id == tenant_id).first()
+        stmt = select(TenantModel).where(TenantModel.id == tenant_id)
+        result = await self.db.execute(stmt)
+        db_tenant = result.scalar_one_or_none()
         return self._to_entity(db_tenant) if db_tenant else None
     
-    def get_by_slug(self, slug: str) -> Optional[Tenant]:
+    async def get_by_slug(self, slug: str) -> Optional[Tenant]:
         """Get tenant by slug."""
-        db_tenant = self.db.query(TenantModel).filter(TenantModel.slug == slug).first()
+        stmt = select(TenantModel).where(TenantModel.slug == slug)
+        result = await self.db.execute(stmt)
+        db_tenant = result.scalar_one_or_none()
         return self._to_entity(db_tenant) if db_tenant else None
     
-    def get_all(self, skip: int = 0, limit: int = 100) -> List[Tenant]:
+    async def get_all(self, skip: int = 0, limit: int = 100) -> List[Tenant]:
         """Get all tenants."""
-        db_tenants = self.db.query(TenantModel).offset(skip).limit(limit).all()
+        stmt = select(TenantModel).offset(skip).limit(limit)
+        result = await self.db.execute(stmt)
+        db_tenants = result.scalars().all()
         return [self._to_entity(db_tenant) for db_tenant in db_tenants]
     
-    def update(self, tenant: Tenant) -> Tenant:
+    async def update(self, tenant: Tenant) -> Tenant:
         """Update tenant."""
-        db_tenant = self.db.query(TenantModel).filter(TenantModel.id == tenant.id).first()
+        stmt = select(TenantModel).where(TenantModel.id == tenant.id)
+        result = await self.db.execute(stmt)
+        db_tenant: TenantModel = result.scalar_one_or_none()
         if not db_tenant:
             raise ValueError("Tenant not found")
         
@@ -66,33 +77,37 @@ class TenantRepositoryImpl(TenantRepository):
         setattr(db_tenant, "settings", tenant.settings or {})
         setattr(db_tenant, "updated_at", tenant.updated_at)
 
-        self.db.commit()
-        self.db.refresh(db_tenant)
+        await self.db.commit()
+        await self.db.refresh(db_tenant)
         return self._to_entity(db_tenant)
     
-    def delete(self, tenant_id: UUID) -> bool:
+    async def delete(self, tenant_id: UUID) -> bool:
         """Delete tenant."""
-        db_tenant = self.db.query(TenantModel).filter(TenantModel.id == tenant_id).first()
+        stmt = select(TenantModel).where(TenantModel.id == tenant_id)
+        result = await self.db.execute(stmt)
+        db_tenant = result.scalar_one_or_none()
         if not db_tenant:
             return False
         
-        self.db.delete(db_tenant)
-        self.db.commit()
+        await self.db.delete(db_tenant)
+        await self.db.commit()
         return True
     
-    def exists_by_slug(self, slug: str) -> bool:
+    async def exists_by_slug(self, slug: str) -> bool:
         """Check if tenant exists by slug."""
-        return self.db.query(TenantModel).filter(TenantModel.slug == slug).first() is not None
+        stmt = select(TenantModel).where(TenantModel.slug == slug)
+        result = await self.db.execute(stmt)
+        return result.scalar_one_or_none() is not None
     
     def _to_entity(self, db_tenant: TenantModel) -> Tenant:
         """Convert database model to entity."""
         return Tenant(
-            id=getattr(db_tenant, "id", None),
-            name=getattr(db_tenant, "name", "") or "",
-            slug=getattr(db_tenant, "slug", "") or "",
-            subscription_tier=SubscriptionTier(getattr(db_tenant, "subscription_tier", "")),
-            is_active=getattr(db_tenant, "is_active", False) if getattr(db_tenant, "is_active", None) is not None else False,
-            settings=getattr(db_tenant, "settings", {}) or {},
-            created_at=getattr(db_tenant, "created_at", None),
-            updated_at=getattr(db_tenant, "updated_at", None)
+            id=getattr(db_tenant, "id"),
+            name=getattr(db_tenant, "name"),
+            slug=getattr(db_tenant, "slug"),
+            subscription_tier=SubscriptionTier(getattr(db_tenant, "subscription_tier")),
+            is_active=getattr(db_tenant, "is_active"),
+            settings=getattr(db_tenant, "settings") or {},
+            created_at=getattr(db_tenant, "created_at"),
+            updated_at=getattr(db_tenant, "updated_at")
         )

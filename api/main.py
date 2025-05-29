@@ -5,9 +5,17 @@ from infrastructure.db.base import get_db, test_connection
 from contextlib import asynccontextmanager
 from api.routes import users, auth, tenants
 
+# Import all models via the registry
+from infrastructure.db.models import register_models
+
 @asynccontextmanager
 async def lifespan(app: FastAPI):
     print("Testing database connection...")
+    
+    # Register all models
+    models = register_models()
+    print(f"Registered models: {[model.__name__ for model in models]}")
+    
     if test_connection():
         print("✅ Database connection successful!")
         print("✅ Using Alembic for database migrations!")
@@ -25,9 +33,14 @@ app = FastAPI(
 # Add CORS middleware
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=["http://localhost:3000"],  # Frontend URL
+    allow_origins=[
+        "http://localhost:3000",    # Frontend
+        "http://localhost:8000",    # Swagger UI (same origin)
+        "http://127.0.0.1:8000",    # Alternative localhost
+        "http://127.0.0.1:3000",    # Alternative frontend
+    ],
     allow_credentials=True,
-    allow_methods=["GET", "POST", "PUT", "DELETE"],
+    allow_methods=["GET", "POST", "PUT", "DELETE", "OPTIONS"],  # Add OPTIONS
     allow_headers=["*"],
 )
 

@@ -1,4 +1,4 @@
-from sqlalchemy.orm import Session
+from sqlalchemy.ext.asyncio import AsyncSession
 from infrastructure.repositories.user_repository_impl import UserRepositoryImpl
 from infrastructure.repositories.tenant_repository_impl import TenantRepositoryImpl
 from infrastructure.services.password_service import PasswordService
@@ -12,7 +12,7 @@ from application.use_cases.auth_use_cases import AuthUseCases
 class ApplicationService:
     """Factory for creating application use cases with proper dependencies."""
     
-    def __init__(self, db: Session):
+    def __init__(self, db: AsyncSession):  # Change to AsyncSession
         self.db = db
         self._user_repository = None
         self._tenant_repository = None

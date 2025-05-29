@@ -23,15 +23,15 @@ class AuthService:
         self.password_service: PasswordService = password_service
         self.jwt_service: JWTService = jwt_service
     
-    def authenticate_user(self, email_or_username: str, password: str) -> User:
+    async def authenticate_user(self, email_or_username: str, password: str) -> User:
         """Authenticate a user with email/username and password."""
         if not email_or_username or not password:
             raise AuthenticationError("Email/username and password are required")
         
         # Try to find user by email first, then by username
-        user: Optional[User] = self.user_repository.get_by_email(email_or_username)
+        user: Optional[User] = await self.user_repository.get_by_email(email_or_username)
         if not user:
-            user = self.user_repository.get_by_username(email_or_username)
+            user = await self.user_repository.get_by_username(email_or_username)
         
         if not user:
             raise AuthenticationError("Invalid credentials")
@@ -46,11 +46,11 @@ class AuthService:
         
         # Update last login
         user.record_login()
-        self.user_repository.update(user)
+        await self.user_repository.update(user)
         
         return user
     
-    def complete_registration(
+    async def complete_registration(
         self, 
         invitation_token: str, 
         password: str, 
@@ -74,7 +74,7 @@ class AuthService:
             raise AuthenticationError("Invalid invitation token - missing email")
 
         # Get existing user (should be pending)
-        existing_user: Optional[User] = self.user_repository.get_by_email(email)
+        existing_user: Optional[User] = await self.user_repository.get_by_email(email)
         if existing_user:
             # If user exists and is already active, registration is already completed
             if existing_user.status == UserStatus.ACTIVE:
@@ -116,7 +116,7 @@ class AuthService:
         user.invitation_expires_at = None
 
         # Update user in repository
-        updated_user: User = self.user_repository.update(user)
+        updated_user: User = await self.user_repository.update(user)
         return updated_user
     
     def create_user_tokens(self, user: User) -> Tuple[str, str]:
@@ -135,7 +135,7 @@ class AuthService:
         
         return access_token, refresh_token
     
-    def refresh_user_tokens(self, refresh_token: str) -> Tuple[str, str]:
+    async def refresh_user_tokens(self, refresh_token: str) -> Tuple[str, str]:
         """Refresh user tokens using refresh token."""
         if not refresh_token:
             raise AuthenticationError("Refresh token is required")
@@ -155,7 +155,7 @@ class AuthService:
             raise AuthenticationError("Invalid user ID in refresh token")
         
         # Get user
-        user: Optional[User] = self.user_repository.get_by_id(user_id)
+        user: Optional[User] = await self.user_repository.get_by_id(user_id)
         if not user or user.status != UserStatus.ACTIVE:
             raise AuthenticationError("User not found or inactive")
         

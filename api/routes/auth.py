@@ -24,11 +24,18 @@ async def login(
     form_data: OAuth2PasswordRequestForm = Depends()
 ) -> LoginResponse:
     """Authenticate user and return access token."""
+    
+    # Add debug logging
+    print(f"🔍 Login attempt - username: {form_data.username}")
+    print(f"🔍 Password provided: {'Yes' if form_data.password else 'No'}")
+    
     try:
-        user, access_token, refresh_token = app_service.auth_use_cases.authenticate_user(
+        user, access_token, refresh_token = await app_service.auth_use_cases.authenticate_user(
             form_data.username, 
             form_data.password
         )
+        
+        print(f"✅ Authentication successful for user: {user.email}")
         
         if user.id is None:
             raise HTTPException(
@@ -48,6 +55,7 @@ async def login(
         )
     
     except AuthenticationError as e:
+        print(f"❌ Authentication failed: {str(e)}")
         raise HTTPException(
             status_code=status.HTTP_401_UNAUTHORIZED,
             detail=str(e)
@@ -60,7 +68,7 @@ async def complete_registration(
 ) -> RegisterResponse:
     """Complete user registration with invitation token."""
     try:
-        result: tuple[User, str, str] = app_service.auth_use_cases.complete_registration(
+        result: tuple[User, str, str] = await app_service.auth_use_cases.complete_registration(
             register_data
         )
         user: User
@@ -133,7 +141,7 @@ async def refresh_token(
                 detail="Missing refresh_token in request body"
             )
         
-        access_token, new_refresh_token = app_service.auth_use_cases.refresh_tokens(
+        access_token, new_refresh_token = await app_service.auth_use_cases.refresh_tokens(
             refresh_data["refresh_token"]
         )
         
