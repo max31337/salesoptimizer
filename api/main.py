@@ -1,12 +1,14 @@
 from fastapi import FastAPI, Depends
 from fastapi.middleware.cors import CORSMiddleware
 from sqlalchemy.orm import Session
-from infrastructure.db.base import get_db, test_connection
+from infrastructure.db.database import get_db, test_connection
 from contextlib import asynccontextmanager
-from api.routes import users, auth, tenants
 
 # Import all models via the registry
 from infrastructure.db.models import register_models
+
+#Route registration imports hehe
+from api.routes import auth
 
 @asynccontextmanager
 async def lifespan(app: FastAPI):
@@ -46,8 +48,6 @@ app.add_middleware(
 
 # Include routers
 app.include_router(auth.router, prefix="/api/v1")
-app.include_router(tenants.router, prefix="/api/v1")  
-app.include_router(users.router, prefix="/api/v1")
 
 @app.get("/")
 def root():

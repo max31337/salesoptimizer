@@ -7,7 +7,7 @@ from sqlalchemy.dialects.sqlite import CHAR
 from sqlalchemy.orm import relationship
 from sqlalchemy import TypeDecorator, String as SqlString
 from sqlalchemy.engine import Dialect
-from infrastructure.db.base import Base
+from infrastructure.db.database import Base
 
 
 class GUID(TypeDecorator[uuid.UUID]):

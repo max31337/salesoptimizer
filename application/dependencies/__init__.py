@@ -1,1 +1,1 @@
-"""Application Layer Dependencies"""
+"""Application dependencies."""

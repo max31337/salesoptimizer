@@ -3,7 +3,7 @@ from datetime import datetime, timezone
 from sqlalchemy import Column, String, Boolean, DateTime, JSON
 from sqlalchemy.orm import relationship
 
-from infrastructure.db.base import Base
+from infrastructure.db.database import Base
 from infrastructure.db.models.user_model import GUID
 
 

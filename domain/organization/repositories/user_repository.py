@@ -1,18 +1,21 @@
 from abc import ABC, abstractmethod
-from typing import List, Optional
-from uuid import UUID
+from typing import Optional
 
 from domain.organization.entities.user import User
+from domain.organization.value_objects.email import Email
+from domain.organization.value_objects.user_id import UserId
 
 
 class UserRepository(ABC):
+    """User repository interface."""
+    
     @abstractmethod
-    async def get_by_id(self, user_id: UUID) -> Optional[User]:
+    async def get_by_id(self, user_id: UserId) -> Optional[User]:
         """Get user by ID."""
         pass
     
     @abstractmethod
-    async def get_by_email(self, email: str) -> Optional[User]:
+    async def get_by_email(self, email: Email) -> Optional[User]:
         """Get user by email."""
         pass
     
@@ -22,26 +25,16 @@ class UserRepository(ABC):
         pass
     
     @abstractmethod
-    async def create(self, user: User) -> User:
-        """Create a new user."""
+    async def save(self, user: User) -> User:
+        """Save user."""
         pass
     
     @abstractmethod
     async def update(self, user: User) -> User:
-        """Update an existing user."""
+        """Update user."""
         pass
     
     @abstractmethod
-    async def delete(self, user_id: UUID) -> bool:
-        """Delete a user."""
-        pass
-    
-    @abstractmethod
-    async def get_by_invitation_token(self, token: str) -> Optional[User]:
-        """Get user by invitation token."""
-        pass
-    
-    @abstractmethod
-    async def get_by_tenant(self, tenant_id: UUID, skip: int = 0, limit: int = 100) -> List[User]:
-        """Get users by tenant ID."""
+    async def exists_by_email(self, email: Email) -> bool:
+        """Check if user exists by email."""
         pass

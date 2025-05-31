@@ -2,7 +2,7 @@ import uuid
 from datetime import datetime, timezone
 from sqlalchemy import Column, String, Boolean, DateTime, ForeignKey, Text
 from sqlalchemy.orm import relationship
-from infrastructure.db.base import Base
+from infrastructure.db.database import Base
 from infrastructure.db.models.user_model import GUID
 
 class TeamModel(Base):

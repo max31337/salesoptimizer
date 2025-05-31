@@ -73,6 +73,14 @@ def get_async_database_url() -> str:
         return url.replace("postgresql://", "postgresql+asyncpg://")
     return url
 
+def get_async_session() -> AsyncSession:
+    """Get async database session."""
+    async_session = async_sessionmaker(
+        bind=create_async_engine(get_async_database_url(), echo=False),
+        expire_on_commit=False
+    )
+    return async_session()
+
 # Create async engine
 async_engine = create_async_engine(get_async_database_url(), echo=False)
 AsyncSessionLocal = async_sessionmaker(async_engine, expire_on_commit=False)

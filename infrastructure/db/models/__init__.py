@@ -1,4 +1,4 @@
-"""Database models registry."""
+"""Database models."""
 from typing import List, Type, Any
 
 # Import all models in the correct order to ensure proper registration

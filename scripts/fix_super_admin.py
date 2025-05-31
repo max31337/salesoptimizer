@@ -4,7 +4,7 @@ import asyncio
 from datetime import datetime, timezone
 from sqlalchemy.ext.asyncio import create_async_engine, async_sessionmaker
 from sqlalchemy import select
-from infrastructure.db.base import get_async_database_url
+from infrastructure.db.database import get_async_database_url
 from infrastructure.db.models.user_model import UserModel
 from infrastructure.services.password_service import PasswordService
 

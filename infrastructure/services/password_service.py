@@ -3,7 +3,7 @@ import secrets
 import string
 
 class PasswordService:
-    """Service for password hashing and verification with strict type hints."""
+    """Service for password hashing and verification."""
     
     def __init__(self, rounds: int = 12) -> None:
         if rounds < 4 or rounds > 31:

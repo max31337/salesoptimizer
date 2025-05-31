@@ -19,7 +19,7 @@ if config.config_file_name is not None:
 
 # Import Base and models AFTER adding to sys.path
 try:
-    from infrastructure.db.base import Base, get_database_url
+    from infrastructure.db.database import Base, get_database_url
     # Import ALL model files here to register them with SQLAlchemy
     from infrastructure.db.models.user_model import UserModel, GUID  # Add GUID import
     from infrastructure.db.models.tenant_model import TenantModel

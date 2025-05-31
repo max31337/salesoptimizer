@@ -1,1 +1,1 @@
-"""API dependencies package."""
+"""API dependencies."""
