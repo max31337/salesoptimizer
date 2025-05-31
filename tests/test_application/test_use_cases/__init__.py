@@ -1,1 +1,1 @@
-"""Application use cases tests package."""
+"""Application use cases tests."""
