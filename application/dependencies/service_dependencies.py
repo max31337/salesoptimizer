@@ -27,7 +27,8 @@ class ApplicationService:
             google_oauth_redirect_url=os.environ["GOOGLE_OAUTH_REDIRECT_URL"],
             github_oauth_redirect_url=os.environ["GITHUB_OAUTH_REDIRECT_URL"],
             microsoft_oauth_redirect_url=os.environ["MICROSOFT_OAUTH_REDIRECT_URL"],
-            frontend_url=os.getenv("FRONTEND_URL", "http://localhost:3000")
+            frontend_url=os.getenv("FRONTEND_URL", "http://localhost:3000"),
+            backend_url=os.getenv("BACKEND_URL", "http://localhost:8000")
         )
         self._oauth_service = OAuthService(config=self._oauth_config)
         self._user_repository = UserRepositoryImpl(self._session)

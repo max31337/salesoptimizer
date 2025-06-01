@@ -96,6 +96,17 @@ class OAuthConfig(BaseSettings):
         elif provider == "microsoft":
             return bool(self.microsoft_client_id and self.microsoft_client_secret)
         return False
+    
+    def get_redirect_url(self, provider: str) -> str:
+        """Get the redirect URL for a specific provider."""
+        if provider == "google":
+            return self.google_oauth_redirect_url
+        elif provider == "github":
+            return self.github_oauth_redirect_url
+        elif provider == "microsoft":
+            return self.microsoft_oauth_redirect_url
+        else:
+            raise ValueError(f"Unsupported provider: {provider}")
 
 
 # OAuth provider configurations
