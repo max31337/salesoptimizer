@@ -1,8 +1,8 @@
-"""initial v2 lmao
+"""initial v1 lmaoo
 
-Revision ID: 31b83c508171
+Revision ID: e302659201ae
 Revises: 
-Create Date: 2025-05-30 00:01:02.042705
+Create Date: 2025-06-01 15:49:39.980055
 
 """
 from typing import Sequence, Union
@@ -12,7 +12,7 @@ import sqlalchemy as sa
 from infrastructure.db.models.user_model import GUID
 
 # revision identifiers, used by Alembic.
-revision: str = '31b83c508171'
+revision: str = 'e302659201ae'
 down_revision: Union[str, None] = None
 branch_labels: Union[str, Sequence[str], None] = None
 depends_on: Union[str, Sequence[str], None] = None
@@ -64,6 +64,8 @@ def upgrade() -> None:
     sa.Column('invitation_expires_at', sa.DateTime(timezone=True), nullable=True),
     sa.Column('created_at', sa.DateTime(timezone=True), nullable=True),
     sa.Column('updated_at', sa.DateTime(timezone=True), nullable=True),
+    sa.Column('oauth_provider', sa.String(length=50), nullable=True),
+    sa.Column('oauth_provider_id', sa.String(length=255), nullable=True),
     sa.ForeignKeyConstraint(['team_id'], ['teams.id'], ),
     sa.ForeignKeyConstraint(['tenant_id'], ['tenants.id'], ),
     sa.PrimaryKeyConstraint('id')
@@ -73,6 +75,24 @@ def upgrade() -> None:
         batch_op.create_index(batch_op.f('ix_users_invitation_token'), ['invitation_token'], unique=False)
         batch_op.create_index(batch_op.f('ix_users_username'), ['username'], unique=True)
 
+    # Create composite index for OAuth provider lookups
+    with op.batch_alter_table('users', schema=None) as batch_op:
+        batch_op.create_index('ix_users_oauth_provider_lookup', ['oauth_provider', 'oauth_provider_id'], unique=False)
+        batch_op.create_index(batch_op.f('ix_users_tenant_id'), ['tenant_id'], unique=False)
+        batch_op.create_index(batch_op.f('ix_users_team_id'), ['team_id'], unique=False)
+        batch_op.create_index(batch_op.f('ix_users_role'), ['role'], unique=False)
+        batch_op.create_index(batch_op.f('ix_users_status'), ['status'], unique=False)
+        batch_op.create_index(batch_op.f('ix_users_last_login'), ['last_login'], unique=False)
+    
+    # Create composite index for team manager foreign key reference
+    with op.batch_alter_table('teams', schema=None) as batch_op:
+        batch_op.create_foreign_key('fk_teams_manager_id', 'users', ['manager_id'], ['id'])
+        batch_op.create_index(batch_op.f('ix_teams_tenant_id'), ['tenant_id'], unique=False)
+        batch_op.create_index(batch_op.f('ix_teams_manager_id'), ['manager_id'], unique=False)
+    
+    with op.batch_alter_table('tenants', schema=None) as batch_op:
+        batch_op.create_index(batch_op.f('ix_tenants_subscription_tier'), ['subscription_tier'], unique=False)
+        batch_op.create_index(batch_op.f('ix_tenants_is_active'), ['is_active'], unique=False)
     # ### end Alembic commands ###
 
 

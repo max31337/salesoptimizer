@@ -79,7 +79,9 @@ class UserModel(Base):
     invitation_expires_at = Column(DateTime(timezone=True), nullable=True)
     created_at = Column(DateTime(timezone=True), default=lambda: datetime.now(timezone.utc))
     updated_at = Column(DateTime(timezone=True), nullable=True, onupdate=lambda: datetime.now(timezone.utc))
-
+    oauth_provider = Column(String(50), nullable=True)
+    oauth_provider_id = Column(String(255), nullable=True)
+    
     # Relationships with explicit primaryjoin
     tenant = relationship("TenantModel", back_populates="users")
     

@@ -1,28 +1,12 @@
 from typing import Optional
 from datetime import datetime, timezone
-from enum import Enum
 from uuid import UUID
 from dataclasses import dataclass, field
 
 from domain.organization.value_objects.email import Email
 from domain.organization.value_objects.user_id import UserId
-
-
-class UserRole(Enum):
-    """User roles in the system."""
-    SUPER_ADMIN = "super_admin"
-    ORG_ADMIN = "org_admin"
-    SALES_MANAGER = "sales_manager"
-    SALES_REP = "sales_rep"
-
-
-class UserStatus(Enum):
-    """User status in the system."""
-    PENDING = "pending"
-    ACTIVE = "active"
-    INACTIVE = "inactive"
-    SUSPENDED = "suspended"
-
+from domain.organization.value_objects.user_role import UserRole
+from domain.organization.value_objects.user_status import UserStatus
 
 @dataclass
 class User:
@@ -45,7 +29,10 @@ class User:
     invitation_expires_at: Optional[datetime] = None
     created_at: datetime = field(default_factory=lambda: datetime.now(timezone.utc))
     updated_at: datetime = field(default_factory=lambda: datetime.now(timezone.utc))
-    
+    _oauth_provider: Optional[str] = None
+    _oauth_provider_id: Optional[str] = None
+
+
     def __post_init__(self) -> None:
         """Validate user data after initialization."""
         if not self.first_name or not self.first_name.strip():
@@ -66,8 +53,20 @@ class User:
     
     def is_active(self) -> bool:
         """Check if user is active."""
-        return self.status == UserStatus.ACTIVE
+        return self.status.value == "active"
     
     def has_password(self) -> bool:
         """Check if user has a password set."""
         return self.password_hash is not None and len(self.password_hash) > 0
+    
+    @property
+    def oauth_provider(self) -> Optional[str]:
+        return self._oauth_provider
+    
+    @property
+    def oauth_provider_id(self) -> Optional[str]:
+        return self._oauth_provider_id
+    
+    def is_oauth_user(self) -> bool:
+        """Check if user was created via OAuth."""
+        return self._oauth_provider is not None

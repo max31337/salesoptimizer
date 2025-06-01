@@ -68,10 +68,9 @@ def test_connection():
 # Async database setup
 def get_async_database_url() -> str:
     """Get async database URL."""
-    url = get_database_url()
-    if url.startswith("postgresql://"):
-        return url.replace("postgresql://", "postgresql+asyncpg://")
-    return url
+    sync_url = get_database_url()
+    # Replace postgresql:// with postgresql+psycopg://
+    return sync_url.replace("postgresql://", "postgresql+psycopg://")
 
 def get_async_session() -> AsyncSession:
     """Get async database session."""

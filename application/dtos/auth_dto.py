@@ -17,6 +17,29 @@ class LoginRequest(BaseModel):
         return v
 
 
+class OAuthLoginRequest(BaseModel):
+    """OAuth login request DTO."""
+    
+    provider: str
+    code: str
+    redirect_uri: str
+    
+    @field_validator('provider')
+    @classmethod
+    def validate_provider(cls, v: str) -> str:
+        allowed_providers = ['google', 'github', 'microsoft']
+        if v not in allowed_providers:
+            raise ValueError(f'Provider must be one of: {allowed_providers}')
+        return v
+
+
+class OAuthAuthorizationResponse(BaseModel):
+    """OAuth authorization URL response."""
+    
+    authorization_url: str
+    state: Optional[str] = None
+
+
 class LoginResponse(BaseModel):
     """Login response DTO."""
     
@@ -28,3 +51,4 @@ class LoginResponse(BaseModel):
     role: str
     email: str
     full_name: str
+    is_new_user: bool = False
