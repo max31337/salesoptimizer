@@ -4,13 +4,12 @@ from alembic import context
 import os
 import sys
 from typing import Any, Literal
-from infrastructure.db.models.user_model import GUID 
-
-
 # Add your project root to Python path
-current_dir = os.path.dirname(os.path.abspath(__file__))
-parent_dir = os.path.dirname(current_dir)
-sys.path.insert(0, parent_dir)
+current_dir = os.path.dirname(os.path.abspath(__file__))  # alembic folder
+db_dir = os.path.dirname(current_dir)  # db folder
+infra_dir = os.path.dirname(db_dir)  # infrastructure folder
+project_root = os.path.dirname(infra_dir)  # project root
+sys.path.insert(0, project_root)
 
 config = context.config
 
