@@ -3,7 +3,7 @@ from sqlalchemy import create_engine, text
 from sqlalchemy.orm import declarative_base, sessionmaker
 from sqlalchemy.ext.asyncio import create_async_engine, AsyncSession, async_sessionmaker
 from dotenv import load_dotenv
-from typing import Type, Any, List
+from typing import Type, Any, List, AsyncGenerator
 
 
 load_dotenv()
@@ -72,19 +72,23 @@ def get_async_database_url() -> str:
     # Replace postgresql:// with postgresql+psycopg://
     return sync_url.replace("postgresql://", "postgresql+psycopg://")
 
-def get_async_session() -> AsyncSession:
-    """Get async database session."""
-    async_session = async_sessionmaker(
-        bind=create_async_engine(get_async_database_url(), echo=False),
-        expire_on_commit=False
-    )
-    return async_session()
+async def get_async_session() -> AsyncGenerator[AsyncSession, None]:
+    """Get async database session with proper transaction handling."""
+    async with AsyncSessionLocal() as session:
+        try:
+            yield session
+            await session.commit()
+            print("✅ Transaction committed successfully")
+        except Exception as e:
+            await session.rollback()
+            print(f"❌ Transaction rolled back: {e}")
+            raise e
+        finally:
+            await session.close()
 
 # Create async engine
 async_engine = create_async_engine(get_async_database_url(), echo=False)
 AsyncSessionLocal = async_sessionmaker(async_engine, expire_on_commit=False)
-
-from typing import AsyncGenerator
 
 async def get_async_db() -> AsyncGenerator[AsyncSession, None]:
     """Get async database session."""

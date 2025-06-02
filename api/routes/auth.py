@@ -4,9 +4,10 @@ from fastapi.security import OAuth2PasswordRequestForm
 from fastapi.responses import RedirectResponse
 
 from application.services.application_service import (
-    get_application_service,
     ApplicationService
 )
+
+
 from application.dtos.auth_dto import (
     LoginResponse, 
     OAuthAuthorizationResponse
@@ -19,6 +20,9 @@ from domain.organization.exceptions.auth_exceptions import (
     UserNotFoundError,
     InactiveUserError
 )
+
+from infrastructure.dependencies.service_container import get_application_service
+
 
 router = APIRouter(prefix="/auth", tags=["authentication"])
 
