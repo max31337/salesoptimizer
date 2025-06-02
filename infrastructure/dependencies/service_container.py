@@ -1,11 +1,14 @@
 import os
+from functools import lru_cache
 from sqlalchemy.ext.asyncio import AsyncSession
 from fastapi import Depends
 
+from infrastructure.config.settings import settings
 from infrastructure.db.database import get_async_session
 from infrastructure.db.repositories.user_repository_impl import UserRepositoryImpl
 from infrastructure.db.repositories.invitation_repository_impl import InvitationRepositoryImpl
 from infrastructure.db.repositories.tenant_repository_impl import TenantRepositoryImpl
+from infrastructure.email.smtp_email_service import SMTPEmailService
 from infrastructure.services.password_service import PasswordService
 from infrastructure.services.jwt_service import JWTService
 from infrastructure.services.oauth_service import OAuthService
@@ -20,6 +23,7 @@ from domain.organization.services.tenant_service import TenantService
 from application.services.application_service import ApplicationService
 from application.use_cases.auth_use_cases import AuthUseCases
 from application.use_cases.invitation_use_cases import InvitationUseCases
+from domain.shared.services.email_service import EmailService
 
 
 def create_oauth_config() -> OAuthConfig:
@@ -36,6 +40,22 @@ def create_oauth_config() -> OAuthConfig:
         microsoft_oauth_redirect_url=os.environ["MICROSOFT_OAUTH_REDIRECT_URL"],
         frontend_url=os.getenv("FRONTEND_URL", "http://localhost:3000"),
         backend_url=os.getenv("BACKEND_URL", "http://localhost:8000")
+    )
+
+
+@lru_cache()
+def get_email_service() -> EmailService:
+    """Get email service instance."""
+    return SMTPEmailService(
+        smtp_host=settings.SMTP_HOST,
+        smtp_port=settings.SMTP_PORT,
+        smtp_username=settings.SMTP_USERNAME,
+        smtp_password=settings.SMTP_PASSWORD,
+        use_tls=settings.SMTP_USE_TLS,
+        use_starttls=settings.SMTP_USE_STARTTLS, 
+        default_from_email=settings.DEFAULT_FROM_EMAIL,
+        default_from_name=settings.DEFAULT_FROM_NAME,
+        base_url=settings.FRONTEND_URL
     )
 
 
@@ -64,9 +84,12 @@ async def get_application_service(
     
     tenant_service = TenantService(tenant_repository)
     
+    email_service = get_email_service()
+    
     invitation_service = InvitationService(
         invitation_repository=invitation_repository,
-        tenant_repository=tenant_repository
+        tenant_repository=tenant_repository,
+        email_service=email_service
     )
     
     # Application use cases

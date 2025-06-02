@@ -6,6 +6,7 @@ from domain.organization.value_objects.user_id import UserId
 from domain.organization.value_objects.tenant_name import TenantName
 from domain.organization.repositories.invitation_repository import InvitationRepository
 from domain.organization.repositories.tenant_repository import TenantRepository
+from domain.shared.services.email_service import EmailService
 
 
 class InvitationService:
@@ -14,10 +15,12 @@ class InvitationService:
     def __init__(
         self,
         invitation_repository: InvitationRepository,
-        tenant_repository: TenantRepository
+        tenant_repository: TenantRepository,
+        email_service: EmailService
     ):
         self._invitation_repository = invitation_repository
         self._tenant_repository = tenant_repository
+        self._email_service = email_service
     
     async def create_org_admin_invitation_with_tenant(
         self,
@@ -25,7 +28,8 @@ class InvitationService:
         invited_by_id: UserId,
         organization_name: str,
         subscription_tier: str = "basic",
-        custom_slug: str | None = None
+        custom_slug: str | None = None,
+        invited_by_name: str = "SalesOptimizer Admin"
     ) -> Tuple[Invitation, Tenant]:
         """Create invitation for organization admin and create the tenant/organization."""
         # Check if there's already an active invitation for this email
@@ -58,6 +62,21 @@ class InvitationService:
         
         created_invitation = await self._invitation_repository.save(invitation)
         
+        # Send invitation email
+        email_sent = await self._email_service.send_invitation_email(
+            to_email=str(email),
+            organization_name=organization_name,
+            invitation_token=created_invitation.token.value,
+            invited_by_name=invited_by_name,
+            expires_at=str(created_invitation.expires_at)
+        )
+        
+        if not email_sent:
+            # Log warning but don't fail the operation
+            import logging
+            logger = logging.getLogger(__name__)
+            logger.warning(f"Failed to send invitation email to {email}")
+        
         return created_invitation, created_tenant
     
     async def accept_invitation(
@@ -71,7 +90,7 @@ class InvitationService:
         await self._invitation_repository.update(invitation)
         
         # Get the tenant and set the owner
-        tenant = await self._tenant_repository.get_by_id(invitation.tenant_id)
+        tenant = await self._tenant_repository.get_by_id(UserId(invitation.tenant_id))
         if not tenant:
             raise ValueError("Tenant not found for invitation")
         

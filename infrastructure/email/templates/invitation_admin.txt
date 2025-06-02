@@ -1,0 +1,36 @@
+You're Invited to Join {{ organization_name }}!
+
+Hello!
+
+{{ invited_by_name }} has invited you to become an Organization Administrator for {{ organization_name }} on SalesOptimizer.
+
+Organization Details:
+- Organization: {{ organization_name }}
+- Role: Organization Administrator
+- Invited by: {{ invited_by_name }}
+- Platform: SalesOptimizer
+
+As an Organization Administrator, you'll have full control over:
+- User management and invitations
+- Team setup and goal management
+- Analytics and reporting
+- Organization settings and configuration
+- Security and access controls
+
+To accept this invitation and set up your account, please visit:
+{{ accept_url }}
+
+IMPORTANT: This invitation expires on {{ expires_at }}. Please accept it before then.
+
+If the link doesn't work, you can copy and paste this URL into your browser:
+{{ accept_url }}
+
+Questions? Need help getting started? Reply to this email and we'll be happy to assist you.
+
+Welcome to the team!
+
+---
+This invitation was sent by {{ invited_by_name }} via SalesOptimizer.
+If you weren't expecting this invitation, you can safely ignore this email.
+
+© 2025 SalesOptimizer. All rights reserved.

@@ -1,7 +1,12 @@
 import sys
 import os
 import asyncio
+import platform
 from sqlalchemy.ext.asyncio import create_async_engine, async_sessionmaker
+
+# Fix Windows event loop policy for psycopg
+if platform.system() == 'Windows':
+    asyncio.set_event_loop_policy(asyncio.WindowsSelectorEventLoopPolicy())
 
 project_root = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 sys.path.insert(0, project_root)
@@ -31,6 +36,11 @@ async def test_superadmin_permissions():
             print(f"🔍 Has CREATE_TENANT permission: {superadmin.has_permission(Permission.CREATE_TENANT)}")
         else:
             print("❌ SuperAdmin not found!")
+            print("Creating SuperAdmin...")
+            
+            # Create SuperAdmin if not found
+            from scripts.fix_super_admin import fix_super_admin
+            await fix_super_admin()
 
 if __name__ == "__main__":
     asyncio.run(test_superadmin_permissions())

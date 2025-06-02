@@ -36,10 +36,17 @@ class InvitationUseCases:
             raise ValueError("User ID cannot be None")
         
         email = Email(command.email)
+        
+        # Get invited by name
+        invited_by_name = f"{current_user.first_name} {current_user.last_name}".strip()
+        if not invited_by_name:
+            invited_by_name = str(current_user.email)
+        
         return await self._invitation_service.create_org_admin_invitation_with_tenant(
             email,
             current_user.id,
             command.organization_name,
             command.subscription_tier,
-            command.slug
+            command.slug,
+            invited_by_name
         )
