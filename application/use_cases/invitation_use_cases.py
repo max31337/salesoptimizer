@@ -1,11 +1,11 @@
 from typing import Tuple
+from application.commands.invitation_command import CreateInvitationCommand
 from domain.organization.entities.invitation import Invitation
-from domain.organization.entities.user import User
 from domain.organization.entities.tenant import Tenant
+from domain.organization.entities.user import User
 from domain.organization.services.invitation_service import InvitationService
 from domain.organization.services.auth_service import AuthService
 from domain.organization.value_objects.email import Email
-from application.commands.invitation_command import CreateInvitationCommand
 
 
 class InvitationUseCases:
@@ -39,5 +39,7 @@ class InvitationUseCases:
         return await self._invitation_service.create_org_admin_invitation_with_tenant(
             email,
             current_user.id,
-            command.organization_name
+            command.organization_name,
+            command.subscription_tier,
+            command.slug
         )

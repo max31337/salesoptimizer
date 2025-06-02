@@ -1,45 +1,58 @@
-from pydantic import BaseModel, EmailStr
+from pydantic import BaseModel, EmailStr, Field
 from datetime import datetime
 from typing import Optional
-from uuid import UUID
+import uuid
 
 
 class CreateInvitationRequest(BaseModel):
-    """Create invitation request DTO."""
+    """Request to create an organization admin invitation with tenant."""
     
-    email: EmailStr
-    organization_name: str
+    email: EmailStr = Field(..., description="Email of the organization admin to invite")
+    organization_name: str = Field(..., min_length=1, max_length=255, description="Name of the organization")
+    subscription_tier: str = Field(default="basic", description="Subscription tier (basic, pro, enterprise)")
+    slug: Optional[str] = Field(None, min_length=3, max_length=50, description="Custom slug for the organization (auto-generated if not provided)")
+    
+    class Config:
+        json_schema_extra = {
+            "example": {
+                "email": "admin@example.com",
+                "organization_name": "Acme Corporation",
+                "subscription_tier": "pro",
+                "slug": "acme-corp"
+            }
+        }
 
 
 class InvitationResponse(BaseModel):
-    """Invitation response DTO."""
+    """Response for invitation data."""
     
-    id: UUID
-    email: EmailStr
+    id: uuid.UUID
+    email: str
     role: str
     token: str
-    invited_by_id: UUID
+    invited_by_id: uuid.UUID
     organization_name: str
-    tenant_id: UUID  # Include tenant_id
+    tenant_id: uuid.UUID
     expires_at: datetime
     is_used: bool
-    used_at: Optional[datetime] = None
+    used_at: Optional[datetime]
     created_at: datetime
 
 
 class TenantResponse(BaseModel):
-    """Tenant response DTO."""
+    """Response for tenant data."""
     
-    id: UUID
+    id: uuid.UUID
     name: str
     slug: str
+    subscription_tier: str
     is_active: bool
-    owner_id: Optional[UUID] = None
+    owner_id: Optional[uuid.UUID]
     created_at: datetime
 
 
 class InvitationWithTenantResponse(BaseModel):
-    """Invitation with tenant response DTO."""
+    """Response containing both invitation and tenant data."""
     
     invitation: InvitationResponse
     tenant: TenantResponse
