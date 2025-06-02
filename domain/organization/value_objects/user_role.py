@@ -11,6 +11,17 @@ class Permission(Enum):
     UPDATE_USER = "update_user"
     DELETE_USER = "delete_user"
     
+    # Invitation Management
+    CREATE_INVITATION = "create_invitation"
+    VIEW_INVITATION = "view_invitation"
+    MANAGE_INVITATION = "manage_invitation"
+    
+    # Tenant/Organization Management
+    CREATE_TENANT = "create_tenant"
+    MANAGE_TENANT = "manage_tenant"
+    DELETE_TENANT = "delete_tenant"
+    VIEW_ALL_TENANTS = "view_all_tenants"
+    
     # Lead Management
     CREATE_LEAD = "create_lead"
     READ_LEAD = "read_lead"
@@ -23,7 +34,7 @@ class Permission(Enum):
     MANAGE_TEAM = "manage_team"
     VIEW_TEAM_PERFORMANCE = "view_team_performance"
     
-    # Organization
+    # Organization (within tenant)
     MANAGE_ORGANIZATION = "manage_organization"
     VIEW_ANALYTICS = "view_analytics"
     EXPORT_DATA = "export_data"
@@ -67,9 +78,25 @@ class UserRole:
         }
         return levels[self.value]
     
+    def is_super_admin(self) -> bool:
+        """Check if this role is super admin."""
+        return self.value == "super_admin"
+    
     def has_permission(self, permission: Permission) -> bool:
         """Check if role has specific permission."""
         return permission in self.permissions
+    
+    def can_create_invitations(self) -> bool:
+        """Check if role can create invitations."""
+        return self.has_permission(Permission.CREATE_INVITATION)
+    
+    def can_create_tenants(self) -> bool:
+        """Check if role can create tenants."""
+        return self.has_permission(Permission.CREATE_TENANT)
+    
+    def can_manage_invitations(self) -> bool:
+        """Check if role can manage invitations."""
+        return self.has_permission(Permission.MANAGE_INVITATION)
     
     def can_manage_role(self, other_role: 'UserRole') -> bool:
         """Check if this role can manage another role."""
@@ -108,12 +135,15 @@ class UserRole:
         """Define permissions for each role."""
         return {
             self.SUPER_ADMIN: {
-                # All permissions
+                # All permissions including tenant management
                 Permission.MANAGE_SYSTEM,
                 Permission.VIEW_AUDIT_LOGS,
+                Permission.CREATE_TENANT, Permission.MANAGE_TENANT, 
+                Permission.DELETE_TENANT, Permission.VIEW_ALL_TENANTS,  # Tenant management permissions
                 Permission.MANAGE_ORGANIZATION,
                 Permission.CREATE_USER, Permission.READ_USER, 
                 Permission.UPDATE_USER, Permission.DELETE_USER,
+                Permission.CREATE_INVITATION, Permission.VIEW_INVITATION, Permission.MANAGE_INVITATION,
                 Permission.CREATE_TEAM, Permission.MANAGE_TEAM,
                 Permission.VIEW_TEAM_PERFORMANCE,
                 Permission.CREATE_LEAD, Permission.READ_LEAD,
@@ -123,9 +153,10 @@ class UserRole:
             },
             
             self.ORG_ADMIN: {
-                Permission.MANAGE_ORGANIZATION,
+                Permission.MANAGE_ORGANIZATION,  # Can manage their own organization settings
                 Permission.CREATE_USER, Permission.READ_USER,
                 Permission.UPDATE_USER, Permission.DELETE_USER,
+                Permission.VIEW_INVITATION, Permission.MANAGE_INVITATION,  # Can manage invitations within their org
                 Permission.CREATE_TEAM, Permission.MANAGE_TEAM,
                 Permission.VIEW_TEAM_PERFORMANCE,
                 Permission.CREATE_LEAD, Permission.READ_LEAD,
@@ -136,6 +167,7 @@ class UserRole:
             
             self.SALES_MANAGER: {
                 Permission.READ_USER, Permission.UPDATE_USER,
+                Permission.VIEW_INVITATION,  # Can only view invitations
                 Permission.MANAGE_TEAM, Permission.VIEW_TEAM_PERFORMANCE,
                 Permission.CREATE_LEAD, Permission.READ_LEAD,
                 Permission.UPDATE_LEAD, Permission.DELETE_LEAD,

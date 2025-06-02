@@ -15,10 +15,24 @@ class TenantModel(Base):
     slug = Column(String(100), unique=True, nullable=False, index=True)
     subscription_tier = Column(String(50), nullable=False, default="basic")
     is_active = Column(Boolean, default=True)
+    owner_id = Column(GUID(), nullable=True)  
     settings = Column(JSON, nullable=True, default=dict)
     created_at = Column(DateTime(timezone=True), default=lambda: datetime.now(timezone.utc))
     updated_at = Column(DateTime(timezone=True), nullable=True, onupdate=lambda: datetime.now(timezone.utc))
 
     # Relationships
-    users = relationship("UserModel", back_populates="tenant")
+    users = relationship(
+        "UserModel", 
+        foreign_keys="UserModel.tenant_id",
+        back_populates="tenant"
+    )
+    
     teams = relationship("TeamModel", back_populates="tenant")
+    invitations = relationship("InvitationModel", back_populates="tenant")
+    
+    owner = relationship(
+        "UserModel",
+        primaryjoin="foreign(TenantModel.owner_id) == UserModel.id", 
+        back_populates="owned_tenants",
+        post_update=True
+    )

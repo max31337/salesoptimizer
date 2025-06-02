@@ -12,24 +12,21 @@ class TeamModel(Base):
     tenant_id = Column(GUID(), ForeignKey("tenants.id"), nullable=False)
     name = Column(String(255), nullable=False)
     description = Column(Text, nullable=True)
-    manager_id = Column(GUID(), nullable=True)  # No FK constraint to avoid circular dependency
+    manager_id = Column(GUID(), nullable=True)
     is_active = Column(Boolean, default=True)
     created_at = Column(DateTime(timezone=True), default=lambda: datetime.now(timezone.utc))
     updated_at = Column(DateTime(timezone=True), nullable=True, onupdate=lambda: datetime.now(timezone.utc))
     
-    # Relationships with explicit primaryjoin
+    # Relationships 
     tenant = relationship("TenantModel", back_populates="teams")
     
-    # Team manager (no FK constraint, so we need primaryjoin)
     manager = relationship(
         "UserModel", 
-        primaryjoin="TeamModel.manager_id == UserModel.id",
-        foreign_keys=[manager_id],
+        primaryjoin="foreign(TeamModel.manager_id) == UserModel.id",
         back_populates="managed_teams",
         post_update=True
     )
     
-    # Team members (FK exists, so this works normally)
     members = relationship(
         "UserModel", 
         foreign_keys="UserModel.team_id", 

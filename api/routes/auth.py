@@ -3,7 +3,7 @@ from fastapi import APIRouter, Depends, HTTPException, status, Query
 from fastapi.security import OAuth2PasswordRequestForm
 from fastapi.responses import RedirectResponse
 
-from application.dependencies.service_dependencies import (
+from application.services.application_service import (
     get_application_service,
     ApplicationService
 )
@@ -79,6 +79,10 @@ async def login(
             detail=str(e)
         )
 
+
+#===============================================================================
+#                              🔐 OAuth2 Routes                                |
+#===============================================================================
 
 @router.get("/oauth/{provider}/authorize")
 async def oauth_authorize(
@@ -213,3 +217,9 @@ async def oauth_config(
         },
         "frontend_url": app_service.config.frontend_url
     }
+
+
+#===============================================================================
+#                              🔐 Organization Routes                          |
+#===============================================================================
+

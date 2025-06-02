@@ -44,7 +44,7 @@ class AuthUseCases:
             token
         )
         
-        # Authenticate or create user
+        # Authenticate or create user (without invitation)
         user, is_new_user = await self._auth_service.authenticate_oauth_user(
             command.provider,
             user_info

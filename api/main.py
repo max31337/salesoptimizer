@@ -8,7 +8,7 @@ from contextlib import asynccontextmanager
 from infrastructure.db.models import register_models
 
 #Route registration imports hehe
-from api.routes import auth
+from api.routes import auth, invitations
 
 @asynccontextmanager
 async def lifespan(app: FastAPI):
@@ -48,6 +48,7 @@ app.add_middleware(
 
 # Include routers
 app.include_router(auth.router, prefix="/api/v1")
+app.include_router(invitations.router, prefix="/api/v1")
 
 @app.get("/")
 def root():

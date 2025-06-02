@@ -1,0 +1,84 @@
+import os
+from sqlalchemy.ext.asyncio import AsyncSession
+from fastapi import Depends
+
+from infrastructure.db.database import get_async_session
+from infrastructure.db.repositories.user_repository_impl import UserRepositoryImpl
+from infrastructure.db.repositories.invitation_repository_impl import InvitationRepositoryImpl
+from infrastructure.db.repositories.tenant_repository_impl import TenantRepositoryImpl
+from infrastructure.services.password_service import PasswordService
+from infrastructure.services.jwt_service import JWTService
+from infrastructure.services.oauth_service import OAuthService
+from infrastructure.config.oauth_config import OAuthConfig
+
+# Domain services
+from domain.organization.services.auth_service import AuthService
+from domain.organization.services.invitation_service import InvitationService
+from domain.organization.services.tenant_service import TenantService
+
+# Application layer
+from application.services.application_service import ApplicationService
+from application.use_cases.auth_use_cases import AuthUseCases
+from application.use_cases.invitation_use_cases import InvitationUseCases
+
+
+def create_oauth_config() -> OAuthConfig:
+    """Create OAuth configuration from environment variables."""
+    return OAuthConfig(
+        google_client_id=os.environ["GOOGLE_CLIENT_ID"],
+        google_client_secret=os.environ["GOOGLE_CLIENT_SECRET"],
+        github_client_id=os.environ["GITHUB_CLIENT_ID"],
+        github_client_secret=os.environ["GITHUB_CLIENT_SECRET"],
+        microsoft_client_id=os.environ["MICROSOFT_CLIENT_ID"],
+        microsoft_client_secret=os.environ["MICROSOFT_CLIENT_SECRET"],
+        google_oauth_redirect_url=os.environ["GOOGLE_OAUTH_REDIRECT_URL"],
+        github_oauth_redirect_url=os.environ["GITHUB_OAUTH_REDIRECT_URL"],
+        microsoft_oauth_redirect_url=os.environ["MICROSOFT_OAUTH_REDIRECT_URL"],
+        frontend_url=os.getenv("FRONTEND_URL", "http://localhost:3000"),
+        backend_url=os.getenv("BACKEND_URL", "http://localhost:8000")
+    )
+
+
+async def get_application_service(
+    session: AsyncSession = Depends(get_async_session)
+) -> ApplicationService:
+    """Get application service with all dependencies - Infrastructure layer responsibility."""
+    
+    # Infrastructure services
+    password_service = PasswordService()
+    jwt_service = JWTService()
+    oauth_config = create_oauth_config()
+    oauth_service = OAuthService(config=oauth_config)
+    
+    # Repositories (Infrastructure layer)
+    user_repository = UserRepositoryImpl(session)
+    tenant_repository = TenantRepositoryImpl(session)
+    invitation_repository = InvitationRepositoryImpl(session)
+    
+    # Domain services
+    auth_service = AuthService(
+        user_repository=user_repository,
+        password_service=password_service,
+        jwt_service=jwt_service
+    )
+    
+    tenant_service = TenantService(tenant_repository)
+    
+    invitation_service = InvitationService(
+        invitation_repository=invitation_repository,
+        tenant_repository=tenant_repository
+    )
+    
+    # Application use cases
+    auth_use_cases = AuthUseCases(auth_service, oauth_service)
+    invitation_use_cases = InvitationUseCases(invitation_service, auth_service)
+    
+    # Application service (orchestrates everything)
+    return ApplicationService(
+        auth_service=auth_service,
+        invitation_service=invitation_service,
+        tenant_service=tenant_service,
+        auth_use_cases=auth_use_cases,
+        invitation_use_cases=invitation_use_cases,
+        oauth_config=oauth_config
+    )

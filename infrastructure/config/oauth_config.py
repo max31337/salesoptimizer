@@ -82,7 +82,9 @@ class OAuthConfig(BaseSettings):
     microsoft_oauth_redirect_url: str = "http://localhost:8000/api/v1/auth/oauth/microsoft/callback"
     
     frontend_url: str = "http://localhost:3000"
-    
+    backend_url: str = "http://localhost:8000"
+
+
     class Config:
         env_file = ".env"
         extra = "ignore"

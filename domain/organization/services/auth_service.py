@@ -105,6 +105,53 @@ class AuthService:
         
         return user, is_new_user
     
+    async def authenticate_oauth_user_with_invitation(
+        self, 
+        provider: str, 
+        user_info: Dict[str, Any],
+        invitation: Optional['Invitation'] = None,
+        tenant_id: Optional['TenantId'] = None
+    ) -> Tuple[User, bool]:
+        """Authenticate or create user via OAuth with invitation and tenant."""
+        email_str = user_info.get('email')
+        if not email_str:
+            raise AuthenticationError("Email is required for OAuth authentication")
+        
+        try:
+            email = Email(email_str)
+        except ValueError as e:
+            raise AuthenticationError(f"Invalid email format: {email_str}") from e
+        
+        # Try to find existing user
+        user = await self._user_repository.get_by_email(email)
+        is_new_user = False
+        
+        if not user:
+            # Create new user with tenant
+            is_new_user = True
+            user = self._create_oauth_user_with_tenant(provider, user_info, email, tenant_id)
+            
+            # If invitation exists, use the invited role
+            if invitation:
+                user._role = invitation.role
+            
+            user = await self._user_repository.save(user)
+        else:
+            # Check if user is active
+            if not user.is_active():
+                raise InactiveUserError()
+            
+            # Update tenant if provided and user doesn't have one
+            if tenant_id and not user.tenant_id:
+                user._tenant_id = tenant_id
+                user = await self._user_repository.update(user)
+            
+            # Update last login
+            user.record_login()
+            user = await self._user_repository.update(user)
+        
+        return user, is_new_user
+
     def _create_oauth_user(
         self, 
         provider: str, 
@@ -146,6 +193,25 @@ class AuthService:
             status=UserStatus.active(),
             _oauth_provider=provider,
             _oauth_provider_id=str(user_info.get('id', ''))
+        )
+
+    def _create_oauth_user_with_tenant(
+        self, 
+        provider: str, 
+        user_info: Dict[str, Any], 
+        email: Email,
+        tenant_id: Optional['TenantId'] = None
+    ) -> User:
+        """Create new user from OAuth with tenant."""
+        full_name = self._extract_full_name(user_info)
+        
+        return User.create_oauth_user(
+            email=email,
+            full_name=full_name,
+            provider=provider,
+            provider_id=str(user_info.get('id', user_info.get('sub'))),
+            role=UserRole.user(),  # Default role, will be overridden by invitation
+            tenant_id=tenant_id  # Set tenant during creation
         )
 
     def create_tokens(self, user: User) -> Tuple[str, str]:

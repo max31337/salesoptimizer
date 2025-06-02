@@ -82,8 +82,20 @@ class UserModel(Base):
     oauth_provider = Column(String(50), nullable=True)
     oauth_provider_id = Column(String(255), nullable=True)
     
-    # Relationships with explicit primaryjoin
-    tenant = relationship("TenantModel", back_populates="users")
+# Relationships
+    tenant = relationship(
+        "TenantModel", 
+        foreign_keys=[tenant_id],  # User belongs to tenant
+        back_populates="users"
+    )
+    
+    # Tenants owned by this user (different relationship)
+    owned_tenants = relationship(
+        "TenantModel",
+        primaryjoin="UserModel.id == foreign(TenantModel.owner_id)", 
+        back_populates="owner",
+        post_update=True
+    )
     
     # User's team membership
     team = relationship(
@@ -92,11 +104,17 @@ class UserModel(Base):
         back_populates="members"
     )
     
-    # Teams managed by this user (no FK constraint, so we need primaryjoin)
+    # Teams managed by this user
     managed_teams = relationship(
         "TeamModel",
-        primaryjoin="UserModel.id == TeamModel.manager_id",
-        foreign_keys="TeamModel.manager_id",
+        primaryjoin="UserModel.id == foreign(TeamModel.manager_id)",  
         back_populates="manager",
         post_update=True
+    )
+    
+    # Invitations sent by this user
+    sent_invitations = relationship(
+        "InvitationModel",
+        foreign_keys="InvitationModel.invited_by_id",
+        back_populates="invited_by"
     )
