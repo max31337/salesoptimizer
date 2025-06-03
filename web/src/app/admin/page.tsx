@@ -6,7 +6,7 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/com
 import { Badge } from "@/components/ui/badge"
 import { InviteOrgAdminModal } from "@/components/admin/invite-org-admin-modal"
 import { useAuth } from "@/features/auth/hooks/useAuth"
-import { Icons } from "@/components/ui/icons"
+import { ThemeToggle } from "@/components/ui/theme-toggle"
 import { Building, Users, Activity, UserPlus, Settings, FileText, LogOut, User as UserIcon } from "lucide-react"
 import {
   DropdownMenu,
@@ -47,22 +47,24 @@ export default function SuperAdminDashboard() {
   }
 
   return (
-    <div className="min-h-screen bg-gray-50">
+    <div className="min-h-screen bg-background">
       {/* Header */}
-      <header className="bg-white shadow">
+      <header className="bg-card shadow-sm border-b border-border">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
           <div className="flex justify-between items-center py-6">
             <div>
-              <h1 className="text-3xl font-bold text-gray-900">Super Admin Dashboard</h1>
-              <p className="mt-1 text-sm text-gray-600">
+              <h1 className="text-3xl font-bold text-foreground">Super Admin Dashboard</h1>
+              <p className="mt-1 text-sm text-muted-foreground">
                 Welcome back, {user?.first_name || user?.email}
               </p>
             </div>
             
             <div className="flex items-center space-x-4">
-              <Badge variant="secondary" className="bg-purple-100 text-purple-800">
+              <Badge variant="secondary" className="bg-purple-100 dark:bg-purple-900/30 text-purple-800 dark:text-purple-300">
                 Super Admin
               </Badge>
+              
+              <ThemeToggle />
               
               {/* User Profile Dropdown */}
               <DropdownMenu>
@@ -70,7 +72,7 @@ export default function SuperAdminDashboard() {
                   <Button variant="ghost" className="relative h-10 w-10 rounded-full">
                     <Avatar className="h-10 w-10">
                       <AvatarImage src="" alt={user?.email || 'User'} />
-                      <AvatarFallback className="bg-purple-100 text-purple-800">
+                      <AvatarFallback className="bg-purple-100 dark:bg-purple-900/50 text-purple-800 dark:text-purple-300">
                         {getUserInitials(user)}
                       </AvatarFallback>
                     </Avatar>
@@ -100,7 +102,7 @@ export default function SuperAdminDashboard() {
                   </DropdownMenuItem>
                   <DropdownMenuSeparator />
                   <DropdownMenuItem 
-                    className="cursor-pointer text-red-600 focus:text-red-600"
+                    className="cursor-pointer text-red-600 dark:text-red-400 focus:text-red-600 dark:focus:text-red-400"
                     onClick={handleLogout}
                     disabled={isLoggingOut}
                   >
@@ -119,39 +121,39 @@ export default function SuperAdminDashboard() {
         <div className="px-4 py-6 sm:px-0">
           {/* Stats Cards */}
           <div className="grid grid-cols-1 md:grid-cols-3 gap-6 mb-8">
-            <Card>
+            <Card className="bg-card border-border">
               <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-                <CardTitle className="text-sm font-medium">Organizations</CardTitle>
+                <CardTitle className="text-sm font-medium text-card-foreground">Organizations</CardTitle>
                 <Building className="h-4 w-4 text-muted-foreground" />
               </CardHeader>
               <CardContent>
-                <div className="text-2xl font-bold">24</div>
+                <div className="text-2xl font-bold text-card-foreground">24</div>
                 <p className="text-xs text-muted-foreground">
                   +3 from last month
                 </p>
               </CardContent>
             </Card>
 
-            <Card>
+            <Card className="bg-card border-border">
               <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-                <CardTitle className="text-sm font-medium">Active Users</CardTitle>
+                <CardTitle className="text-sm font-medium text-card-foreground">Active Users</CardTitle>
                 <Users className="h-4 w-4 text-muted-foreground" />
               </CardHeader>
               <CardContent>
-                <div className="text-2xl font-bold">1,247</div>
+                <div className="text-2xl font-bold text-card-foreground">1,247</div>
                 <p className="text-xs text-muted-foreground">
                   +12% from last month
                 </p>
               </CardContent>
             </Card>
 
-            <Card>
+            <Card className="bg-card border-border">
               <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-                <CardTitle className="text-sm font-medium">System Health</CardTitle>
+                <CardTitle className="text-sm font-medium text-card-foreground">System Health</CardTitle>
                 <Activity className="h-4 w-4 text-muted-foreground" />
               </CardHeader>
               <CardContent>
-                <div className="text-2xl font-bold text-green-600">98.9%</div>
+                <div className="text-2xl font-bold text-green-600 dark:text-green-400">98.9%</div>
                 <p className="text-xs text-muted-foreground">
                   Uptime this month
                 </p>
@@ -160,10 +162,10 @@ export default function SuperAdminDashboard() {
           </div>
 
           {/* Quick Actions */}
-          <Card className="mb-8">
+          <Card className="mb-8 bg-card border-border">
             <CardHeader>
-              <CardTitle>Quick Actions</CardTitle>
-              <CardDescription>
+              <CardTitle className="text-card-foreground">Quick Actions</CardTitle>
+              <CardDescription className="text-muted-foreground">
                 Common administrative tasks
               </CardDescription>
             </CardHeader>
@@ -191,10 +193,10 @@ export default function SuperAdminDashboard() {
           </Card>
 
           {/* Recent Activity */}
-          <Card>
+          <Card className="bg-card border-border">
             <CardHeader>
-              <CardTitle>Recent Activity</CardTitle>
-              <CardDescription>
+              <CardTitle className="text-card-foreground">Recent Activity</CardTitle>
+              <CardDescription className="text-muted-foreground">
                 Latest system events and user activities
               </CardDescription>
             </CardHeader>
@@ -203,7 +205,7 @@ export default function SuperAdminDashboard() {
                 <div className="flex items-center space-x-4">
                   <div className="w-2 h-2 bg-green-500 rounded-full"></div>
                   <div className="flex-1">
-                    <p className="text-sm font-medium">New organization created</p>
+                    <p className="text-sm font-medium text-card-foreground">New organization created</p>
                     <p className="text-xs text-muted-foreground">Acme Corp - 2 hours ago</p>
                   </div>
                 </div>
@@ -211,7 +213,7 @@ export default function SuperAdminDashboard() {
                 <div className="flex items-center space-x-4">
                   <div className="w-2 h-2 bg-blue-500 rounded-full"></div>
                   <div className="flex-1">
-                    <p className="text-sm font-medium">Organization admin invited</p>
+                    <p className="text-sm font-medium text-card-foreground">Organization admin invited</p>
                     <p className="text-xs text-muted-foreground">admin@techstart.com - 4 hours ago</p>
                   </div>
                 </div>
@@ -219,7 +221,7 @@ export default function SuperAdminDashboard() {
                 <div className="flex items-center space-x-4">
                   <div className="w-2 h-2 bg-yellow-500 rounded-full"></div>
                   <div className="flex-1">
-                    <p className="text-sm font-medium">System maintenance completed</p>
+                    <p className="text-sm font-medium text-card-foreground">System maintenance completed</p>
                     <p className="text-xs text-muted-foreground">Database optimization - 6 hours ago</p>
                   </div>
                 </div>

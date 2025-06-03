@@ -258,22 +258,22 @@ export function LandingPage() {
   ]
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-slate-50 to-blue-50">
+    <div className="min-h-screen bg-gradient-to-br from-background via-background to-accent/20">
       <LandingHeader />
       
       {/* Hero Section */}
       <section className="relative py-20 px-4 sm:px-6 lg:px-8">
         <div className="max-w-7xl mx-auto text-center">
-          <Badge variant="secondary" className="mb-4 bg-blue-100 text-blue-800 hover:bg-blue-200">
+          <Badge variant="secondary" className="mb-4 bg-blue-100 dark:bg-blue-900/30 text-blue-800 dark:text-blue-300 hover:bg-blue-200 dark:hover:bg-blue-900/50">
             🚀 Now with AI-Powered Insights
           </Badge>
           
-          <h1 className="text-4xl sm:text-6xl font-bold text-gray-900 mb-6 leading-tight">
+          <h1 className="text-4xl sm:text-6xl font-bold text-foreground mb-6 leading-tight">
             Supercharge Your
             <span className="text-transparent bg-clip-text bg-gradient-to-r from-blue-600 to-purple-600"> Sales Performance</span>
           </h1>
           
-          <p className="text-xl text-gray-600 mb-8 max-w-3xl mx-auto leading-relaxed">
+          <p className="text-xl text-muted-foreground mb-8 max-w-3xl mx-auto leading-relaxed">
             Transform your sales process with intelligent automation, real-time analytics, and powerful team management tools. 
             Built for modern sales teams who demand results.
           </p>
@@ -286,7 +286,7 @@ export function LandingPage() {
               </Button>
             </Link>
             
-            <Button variant="outline" size="lg" className="px-8 py-3 text-lg font-semibold border-2 hover:bg-gray-50">
+            <Button variant="outline" size="lg" className="px-8 py-3 text-lg font-semibold border-2 hover:bg-accent">
               Watch Demo
             </Button>
           </div>
@@ -295,8 +295,8 @@ export function LandingPage() {
           <div className="grid grid-cols-2 sm:grid-cols-4 gap-8 max-w-4xl mx-auto">
             {stats.map((stat, index) => (
               <div key={index} className="text-center">
-                <div className="text-3xl font-bold text-gray-900 mb-1">{stat.value}</div>
-                <div className="text-sm text-gray-600">{stat.label}</div>
+                <div className="text-3xl font-bold text-foreground mb-1">{stat.value}</div>
+                <div className="text-sm text-muted-foreground">{stat.label}</div>
               </div>
             ))}
           </div>
@@ -304,20 +304,20 @@ export function LandingPage() {
         
         {/* Background decoration */}
         <div className="absolute top-0 left-0 w-full h-full overflow-hidden pointer-events-none">
-          <div className="absolute top-20 left-10 w-72 h-72 bg-blue-200 rounded-full mix-blend-multiply filter blur-xl opacity-20 animate-blob"></div>
-          <div className="absolute top-40 right-10 w-72 h-72 bg-purple-200 rounded-full mix-blend-multiply filter blur-xl opacity-20 animate-blob animation-delay-2000"></div>
-          <div className="absolute -bottom-8 left-20 w-72 h-72 bg-pink-200 rounded-full mix-blend-multiply filter blur-xl opacity-20 animate-blob animation-delay-4000"></div>
+          <div className="absolute top-20 left-10 w-72 h-72 bg-blue-200 dark:bg-blue-800/30 rounded-full mix-blend-multiply dark:mix-blend-soft-light filter blur-xl opacity-20 animate-blob"></div>
+          <div className="absolute top-40 right-10 w-72 h-72 bg-purple-200 dark:bg-purple-800/30 rounded-full mix-blend-multiply dark:mix-blend-soft-light filter blur-xl opacity-20 animate-blob animation-delay-2000"></div>
+          <div className="absolute -bottom-8 left-20 w-72 h-72 bg-pink-200 dark:bg-pink-800/30 rounded-full mix-blend-multiply dark:mix-blend-soft-light filter blur-xl opacity-20 animate-blob animation-delay-4000"></div>
         </div>
       </section>
 
       {/* Features Section */}
-      <section id="features" className="py-20 px-4 sm:px-6 lg:px-8 bg-white">
+      <section id="features" className="py-20 px-4 sm:px-6 lg:px-8 bg-background">
         <div className="max-w-7xl mx-auto">
           <div className="text-center mb-16">
-            <h2 className="text-3xl sm:text-4xl font-bold text-gray-900 mb-4">
+            <h2 className="text-3xl sm:text-4xl font-bold text-foreground mb-4">
               Complete Sales Optimization Platform
             </h2>
-            <p className="text-xl text-gray-600 max-w-3xl mx-auto">
+            <p className="text-xl text-muted-foreground max-w-3xl mx-auto">
               From AI-powered predictions to enterprise-grade security, everything you need to transform your sales process
             </p>
           </div>
@@ -339,17 +339,17 @@ export function LandingPage() {
           {/* Feature Grid */}
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8">
             {featureTabs.find(tab => tab.id === activeFeatureTab)?.features.map((feature, index) => (
-              <Card key={index} className="border-0 shadow-lg hover:shadow-xl transition-shadow duration-300 group">
+              <Card key={index} className="border border-border shadow-lg hover:shadow-xl transition-shadow duration-300 group bg-card">
                 <CardHeader>
                   <div className="mb-4 group-hover:scale-110 transition-transform duration-200">
                     {feature.icon}
                   </div>
-                  <CardTitle className="text-xl font-semibold text-gray-900">
+                  <CardTitle className="text-xl font-semibold text-card-foreground">
                     {feature.title}
                   </CardTitle>
                 </CardHeader>
                 <CardContent>
-                  <CardDescription className="text-gray-600 text-base leading-relaxed">
+                  <CardDescription className="text-muted-foreground text-base leading-relaxed">
                     {feature.description}
                   </CardDescription>
                 </CardContent>
@@ -360,24 +360,24 @@ export function LandingPage() {
           {/* Role-Based Access Section */}
           <div className="mt-20">
             <div className="text-center mb-12">
-              <h3 className="text-2xl sm:text-3xl font-bold text-gray-900 mb-4">
+              <h3 className="text-2xl sm:text-3xl font-bold text-foreground mb-4">
                 Built for Every Role in Your Sales Organization
               </h3>
-              <p className="text-lg text-gray-600 max-w-2xl mx-auto">
+              <p className="text-lg text-muted-foreground max-w-2xl mx-auto">
                 Tailored permissions and features for each team member
               </p>
             </div>
 
             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-              <Card className="text-center border-2 border-blue-200 hover:border-blue-300 transition-colors">
+              <Card className="text-center border-2 border-blue-200 dark:border-blue-800 hover:border-blue-300 dark:hover:border-blue-700 transition-colors bg-card">
                 <CardHeader>
-                  <div className="w-16 h-16 bg-blue-100 rounded-full flex items-center justify-center mx-auto mb-4">
-                    <UserCheck className="h-8 w-8 text-blue-600" />
+                  <div className="w-16 h-16 bg-blue-100 dark:bg-blue-900/50 rounded-full flex items-center justify-center mx-auto mb-4">
+                    <UserCheck className="h-8 w-8 text-blue-600 dark:text-blue-400" />
                   </div>
-                  <CardTitle className="text-blue-600">Org Admin</CardTitle>
+                  <CardTitle className="text-blue-600 dark:text-blue-400">Org Admin</CardTitle>
                 </CardHeader>
                 <CardContent>
-                  <ul className="text-sm text-gray-600 space-y-2">
+                  <ul className="text-sm text-muted-foreground space-y-2">
                     <li>• User management</li>
                     <li>• Data governance</li>
                     <li>• Audit & compliance</li>
@@ -386,15 +386,15 @@ export function LandingPage() {
                 </CardContent>
               </Card>
 
-              <Card className="text-center border-2 border-green-200 hover:border-green-300 transition-colors">
+              <Card className="text-center border-2 border-green-200 dark:border-green-800 hover:border-green-300 dark:hover:border-green-700 transition-colors bg-card">
                 <CardHeader>
-                  <div className="w-16 h-16 bg-green-100 rounded-full flex items-center justify-center mx-auto mb-4">
-                    <Users className="h-8 w-8 text-green-600" />
+                  <div className="w-16 h-16 bg-green-100 dark:bg-green-900/50 rounded-full flex items-center justify-center mx-auto mb-4">
+                    <Users className="h-8 w-8 text-green-600 dark:text-green-400" />
                   </div>
-                  <CardTitle className="text-green-600">Team Manager</CardTitle>
+                  <CardTitle className="text-green-600 dark:text-green-400">Team Manager</CardTitle>
                 </CardHeader>
                 <CardContent>
-                  <ul className="text-sm text-gray-600 space-y-2">
+                  <ul className="text-sm text-muted-foreground space-y-2">
                     <li>• Team leadership</li>
                     <li>• Performance tracking</li>
                     <li>• Task assignment</li>
@@ -403,15 +403,15 @@ export function LandingPage() {
                 </CardContent>
               </Card>
 
-              <Card className="text-center border-2 border-orange-200 hover:border-orange-300 transition-colors">
+              <Card className="text-center border-2 border-orange-200 dark:border-orange-800 hover:border-orange-300 dark:hover:border-orange-700 transition-colors bg-card">
                 <CardHeader>
-                  <div className="w-16 h-16 bg-orange-100 rounded-full flex items-center justify-center mx-auto mb-4">
-                    <Target className="h-8 w-8 text-orange-600" />
+                  <div className="w-16 h-16 bg-orange-100 dark:bg-orange-900/50 rounded-full flex items-center justify-center mx-auto mb-4">
+                    <Target className="h-8 w-8 text-orange-600 dark:text-orange-400" />
                   </div>
-                  <CardTitle className="text-orange-600">Sales Rep</CardTitle>
+                  <CardTitle className="text-orange-600 dark:text-orange-400">Sales Rep</CardTitle>
                 </CardHeader>
                 <CardContent>
-                  <ul className="text-sm text-gray-600 space-y-2">
+                  <ul className="text-sm text-muted-foreground space-y-2">
                     <li>• Opportunity management</li>
                     <li>• Customer relationships</li>
                     <li>• Activity tracking</li>
@@ -425,36 +425,36 @@ export function LandingPage() {
       </section>
 
       {/* Pricing Section */}
-      <section id="pricing" className="py-20 px-4 sm:px-6 lg:px-8 bg-gradient-to-br from-gray-50 to-blue-50">
+      <section id="pricing" className="py-20 px-4 sm:px-6 lg:px-8 bg-accent/20">
         <div className="max-w-7xl mx-auto">
           <div className="text-center mb-16">
-            <h2 className="text-3xl sm:text-4xl font-bold text-gray-900 mb-4">
+            <h2 className="text-3xl sm:text-4xl font-bold text-foreground mb-4">
               Simple, Transparent Pricing
             </h2>
-            <p className="text-xl text-gray-600 max-w-2xl mx-auto mb-8">
+            <p className="text-xl text-muted-foreground max-w-2xl mx-auto mb-8">
               Choose the plan that fits your team size and needs. All plans include a 14-day free trial.
             </p>
 
             {/* Billing Toggle */}
             <div className="flex items-center justify-center space-x-4 mb-12">
-              <span className={`text-sm font-medium ${billingPeriod === 'monthly' ? 'text-gray-900' : 'text-gray-500'}`}>
+              <span className={`text-sm font-medium ${billingPeriod === 'monthly' ? 'text-foreground' : 'text-muted-foreground'}`}>
                 Monthly
               </span>
               <button
                 onClick={() => setBillingPeriod(billingPeriod === 'monthly' ? 'annual' : 'monthly')}
-                className="relative inline-flex h-6 w-11 items-center rounded-full bg-gray-200 transition-colors focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2"
+                className="relative inline-flex h-6 w-11 items-center rounded-full bg-muted transition-colors focus:outline-none focus:ring-2 focus:ring-ring focus:ring-offset-2"
               >
                 <span
-                  className={`inline-block h-4 w-4 transform rounded-full bg-white transition-transform ${
+                  className={`inline-block h-4 w-4 transform rounded-full bg-background transition-transform ${
                     billingPeriod === 'annual' ? 'translate-x-6' : 'translate-x-1'
                   }`}
                 />
               </button>
-              <span className={`text-sm font-medium ${billingPeriod === 'annual' ? 'text-gray-900' : 'text-gray-500'}`}>
+              <span className={`text-sm font-medium ${billingPeriod === 'annual' ? 'text-foreground' : 'text-muted-foreground'}`}>
                 Annual
               </span>
               {billingPeriod === 'annual' && (
-                <Badge variant="secondary" className="bg-green-100 text-green-800">
+                <Badge variant="secondary" className="bg-green-100 dark:bg-green-900/30 text-green-800 dark:text-green-300">
                   Save 20%
                 </Badge>
               )}
@@ -465,33 +465,33 @@ export function LandingPage() {
             {pricingPlans.map((plan, index) => (
               <Card 
                 key={index} 
-                className={`relative border-2 ${plan.recommended ? 'border-blue-500 shadow-xl' : 'border-gray-200'} hover:shadow-lg transition-shadow duration-300`}
+                className={`relative border-2 ${plan.recommended ? 'border-primary shadow-xl dark:shadow-2xl' : 'border-border'} hover:shadow-lg transition-shadow duration-300 bg-card`}
               >
                 {plan.recommended && (
                   <div className="absolute -top-4 left-1/2 transform -translate-x-1/2">
-                    <Badge className="bg-blue-500 text-white px-4 py-1">
+                    <Badge className="bg-primary text-primary-foreground px-4 py-1">
                       Most Popular
                     </Badge>
                   </div>
                 )}
                 
                 <CardHeader className="text-center pb-8">
-                  <CardTitle className="text-2xl font-bold text-gray-900 mb-2">
+                  <CardTitle className="text-2xl font-bold text-card-foreground mb-2">
                     {plan.name}
                   </CardTitle>
-                  <CardDescription className="text-gray-600 mb-6">
+                  <CardDescription className="text-muted-foreground mb-6">
                     {plan.description}
                   </CardDescription>
                   <div className="flex items-baseline justify-center">
-                    <span className="text-4xl font-bold text-gray-900">
+                    <span className="text-4xl font-bold text-card-foreground">
                       ${plan.price[billingPeriod]}
                     </span>
-                    <span className="text-gray-500 ml-1">
+                    <span className="text-muted-foreground ml-1">
                       /{billingPeriod === 'monthly' ? 'month' : 'year'}
                     </span>
                   </div>
                   {billingPeriod === 'annual' && (
-                    <p className="text-sm text-green-600 mt-2">
+                    <p className="text-sm text-green-600 dark:text-green-400 mt-2">
                       ${Math.round(plan.price.annual / 12)}/month billed annually
                     </p>
                   )}
@@ -502,19 +502,19 @@ export function LandingPage() {
                     {plan.features.map((feature, featureIndex) => (
                       <div key={featureIndex} className="flex items-center space-x-3">
                         <Check className="h-5 w-5 text-green-500 flex-shrink-0" />
-                        <span className="text-gray-700">{feature}</span>
+                        <span className="text-card-foreground">{feature}</span>
                       </div>
                     ))}
                     {plan.limitations.map((limitation, limitIndex) => (
                       <div key={limitIndex} className="flex items-center space-x-3">
-                        <X className="h-5 w-5 text-gray-400 flex-shrink-0" />
-                        <span className="text-gray-500">{limitation}</span>
+                        <X className="h-5 w-5 text-muted-foreground flex-shrink-0" />
+                        <span className="text-muted-foreground">{limitation}</span>
                       </div>
                     ))}
                   </div>
 
                   <Button 
-                    className={`w-full ${plan.recommended ? 'bg-blue-600 hover:bg-blue-700' : ''}`}
+                    className={`w-full ${plan.recommended ? 'bg-primary hover:bg-primary/90' : ''}`}
                     variant={plan.recommended ? "default" : "outline"}
                     size="lg"
                   >
@@ -526,10 +526,10 @@ export function LandingPage() {
           </div>
 
           <div className="text-center mt-12">
-            <p className="text-gray-600 mb-4">
-              Need a custom solution? <Link href="#contact" className="text-blue-600 hover:text-blue-800 font-medium">Contact our sales team</Link>
+            <p className="text-muted-foreground mb-4">
+              Need a custom solution? <Link href="#contact" className="text-primary hover:text-primary/80 font-medium">Contact our sales team</Link>
             </p>
-            <div className="flex flex-wrap justify-center gap-6 text-sm text-gray-500">
+            <div className="flex flex-wrap justify-center gap-6 text-sm text-muted-foreground">
               <div className="flex items-center">
                 <Check className="h-4 w-4 text-green-500 mr-1" />
                 14-day free trial
@@ -555,10 +555,10 @@ export function LandingPage() {
       <section className="py-20 px-4 sm:px-6 lg:px-8 bg-white">
         <div className="max-w-7xl mx-auto">
           <div className="text-center mb-16">
-            <h2 className="text-3xl sm:text-4xl font-bold text-gray-900 mb-4">
+            <h2 className="text-3xl sm:text-4xl font-bold text-foreground mb-4">
               Trusted by Sales Leaders Worldwide
             </h2>
-            <p className="text-xl text-gray-600 max-w-2xl mx-auto">
+            <p className="text-xl text-muted-foreground max-w-2xl mx-auto">
               See how teams are transforming their sales performance with SalesOptimizer
             </p>
           </div>
@@ -593,10 +593,10 @@ export function LandingPage() {
       <section id="about" className="py-20 px-4 sm:px-6 lg:px-8 bg-gradient-to-br from-blue-50 to-purple-50">
         <div className="max-w-7xl mx-auto">
           <div className="text-center mb-16">
-            <h2 className="text-3xl sm:text-4xl font-bold text-gray-900 mb-6">
+            <h2 className="text-3xl sm:text-4xl font-bold text-foreground mb-6">
               Built for the Future of Sales
             </h2>
-            <p className="text-xl text-gray-600 max-w-3xl mx-auto leading-relaxed">
+            <p className="text-xl text-muted-foreground max-w-3xl mx-auto leading-relaxed">
               SalesOptimizer was founded with a simple mission: to empower sales teams with intelligent technology 
               that drives real results. We combine cutting-edge AI with intuitive design to create the most powerful 
               sales optimization platform available.
@@ -605,8 +605,8 @@ export function LandingPage() {
 
           <div className="grid grid-cols-1 lg:grid-cols-2 gap-12 items-center mb-16">
             <div>
-              <h3 className="text-2xl font-bold text-gray-900 mb-6">Our Story</h3>
-              <div className="space-y-4 text-gray-600">
+              <h3 className="text-2xl font-bold text-foreground mb-6">Our Story</h3>
+              <div className="space-y-4 text-muted-foreground">
                 <p>
                   Founded in 2023, SalesOptimizer emerged from the frustration of sales teams struggling with 
                   outdated tools and manual processes. Our founders, experienced sales leaders and technology 
@@ -647,7 +647,7 @@ export function LandingPage() {
 
           {/* Company Values */}
           <div>
-            <h3 className="text-2xl font-bold text-gray-900 text-center mb-12">Our Values</h3>
+            <h3 className="text-2xl font-bold text-foreground text-center mb-12">Our Values</h3>
             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-8">
               {companyValues.map((value, index) => (
                 <Card key={index} className="text-center border-0 shadow-lg bg-white">
@@ -675,10 +675,10 @@ export function LandingPage() {
       <section id="contact" className="py-20 px-4 sm:px-6 lg:px-8 bg-white">
         <div className="max-w-7xl mx-auto">
           <div className="text-center mb-16">
-            <h2 className="text-3xl sm:text-4xl font-bold text-gray-900 mb-4">
+            <h2 className="text-3xl sm:text-4xl font-bold text-foreground mb-4">
               Get in Touch
             </h2>
-            <p className="text-xl text-gray-600 max-w-2xl mx-auto">
+            <p className="text-xl text-muted-foreground max-w-2xl mx-auto">
               Ready to transform your sales process? Our team is here to help you get started.
             </p>
           </div>
@@ -686,7 +686,7 @@ export function LandingPage() {
           <div className="grid grid-cols-1 lg:grid-cols-2 gap-12">
             {/* Contact Information */}
             <div>
-              <h3 className="text-2xl font-bold text-gray-900 mb-8">Contact Information</h3>
+              <h3 className="text-2xl font-bold text-foreground mb-8">Contact Information</h3>
               
               <div className="space-y-6">
                 <div className="flex items-start space-x-4">
@@ -856,7 +856,7 @@ export function LandingPage() {
       </section>
 
       {/* CTA Section */}
-      <section className="py-20 px-4 sm:px-6 lg:px-8 bg-gradient-to-r from-blue-600 to-purple-600">
+      <section className="py-20 px-4 sm:px-6 lg:px-8 bg-gradient-to-r from-blue-600 to-purple-600 dark:from-blue-700 dark:to-purple-700">
         <div className="max-w-4xl mx-auto text-center">
           <h2 className="text-3xl sm:text-4xl font-bold text-white mb-6">
             Ready to Transform Your Sales?
@@ -874,7 +874,7 @@ export function LandingPage() {
               </Button>
             </Link>
             
-            <Button variant="outline" size="lg" className="border-white text-blue-600 hover:bg-white hover:text-blue-600 px-8 py-3 text-lg font-semibold transition-all duration-200">
+            <Button variant="outline" size="lg" className="border-white text-white hover:bg-white hover:text-blue-600 px-8 py-3 text-lg font-semibold transition-all duration-200">
               Contact Sales
             </Button>
           </div>
