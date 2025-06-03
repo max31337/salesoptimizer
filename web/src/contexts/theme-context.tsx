@@ -30,15 +30,31 @@ export function ThemeProvider({
   storageKey = "salesoptimizer-ui-theme",
   ...props
 }: ThemeProviderProps) {
-  const [theme, setTheme] = useState<Theme>(
-    () => (localStorage?.getItem(storageKey) as Theme) || defaultTheme
-  )
+  // Initialize with defaultTheme to avoid SSR issues
+  const [theme, setTheme] = useState<Theme>(defaultTheme)
   const [resolvedTheme, setResolvedTheme] = useState<"dark" | "light">("light")
+  const [mounted, setMounted] = useState(false)
+
+  // Handle client-side hydration
+  useEffect(() => {
+    setMounted(true)
+    
+    // Only access localStorage after mounting (client-side)
+    const storedTheme = localStorage?.getItem(storageKey) as Theme
+    if (storedTheme) {
+      setTheme(storedTheme)
+    }
+  }, [storageKey])
 
   useEffect(() => {
-    const root = window.document.documentElement
+    if (!mounted) return
 
+    const root = window.document.documentElement
+    const body = window.document.body
+    
+    // Remove all theme classes
     root.classList.remove("light", "dark")
+    body.classList.remove("light", "dark")
 
     let systemTheme: "dark" | "light" = "light"
     
@@ -50,11 +66,19 @@ export function ThemeProvider({
 
     const resolvedTheme = theme === "system" ? systemTheme : theme
     setResolvedTheme(resolvedTheme)
+    
+    // Apply theme classes to both html and body
     root.classList.add(resolvedTheme)
-  }, [theme])
+    body.classList.add(resolvedTheme)
+    
+    // Force update of CSS custom properties
+    root.style.colorScheme = resolvedTheme
+  }, [theme, mounted])
 
   // Listen for system theme changes
   useEffect(() => {
+    if (!mounted) return
+
     const mediaQuery = window.matchMedia("(prefers-color-scheme: dark)")
     
     const handleChange = () => {
@@ -62,22 +86,38 @@ export function ThemeProvider({
         const systemTheme = mediaQuery.matches ? "dark" : "light"
         setResolvedTheme(systemTheme)
         const root = window.document.documentElement
+        const body = window.document.body
+        
         root.classList.remove("light", "dark")
+        body.classList.remove("light", "dark")
         root.classList.add(systemTheme)
+        body.classList.add(systemTheme)
+        root.style.colorScheme = systemTheme
       }
     }
 
     mediaQuery.addEventListener("change", handleChange)
     return () => mediaQuery.removeEventListener("change", handleChange)
-  }, [theme])
+  }, [theme, mounted])
 
   const value = {
     theme,
     setTheme: (theme: Theme) => {
-      localStorage?.setItem(storageKey, theme)
+      if (mounted) {
+        localStorage?.setItem(storageKey, theme)
+      }
       setTheme(theme)
     },
     resolvedTheme,
+  }
+
+  // Don't render theme-dependent content until mounted
+  if (!mounted) {
+    return (
+      <ThemeProviderContext.Provider {...props} value={initialState}>
+        {children}
+      </ThemeProviderContext.Provider>
+    )
   }
 
   return (

@@ -2,6 +2,7 @@ import './globals.css'
 import { Inter } from 'next/font/google'
 import { AuthProvider } from '@/features/auth/hooks/useAuth'
 import { ThemeProvider } from '@/contexts/theme-context'
+import { ThemeScript } from '@/components/theme-script'
 
 const inter = Inter({ subsets: ['latin'] })
 
@@ -17,6 +18,9 @@ export default function RootLayout({
 }) {
   return (
     <html lang="en" suppressHydrationWarning>
+      <head>
+        <ThemeScript />
+      </head>
       <body className={inter.className}>
         <ThemeProvider
           defaultTheme="system"

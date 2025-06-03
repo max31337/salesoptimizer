@@ -42,23 +42,25 @@ export function LoginForm() {
   }
 
   return (
-    <Card className="w-full max-w-md">
-      <CardHeader>
-        <CardTitle>Sign In</CardTitle>
-        <CardDescription>
+    <Card className="w-full max-w-md border border-border shadow-lg bg-card">
+      <CardHeader className="space-y-1">
+        <CardTitle className="text-2xl font-bold text-card-foreground">Sign In</CardTitle>
+        <CardDescription className="text-muted-foreground">
           Enter your credentials to access your account
         </CardDescription>
       </CardHeader>
       <CardContent>
         <form onSubmit={handleSubmit} className="space-y-4">
           {error && (
-            <Alert variant="destructive">
+            <Alert variant="destructive" className="border-destructive/50 text-destructive dark:border-destructive [&>svg]:text-destructive">
               <AlertDescription>{error}</AlertDescription>
             </Alert>
           )}
           
           <div className="space-y-2">
-            <Label htmlFor="email">Email</Label>
+            <Label htmlFor="email" className="text-sm font-medium text-card-foreground">
+              Email
+            </Label>
             <Input
               id="email"
               type="email"
@@ -67,11 +69,14 @@ export function LoginForm() {
               onChange={(e) => setEmail(e.target.value)}
               required
               disabled={isLoading}
+              className="bg-background border-border text-foreground placeholder:text-muted-foreground focus:border-primary focus:ring-primary"
             />
           </div>
           
           <div className="space-y-2">
-            <Label htmlFor="password">Password</Label>
+            <Label htmlFor="password" className="text-sm font-medium text-card-foreground">
+              Password
+            </Label>
             <Input
               id="password"
               type="password"
@@ -80,24 +85,31 @@ export function LoginForm() {
               onChange={(e) => setPassword(e.target.value)}
               required
               disabled={isLoading}
+              className="bg-background border-border text-foreground placeholder:text-muted-foreground focus:border-primary focus:ring-primary"
             />
           </div>
           
           <Button 
             type="submit" 
-            className="w-full" 
+            className="w-full bg-gradient-to-r from-blue-600 to-purple-600 hover:from-blue-700 hover:to-purple-700 text-white font-semibold shadow-lg hover:shadow-xl transition-all duration-200" 
             disabled={isLoading}
           >
             {isLoading ? "Signing in..." : "Sign In"}
           </Button>
         </form>
         
-        <div className="mt-4 text-center">
-          <p className="text-sm text-gray-600">
-            Forgot your password? <a href="/reset-password" className="text-blue-600 hover:underline">Reset it</a>
+        <div className="mt-6 text-center space-y-2">
+          <p className="text-sm text-muted-foreground">
+            Forgot your password?{" "}
+            <a 
+              href="/reset-password" 
+              className="text-primary hover:text-primary/80 font-medium hover:underline transition-colors"
+            >
+              Reset it
+            </a>
           </p>
-          <p className="text-xs text-gray-500">
-
+          <p className="text-xs text-muted-foreground">
+            Don't have an account? Contact your administrator for access.
           </p>
         </div>
       </CardContent>

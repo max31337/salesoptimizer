@@ -53,8 +53,14 @@
   * {
     @apply border-border;
   }
+  
+  html {
+    @apply bg-background text-foreground;
+  }
+  
   body {
     @apply bg-background text-foreground;
+    min-height: 100vh;
   }
 }
 
@@ -96,4 +102,17 @@
 /* Theme transition */
 * {
   transition: background-color 0.3s ease, border-color 0.3s ease, color 0.3s ease;
+}
+
+/* Ensure the HTML and body elements properly inherit theme colors */
+html.dark,
+html.dark body {
+  background-color: hsl(var(--background));
+  color: hsl(var(--foreground));
+}
+
+html.light,
+html.light body {
+  background-color: hsl(var(--background));
+  color: hsl(var(--foreground));
 }

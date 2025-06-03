@@ -438,25 +438,31 @@ export function LandingPage() {
             {/* Billing Toggle */}
             <div className="flex items-center justify-center space-x-4 mb-12">
               <span className={`text-sm font-medium ${billingPeriod === 'monthly' ? 'text-foreground' : 'text-muted-foreground'}`}>
-                Monthly
+              Monthly
               </span>
               <button
-                onClick={() => setBillingPeriod(billingPeriod === 'monthly' ? 'annual' : 'monthly')}
-                className="relative inline-flex h-6 w-11 items-center rounded-full bg-muted transition-colors focus:outline-none focus:ring-2 focus:ring-ring focus:ring-offset-2"
+              onClick={() => setBillingPeriod(billingPeriod === 'monthly' ? 'annual' : 'monthly')}
+              className={`relative inline-flex h-6 w-11 items-center rounded-full border-2 transition-colors focus:outline-none focus:ring-2 focus:ring-ring focus:ring-offset-2 ${
+                billingPeriod === 'annual' 
+                ? 'bg-primary border-primary' 
+                : 'bg-gray-200 dark:bg-muted border-gray-300 dark:border-muted'
+              }`}
               >
-                <span
-                  className={`inline-block h-4 w-4 transform rounded-full bg-background transition-transform ${
-                    billingPeriod === 'annual' ? 'translate-x-6' : 'translate-x-1'
-                  }`}
-                />
+              <span
+                className={`inline-block h-4 w-4 transform rounded-full transition-transform shadow-sm ${
+                billingPeriod === 'annual' 
+                  ? 'translate-x-5 bg-white' 
+                  : 'translate-x-0.5 bg-white dark:bg-background'
+                }`}
+              />
               </button>
               <span className={`text-sm font-medium ${billingPeriod === 'annual' ? 'text-foreground' : 'text-muted-foreground'}`}>
-                Annual
+              Annual
               </span>
               {billingPeriod === 'annual' && (
-                <Badge variant="secondary" className="bg-green-100 dark:bg-green-900/30 text-green-800 dark:text-green-300">
-                  Save 20%
-                </Badge>
+              <Badge variant="secondary" className="bg-green-100 dark:bg-green-900/30 text-green-800 dark:text-green-300">
+                Save 20%
+              </Badge>
               )}
             </div>
           </div>
@@ -552,7 +558,7 @@ export function LandingPage() {
       </section>
 
       {/* Testimonials Section */}
-      <section className="py-20 px-4 sm:px-6 lg:px-8 bg-white">
+      <section className="py-20 px-4 sm:px-6 lg:px-8 bg-accent/20">
         <div className="max-w-7xl mx-auto">
           <div className="text-center mb-16">
             <h2 className="text-3xl sm:text-4xl font-bold text-foreground mb-4">
@@ -565,22 +571,22 @@ export function LandingPage() {
           
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-8">
             {testimonials.map((testimonial, index) => (
-              <Card key={index} className="border-0 shadow-lg bg-gradient-to-br from-white to-gray-50">
+              <Card key={index} className="border-0 shadow-lg bg-card">
                 <CardHeader>
                   <div className="flex items-center mb-4">
                     {[...Array(testimonial.rating)].map((_, i) => (
                       <Star key={i} className="h-5 w-5 text-yellow-400 fill-current" />
                     ))}
                   </div>
-                  <CardDescription className="text-gray-700 text-base italic leading-relaxed line-clamp-4">
+                  <CardDescription className="text-muted-foreground text-base italic leading-relaxed line-clamp-4">
                     "{testimonial.content}"
                   </CardDescription>
                 </CardHeader>
                 <CardContent>
-                  <div className="border-t pt-4">
-                    <p className="font-semibold text-gray-900">{testimonial.name}</p>
-                    <p className="text-sm text-gray-600">{testimonial.role}</p>
-                    <p className="text-sm text-blue-600 font-medium">{testimonial.company}</p>
+                  <div className="border-t border-border pt-4">
+                    <p className="font-semibold text-card-foreground">{testimonial.name}</p>
+                    <p className="text-sm text-muted-foreground">{testimonial.role}</p>
+                    <p className="text-sm text-blue-600 dark:text-blue-400 font-medium">{testimonial.company}</p>
                   </div>
                 </CardContent>
               </Card>
@@ -589,8 +595,8 @@ export function LandingPage() {
         </div>
       </section>
 
-      {/* About Section */}
-      <section id="about" className="py-20 px-4 sm:px-6 lg:px-8 bg-gradient-to-br from-blue-50 to-purple-50">
+      {/* About Section - Updated with Dark Mode */}
+      <section id="about" className="py-20 px-4 sm:px-6 lg:px-8 bg-gradient-to-br from-blue-50 to-purple-50 dark:from-slate-900 dark:to-slate-800">
         <div className="max-w-7xl mx-auto">
           <div className="text-center mb-16">
             <h2 className="text-3xl sm:text-4xl font-bold text-foreground mb-6">
@@ -627,20 +633,20 @@ export function LandingPage() {
 
             <div className="grid grid-cols-2 gap-6">
               <div className="text-center">
-                <div className="text-4xl font-bold text-blue-600 mb-2">500+</div>
-                <div className="text-gray-600">Organizations</div>
+                <div className="text-4xl font-bold text-blue-600 dark:text-blue-400 mb-2">500+</div>
+                <div className="text-muted-foreground">Organizations</div>
               </div>
               <div className="text-center">
-                <div className="text-4xl font-bold text-green-600 mb-2">50K+</div>
-                <div className="text-gray-600">Active Users</div>
+                <div className="text-4xl font-bold text-green-600 dark:text-green-400 mb-2">50K+</div>
+                <div className="text-muted-foreground">Active Users</div>
               </div>
               <div className="text-center">
-                <div className="text-4xl font-bold text-purple-600 mb-2">40%</div>
-                <div className="text-gray-600">Avg. Conversion Increase</div>
+                <div className="text-4xl font-bold text-purple-600 dark:text-purple-400 mb-2">40%</div>
+                <div className="text-muted-foreground">Avg. Conversion Increase</div>
               </div>
               <div className="text-center">
-                <div className="text-4xl font-bold text-orange-600 mb-2">99.9%</div>
-                <div className="text-gray-600">Uptime SLA</div>
+                <div className="text-4xl font-bold text-orange-600 dark:text-orange-400 mb-2">99.9%</div>
+                <div className="text-muted-foreground">Uptime SLA</div>
               </div>
             </div>
           </div>
@@ -650,17 +656,17 @@ export function LandingPage() {
             <h3 className="text-2xl font-bold text-foreground text-center mb-12">Our Values</h3>
             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-8">
               {companyValues.map((value, index) => (
-                <Card key={index} className="text-center border-0 shadow-lg bg-white">
+                <Card key={index} className="text-center border-0 shadow-lg bg-card">
                   <CardHeader>
                     <div className="mx-auto mb-4">
                       {value.icon}
                     </div>
-                    <CardTitle className="text-lg font-semibold text-gray-900">
+                    <CardTitle className="text-lg font-semibold text-card-foreground">
                       {value.title}
                     </CardTitle>
                   </CardHeader>
                   <CardContent>
-                    <p className="text-gray-600 text-sm">
+                    <p className="text-muted-foreground text-sm">
                       {value.description}
                     </p>
                   </CardContent>
@@ -671,8 +677,8 @@ export function LandingPage() {
         </div>
       </section>
 
-      {/* Contact Section */}
-      <section id="contact" className="py-20 px-4 sm:px-6 lg:px-8 bg-white">
+      {/* Contact Section - Updated with Dark Mode */}
+      <section id="contact" className="py-20 px-4 sm:px-6 lg:px-8 bg-background">
         <div className="max-w-7xl mx-auto">
           <div className="text-center mb-16">
             <h2 className="text-3xl sm:text-4xl font-bold text-foreground mb-4">
@@ -690,56 +696,56 @@ export function LandingPage() {
               
               <div className="space-y-6">
                 <div className="flex items-start space-x-4">
-                  <div className="w-12 h-12 bg-blue-100 rounded-lg flex items-center justify-center flex-shrink-0">
-                    <Mail className="h-6 w-6 text-blue-600" />
+                  <div className="w-12 h-12 bg-blue-100 dark:bg-blue-900/50 rounded-lg flex items-center justify-center flex-shrink-0">
+                    <Mail className="h-6 w-6 text-blue-600 dark:text-blue-400" />
                   </div>
                   <div>
-                    <h4 className="text-lg font-semibold text-gray-900 mb-1">Email</h4>
-                    <p className="text-gray-600">sales@salesoptimizer.com</p>
-                    <p className="text-gray-600">support@salesoptimizer.com</p>
+                    <h4 className="text-lg font-semibold text-foreground mb-1">Email</h4>
+                    <p className="text-muted-foreground">sales@salesoptimizer.com</p>
+                    <p className="text-muted-foreground">support@salesoptimizer.com</p>
                   </div>
                 </div>
 
                 <div className="flex items-start space-x-4">
-                  <div className="w-12 h-12 bg-green-100 rounded-lg flex items-center justify-center flex-shrink-0">
-                    <Phone className="h-6 w-6 text-green-600" />
+                  <div className="w-12 h-12 bg-green-100 dark:bg-green-900/50 rounded-lg flex items-center justify-center flex-shrink-0">
+                    <Phone className="h-6 w-6 text-green-600 dark:text-green-400" />
                   </div>
                   <div>
-                    <h4 className="text-lg font-semibold text-gray-900 mb-1">Phone</h4>
-                    <p className="text-gray-600">+1 (555) 123-4567</p>
-                    <p className="text-gray-600">+1 (555) 987-6543 (Support)</p>
+                    <h4 className="text-lg font-semibold text-foreground mb-1">Phone</h4>
+                    <p className="text-muted-foreground">+1 (555) 123-4567</p>
+                    <p className="text-muted-foreground">+1 (555) 987-6543 (Support)</p>
                   </div>
                 </div>
 
                 <div className="flex items-start space-x-4">
-                  <div className="w-12 h-12 bg-purple-100 rounded-lg flex items-center justify-center flex-shrink-0">
-                    <MapPin className="h-6 w-6 text-purple-600" />
+                  <div className="w-12 h-12 bg-purple-100 dark:bg-purple-900/50 rounded-lg flex items-center justify-center flex-shrink-0">
+                    <MapPin className="h-6 w-6 text-purple-600 dark:text-purple-400" />
                   </div>
                   <div>
-                    <h4 className="text-lg font-semibold text-gray-900 mb-1">Office</h4>
-                    <p className="text-gray-600">123 Innovation Drive</p>
-                    <p className="text-gray-600">San Francisco, CA 94105</p>
+                    <h4 className="text-lg font-semibold text-foreground mb-1">Office</h4>
+                    <p className="text-muted-foreground">123 Innovation Drive</p>
+                    <p className="text-muted-foreground">San Francisco, CA 94105</p>
                   </div>
                 </div>
 
                 <div className="flex items-start space-x-4">
-                  <div className="w-12 h-12 bg-orange-100 rounded-lg flex items-center justify-center flex-shrink-0">
-                    <Clock className="h-6 w-6 text-orange-600" />
+                  <div className="w-12 h-12 bg-orange-100 dark:bg-orange-900/50 rounded-lg flex items-center justify-center flex-shrink-0">
+                    <Clock className="h-6 w-6 text-orange-600 dark:text-orange-400" />
                   </div>
                   <div>
-                    <h4 className="text-lg font-semibold text-gray-900 mb-1">Support Hours</h4>
-                    <p className="text-gray-600">24/7 Chat & Email Support</p>
-                    <p className="text-gray-600">Phone: Mon-Fri 9AM-6PM PST</p>
+                    <h4 className="text-lg font-semibold text-foreground mb-1">Support Hours</h4>
+                    <p className="text-muted-foreground">24/7 Chat & Email Support</p>
+                    <p className="text-muted-foreground">Phone: Mon-Fri 9AM-6PM PST</p>
                   </div>
                 </div>
               </div>
 
-              <div className="mt-8 p-6 bg-gradient-to-r from-blue-50 to-purple-50 rounded-lg">
-                <h4 className="text-lg font-semibold text-gray-900 mb-2">Enterprise Sales</h4>
-                <p className="text-gray-600 mb-4">
+              <div className="mt-8 p-6 bg-gradient-to-r from-blue-50 to-purple-50 dark:from-blue-950/50 dark:to-purple-950/50 rounded-lg border border-border">
+                <h4 className="text-lg font-semibold text-foreground mb-2">Enterprise Sales</h4>
+                <p className="text-muted-foreground mb-4">
                   Need a custom solution for your organization? Our enterprise team can help you with:
                 </p>
-                <ul className="text-gray-600 space-y-1">
+                <ul className="text-muted-foreground space-y-1">
                   <li>• Custom integrations and workflows</li>
                   <li>• Volume pricing and licensing</li>
                   <li>• Dedicated support and training</li>
@@ -749,12 +755,12 @@ export function LandingPage() {
             </div>
 
             {/* Contact Form */}
-            <Card className="border-0 shadow-lg">
+            <Card className="border border-border shadow-lg bg-card">
               <CardHeader>
-                <CardTitle className="text-2xl font-bold text-gray-900">
+                <CardTitle className="text-2xl font-bold text-card-foreground">
                   Send us a Message
                 </CardTitle>
-                <CardDescription className="text-gray-600">
+                <CardDescription className="text-muted-foreground">
                   Fill out the form below and we'll get back to you within 24 hours.
                 </CardDescription>
               </CardHeader>
@@ -762,64 +768,64 @@ export function LandingPage() {
                 <form className="space-y-6">
                   <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                     <div>
-                      <label htmlFor="firstName" className="block text-sm font-medium text-gray-700 mb-1">
+                      <label htmlFor="firstName" className="block text-sm font-medium text-card-foreground mb-1">
                         First Name
                       </label>
                       <input
                         type="text"
                         id="firstName"
                         name="firstName"
-                        className="w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-blue-500 focus:border-blue-500"
+                        className="w-full px-3 py-2 border border-border rounded-md shadow-sm bg-background text-foreground focus:outline-none focus:ring-2 focus:ring-primary focus:border-primary"
                         required
                       />
                     </div>
                     <div>
-                      <label htmlFor="lastName" className="block text-sm font-medium text-gray-700 mb-1">
+                      <label htmlFor="lastName" className="block text-sm font-medium text-card-foreground mb-1">
                         Last Name
                       </label>
                       <input
                         type="text"
                         id="lastName"
                         name="lastName"
-                        className="w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-blue-500 focus:border-blue-500"
+                        className="w-full px-3 py-2 border border-border rounded-md shadow-sm bg-background text-foreground focus:outline-none focus:ring-2 focus:ring-primary focus:border-primary"
                         required
                       />
                     </div>
                   </div>
 
                   <div>
-                    <label htmlFor="email" className="block text-sm font-medium text-gray-700 mb-1">
+                    <label htmlFor="email" className="block text-sm font-medium text-card-foreground mb-1">
                       Email Address
                     </label>
                     <input
                       type="email"
                       id="email"
                       name="email"
-                      className="w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-blue-500 focus:border-blue-500"
+                      className="w-full px-3 py-2 border border-border rounded-md shadow-sm bg-background text-foreground focus:outline-none focus:ring-2 focus:ring-primary focus:border-primary"
                       required
                     />
                   </div>
 
                   <div>
-                    <label htmlFor="company" className="block text-sm font-medium text-gray-700 mb-1">
+                    <label htmlFor="company" className="block text-sm font-medium text-card-foreground mb-1">
                       Company
                     </label>
                     <input
                       type="text"
                       id="company"
                       name="company"
-                      className="w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-blue-500 focus:border-blue-500"
+                      className="w-full px-3 py-2 border border-border rounded-md shadow-sm bg-background text-foreground focus:outline-none focus:ring-2 focus:ring-primary focus:border-primary"
                     />
                   </div>
 
                   <div>
-                    <label htmlFor="subject" className="block text-sm font-medium text-gray-700 mb-1">
+                    <label htmlFor="subject" className="block text-sm font-medium text-card-foreground mb-1">
                       Subject
                     </label>
                     <select
                       id="subject"
                       name="subject"
-                      className="w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-blue-500 focus:border-blue-500"
+                      className="w-full px-3 py-2 border border-border rounded-md shadow-sm bg-background text-foreground focus:outline-none focus:ring-2 focus:ring-primary focus:border-primary"
                       required
                     >
                       <option value="">Select a subject</option>
@@ -831,20 +837,20 @@ export function LandingPage() {
                   </div>
 
                   <div>
-                    <label htmlFor="message" className="block text-sm font-medium text-gray-700 mb-1">
+                    <label htmlFor="message" className="block text-sm font-medium text-card-foreground mb-1">
                       Message
                     </label>
                     <textarea
                       id="message"
                       name="message"
                       rows={4}
-                      className="w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-blue-500 focus:border-blue-500"
+                      className="w-full px-3 py-2 border border-border rounded-md shadow-sm bg-background text-foreground focus:outline-none focus:ring-2 focus:ring-primary focus:border-primary resize-vertical"
                       placeholder="Tell us about your needs..."
                       required
                     ></textarea>
                   </div>
 
-                  <Button type="submit" className="w-full bg-gradient-to-r from-blue-600 to-purple-600 hover:from-blue-700 hover:to-purple-700">
+                  <Button type="submit" className="w-full bg-gradient-to-r from-blue-600 to-purple-600 hover:from-blue-700 hover:to-purple-700 text-white">
                     Send Message
                     <ArrowRight className="ml-2 h-4 w-4" />
                   </Button>
