@@ -7,11 +7,44 @@ import { Badge } from "@/components/ui/badge"
 import { InviteOrgAdminModal } from "@/components/admin/invite-org-admin-modal"
 import { useAuth } from "@/features/auth/hooks/useAuth"
 import { Icons } from "@/components/ui/icons"
-import { Building, Users, Activity, UserPlus, Settings, FileText } from "lucide-react"
+import { Building, Users, Activity, UserPlus, Settings, FileText, LogOut, User as UserIcon } from "lucide-react"
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuLabel,
+  DropdownMenuSeparator,
+  DropdownMenuTrigger,
+} from "@/components/ui/dropdown-menu"
+import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar"
 
 export default function SuperAdminDashboard() {
   const [isInviteModalOpen, setIsInviteModalOpen] = useState(false)
-  const { user } = useAuth()
+  const [isLoggingOut, setIsLoggingOut] = useState(false)
+  const { user, logout } = useAuth()
+
+  const handleLogout = async () => {
+    if (isLoggingOut) return
+    
+    setIsLoggingOut(true)
+    try {
+      await logout()
+    } catch (error) {
+      console.error('Logout failed:', error)
+    } finally {
+      setIsLoggingOut(false)
+    }
+  }
+
+  const getUserInitials = (user: any) => {
+    if (user?.first_name && user?.last_name) {
+      return `${user.first_name[0]}${user.last_name[0]}`.toUpperCase()
+    }
+    if (user?.email) {
+      return user.email.substring(0, 2).toUpperCase()
+    }
+    return 'SA'
+  }
 
   return (
     <div className="min-h-screen bg-gray-50">
@@ -25,9 +58,58 @@ export default function SuperAdminDashboard() {
                 Welcome back, {user?.first_name || user?.email}
               </p>
             </div>
-            <Badge variant="secondary" className="bg-purple-100 text-purple-800">
-              Super Admin
-            </Badge>
+            
+            <div className="flex items-center space-x-4">
+              <Badge variant="secondary" className="bg-purple-100 text-purple-800">
+                Super Admin
+              </Badge>
+              
+              {/* User Profile Dropdown */}
+              <DropdownMenu>
+                <DropdownMenuTrigger asChild>
+                  <Button variant="ghost" className="relative h-10 w-10 rounded-full">
+                    <Avatar className="h-10 w-10">
+                      <AvatarImage src="" alt={user?.email || 'User'} />
+                      <AvatarFallback className="bg-purple-100 text-purple-800">
+                        {getUserInitials(user)}
+                      </AvatarFallback>
+                    </Avatar>
+                  </Button>
+                </DropdownMenuTrigger>
+                <DropdownMenuContent className="w-56" align="end" forceMount>
+                  <DropdownMenuLabel className="font-normal">
+                    <div className="flex flex-col space-y-1">
+                      <p className="text-sm font-medium leading-none">
+                        {user?.first_name && user?.last_name 
+                          ? `${user.first_name} ${user.last_name}` 
+                          : user?.email}
+                      </p>
+                      <p className="text-xs leading-none text-muted-foreground">
+                        {user?.email}
+                      </p>
+                    </div>
+                  </DropdownMenuLabel>
+                  <DropdownMenuSeparator />
+                  <DropdownMenuItem className="cursor-pointer">
+                    <UserIcon className="mr-2 h-4 w-4" />
+                    <span>Profile</span>
+                  </DropdownMenuItem>
+                  <DropdownMenuItem className="cursor-pointer">
+                    <Settings className="mr-2 h-4 w-4" />
+                    <span>Settings</span>
+                  </DropdownMenuItem>
+                  <DropdownMenuSeparator />
+                  <DropdownMenuItem 
+                    className="cursor-pointer text-red-600 focus:text-red-600"
+                    onClick={handleLogout}
+                    disabled={isLoggingOut}
+                  >
+                    <LogOut className="mr-2 h-4 w-4" />
+                    <span>{isLoggingOut ? 'Signing out...' : 'Sign out'}</span>
+                  </DropdownMenuItem>
+                </DropdownMenuContent>
+              </DropdownMenu>
+            </div>
           </div>
         </div>
       </header>

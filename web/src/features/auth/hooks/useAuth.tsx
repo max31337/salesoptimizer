@@ -1,6 +1,7 @@
 "use client"
 
 import { createContext, useContext, useState, useEffect, ReactNode } from 'react'
+import { useRouter } from 'next/navigation'
 
 interface User {
   id: string
@@ -9,13 +10,14 @@ interface User {
   first_name?: string
   last_name?: string
   tenant_id?: string
+  full_name?: string
 }
 
 interface AuthContextType {
   user: User | null
   isLoading: boolean
   login: (credentials: { email: string; password: string }) => Promise<{ user: User; access_token: string }>
-  logout: () => void
+  logout: () => Promise<void>
   isAuthenticated: boolean
   getToken: () => string | null
 }
@@ -33,6 +35,7 @@ export function useAuth() {
 export function AuthProvider({ children }: { children: ReactNode }) {
   const [user, setUser] = useState<User | null>(null)
   const [isLoading, setIsLoading] = useState(true)
+  const router = useRouter()
 
   // Check for existing token on mount
   useEffect(() => {
@@ -45,7 +48,9 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         setUser(parsedUser)
       } catch (error) {
         console.error('Failed to parse user data:', error)
+        // Clear invalid data
         localStorage.removeItem('access_token')
+        localStorage.removeItem('refresh_token')
         localStorage.removeItem('user_data')
       }
     }
@@ -102,11 +107,47 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     }
   }
 
-  const logout = () => {
-    localStorage.removeItem('access_token')
-    localStorage.removeItem('refresh_token')
-    localStorage.removeItem('user_data')
-    setUser(null)
+  const logout = async () => {
+    setIsLoading(true)
+    try {
+      // Call backend logout endpoint if it exists
+      const token = localStorage.getItem('access_token')
+      if (token) {
+        try {
+          await fetch(`${process.env.NEXT_PUBLIC_API_URL}/api/v1/auth/logout`, {
+            method: 'POST',
+            headers: {
+              'Authorization': `Bearer ${token}`,
+              'Content-Type': 'application/json',
+            },
+          })
+        } catch (error) {
+          console.error('Backend logout failed:', error)
+          // Continue with local cleanup even if backend fails
+        }
+      }
+
+      // Clear all authentication data from localStorage
+      localStorage.removeItem('access_token')
+      localStorage.removeItem('refresh_token')
+      localStorage.removeItem('user_data')
+      
+      // Clear user state
+      setUser(null)
+      
+      // Redirect to landing page
+      router.push('/')
+    } catch (error) {
+      console.error('Logout error:', error)
+      // Even if something fails, clear local state and redirect
+      localStorage.removeItem('access_token')
+      localStorage.removeItem('refresh_token')
+      localStorage.removeItem('user_data')
+      setUser(null)
+      router.push('/')
+    } finally {
+      setIsLoading(false)
+    }
   }
 
   const getToken = () => {

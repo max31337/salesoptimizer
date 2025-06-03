@@ -39,16 +39,15 @@ class OAuthAuthorizationResponse(BaseModel):
     authorization_url: str
     state: Optional[str] = None
 
-
 class LoginResponse(BaseModel):
-    """Login response DTO."""
-    
+    """Response model for user data (without tokens)."""
     access_token: str
     refresh_token: str
     token_type: str
     user_id: UUID
-    tenant_id: Optional[UUID]
+    tenant_id: Optional[UUID] = None
     role: str
     email: str
     full_name: str
-    is_new_user: bool = False
+    status: str = "active"
+    message: Optional[str] = None

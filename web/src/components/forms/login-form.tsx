@@ -94,11 +94,10 @@ export function LoginForm() {
         
         <div className="mt-4 text-center">
           <p className="text-sm text-gray-600">
-            Test credentials:
+            Forgot your password? <a href="/reset-password" className="text-blue-600 hover:underline">Reset it</a>
           </p>
           <p className="text-xs text-gray-500">
-            Email: admin@salesoptimizer.com<br />
-            Password: your_password
+
           </p>
         </div>
       </CardContent>

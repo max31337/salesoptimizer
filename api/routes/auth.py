@@ -83,6 +83,12 @@ async def login(
             detail=str(e)
         )
 
+@router.post("/logout")
+async def logout():
+    """Logout endpoint for cleanup if needed."""
+    # You can add any server-side cleanup here
+    # For localStorage-based auth, this is mostly for consistency
+    return {"message": "Logged out successfully"}
 
 #===============================================================================
 #                              🔐 OAuth2 Routes                                |
