@@ -7,6 +7,8 @@ from typing import TypedDict
 from pydantic_settings import BaseSettings
 from typing import Any
 
+from infrastructure.config.settings import settings
+
 class ProviderConfig(TypedDict):
     client_id: str
     client_secret: str
@@ -69,8 +71,10 @@ def get_oauth_config() -> Dict[str, ProviderConfig]:
 class OAuthConfig(BaseSettings):
     """OAuth configuration settings."""
     
-    google_client_id: str = ""
-    google_client_secret: str = ""
+    google_client_id: str = settings.GOOGLE_CLIENT_ID
+    google_client_secret: str = settings.GOOGLE_CLIENT_SECRET
+    google_redirect_url: str = settings.GOOGLE_OAUTH_REDIRECT_URL
+
     github_client_id: str = ""
     github_client_secret: str = ""
     microsoft_client_id: str = ""

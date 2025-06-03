@@ -3,6 +3,7 @@ from typing import Tuple, Optional
 from jinja2 import Environment, FileSystemLoader, select_autoescape, TemplateNotFound
 from datetime import datetime
 import logging
+from infrastructure.config.settings import settings
 
 logger = logging.getLogger(__name__)
 
@@ -38,10 +39,12 @@ class EmailTemplateService:
         invitation_token: str,
         invited_by_name: str,
         expires_at: datetime,
-        base_url: str = "http://localhost:3000"
+        base_url: Optional[str] = None
     ) -> Tuple[str, str]:
         """Render invitation email templates."""
         try:
+            if base_url is None:
+                base_url = settings.FRONTEND_URL
             # Create accept URL
             accept_url = f"{base_url}/invitations/accept?token={invitation_token}"
             

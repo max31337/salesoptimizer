@@ -7,6 +7,7 @@ from datetime import datetime
 
 from domain.shared.services.email_service import EmailService, EmailMessage
 from infrastructure.email.template_service import EmailTemplateService
+from infrastructure.config.settings import settings
 
 # Configure logging
 logging.basicConfig(level=logging.DEBUG)
@@ -16,15 +17,15 @@ class SMTPEmailService(EmailService):
     """SMTP implementation of email service."""
     def __init__(
         self,
-        smtp_host: str,
-        smtp_port: int,
-        smtp_username: str,
-        smtp_password: str,
-        use_tls: bool = False,
-        use_starttls: bool = True,
-        default_from_email: Optional[str] = None,
-        default_from_name: str = "SalesOptimizer",
-        base_url: str = "http://localhost:3000"
+        smtp_host: str = settings.SMTP_HOST,
+        smtp_port: int = settings.SMTP_PORT,
+        smtp_username: str = settings.SMTP_USERNAME,
+        smtp_password: str = settings.SMTP_PASSWORD,
+        use_tls: bool = settings.SMTP_USE_TLS,
+        use_starttls: bool = settings.SMTP_USE_STARTTLS,
+        default_from_email: Optional[str] = settings.DEFAULT_FROM_EMAIL,
+        default_from_name: str = settings.DEFAULT_FROM_NAME,
+        base_url: str = settings.FRONTEND_URL
     ):
         # Store configuration as instance attributes
         self.smtp_host = smtp_host

@@ -1,7 +1,7 @@
-from fastapi import FastAPI, Depends
+from fastapi import FastAPI 
 from fastapi.middleware.cors import CORSMiddleware
-from sqlalchemy.orm import Session
-from infrastructure.db.database import get_db, test_connection
+from infrastructure.db.database import test_connection
+from infrastructure.config.settings import settings
 from contextlib import asynccontextmanager
 
 # Import all models via the registry
@@ -12,48 +12,51 @@ from api.routes import auth, invitations
 
 @asynccontextmanager
 async def lifespan(app: FastAPI):
-    print("Testing database connection...")
+    # Startup
+    print("🚀 Starting SalesOptimizer...")
+    print(f"🌍 Environment: {settings.ENVIRONMENT}")
+    print(f"🔗 Frontend URL: {settings.FRONTEND_URL}")
+    print(f"🔗 Backend URL: {settings.BACKEND_URL}")
     
     # Register all models
-    models = register_models()
-    print(f"Registered models: {[model.__name__ for model in models]}")
+    register_models()
     
-    if test_connection():
-        print("✅ Database connection successful!")
-        print("✅ Using Alembic for database migrations!")
-    else:
-        print("❌ Database connection failed!")
+    # Test database connection
+    if not test_connection():
+        print("❌ Failed to connect to database!")
+        raise Exception("Database connection failed")
+    
     yield
+    
+    # Shutdown
+    print("🛑 Shutting down SalesOptimizer...")
 
 app = FastAPI(
     title="SalesOptimizer CRM", 
     version="1.0.0", 
     lifespan=lifespan,
-    description="Multi-tenant sales optimization platform with predictive analytics"
+    description="Multi-tenant sales optimization platform with predictive analytics",
+    debug=settings.is_development
 )
 
 # Add CORS middleware
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=[
-        "http://localhost:3000",    # Frontend
-        "http://localhost:8000",    # Swagger UI (same origin)
-        "http://127.0.0.1:8000",    # Alternative localhost
-        "http://127.0.0.1:3000",    # Alternative frontend
-    ],
+    allow_origins=settings.CORS_ORIGINS,
     allow_credentials=True,
-    allow_methods=["GET", "POST", "PUT", "DELETE", "OPTIONS"],  # Add OPTIONS
+    allow_methods=["*"],
     allow_headers=["*"],
 )
+
+# Health check endpoint
+@app.get("/health")
+async def health_check():
+    return {
+        "status": "healthy",
+        "environment": settings.ENVIRONMENT,
+        "version": "1.0.0"
+    }
 
 # Include routers
 app.include_router(auth.router, prefix="/api/v1")
 app.include_router(invitations.router, prefix="/api/v1")
-
-@app.get("/")
-def root():
-    return {"message": "Hello from Sales Optimizer CRM", "version": "1.0.0"}
-
-@app.get("/health")
-def health_check(db: Session = Depends(get_db)):
-    return {"status": "healthy", "database": "connected"}

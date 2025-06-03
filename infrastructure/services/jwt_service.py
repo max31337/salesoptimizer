@@ -3,6 +3,7 @@ from datetime import datetime, timedelta, timezone
 from typing import Optional, Dict, Any
 from uuid import UUID
 import os
+from infrastructure.config.settings import settings
 
 class JWTService:
     """Service for JWT token creation and verification with strict type hints."""
@@ -14,10 +15,10 @@ class JWTService:
         if len(self.secret_key) < 32:
             raise ValueError("JWT_SECRET_KEY must be at least 32 characters long")
         
-        self.algorithm: str = os.getenv("JWT_ALGORITHM", "HS256")
-        self.access_token_expire_minutes: int = int(os.getenv("JWT_EXPIRE_MINUTES", "30"))
-        self.refresh_token_expire_days: int = int(os.getenv("REFRESH_TOKEN_EXPIRE_DAYS", "7"))
-        self.invitation_token_expire_hours: int = 48  # Default 48 hours
+        self.algorithm: str = settings.JWT_ALGORITHM
+        self.access_token_expire_minutes: int = settings.JWT_EXPIRE_MINUTES
+        self.refresh_token_expire_days: int = settings.REFRESH_TOKEN_EXPIRE_DAYS
+        self.invitation_token_expire_hours: int = settings.INVITATION_TOKEN_EXPIRE_HOURS
 
     def create_access_token(
         self, 

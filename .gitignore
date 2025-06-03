@@ -4,3 +4,5 @@ __pycache__/
 # Byte-compiled files doesn't make sense to be tracked
 *.py[cod]
 # C extensions
+web/node_modules/
+web/.next/
