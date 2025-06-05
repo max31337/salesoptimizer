@@ -1,5 +1,5 @@
 from typing import Annotated, Dict, Any
-from fastapi import APIRouter, Depends, HTTPException, status, Query
+from fastapi import APIRouter, Depends, HTTPException, status, Query, Response
 from fastapi.security import OAuth2PasswordRequestForm
 from fastapi.responses import RedirectResponse
 
@@ -29,6 +29,7 @@ router = APIRouter(prefix="/auth", tags=["authentication"])
 
 @router.post("/login", response_model=LoginResponse)
 async def login(
+    response: Response,
     app_service: Annotated[ApplicationService, Depends(get_application_service)],
     form_data: OAuth2PasswordRequestForm = Depends()
 ) -> LoginResponse:
@@ -48,9 +49,28 @@ async def login(
                 detail="User ID is missing"
             )
         
+        # Set tokens in httponly cookies
+        response.set_cookie(
+            key="access_token",
+            value=access_token,
+            httponly=True,
+            secure=True,
+            samesite="lax",
+            max_age=3600  # 1 hour
+        )
+        
+        response.set_cookie(
+            key="refresh_token",
+            value=refresh_token,
+            httponly=True,
+            secure=True,
+            samesite="lax",
+            max_age=604800  # 7 days
+        )
+        
         return LoginResponse(
-            access_token=access_token,
-            refresh_token=refresh_token,
+            access_token="",  # Don't return tokens in response body
+            refresh_token="",
             token_type="bearer",
             user_id=user.id.value,
             tenant_id=user.tenant_id,
@@ -84,11 +104,18 @@ async def login(
         )
 
 @router.post("/logout")
-async def logout():
+async def logout(response: Response):
     """Logout endpoint for cleanup if needed."""
-    # You can add any server-side cleanup here
-    # For localStorage-based auth, this is mostly for consistency
+    # Clear the httponly cookies
+    response.delete_cookie(key="access_token")
+    response.delete_cookie(key="refresh_token")
+    response.delete_cookie(key="user_id")
+    response.delete_cookie(key="user_role")
+    response.delete_cookie(key="user_email")
+    response.delete_cookie(key="full_name")
+    
     return {"message": "Logged out successfully"}
+
 
 #===============================================================================
 #                              🔐 OAuth2 Routes                                |

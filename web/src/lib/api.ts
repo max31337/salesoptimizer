@@ -1,3 +1,5 @@
+import axios from 'axios'
+
 const BASE_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8000'
 const API_VERSION = '/api/v1'
 
@@ -9,10 +11,9 @@ class ApiClient {
   }
 
   private getAuthHeaders(): Record<string, string> {
-    const token = localStorage.getItem('access_token')
+    // No need to manually add Authorization header - cookies are sent automatically
     return {
       'Content-Type': 'application/json',
-      ...(token && { 'Authorization': `Bearer ${token}` }),
     }
   }
 
@@ -28,6 +29,7 @@ class ApiClient {
     const response = await fetch(`${this.baseUrl}${endpoint}`, {
       method: 'GET',
       headers: this.getAuthHeaders(),
+      credentials: 'include', // Include httpOnly cookies
     })
     return this.handleResponse<T>(response)
   }
@@ -37,6 +39,7 @@ class ApiClient {
       method: 'POST',
       headers: this.getAuthHeaders(),
       body: JSON.stringify(data),
+      credentials: 'include', // Include httpOnly cookies
     })
     return this.handleResponse<T>(response)
   }
@@ -46,6 +49,7 @@ class ApiClient {
       method: 'PUT',
       headers: this.getAuthHeaders(),
       body: JSON.stringify(data),
+      credentials: 'include', // Include httpOnly cookies
     })
     return this.handleResponse<T>(response)
   }
@@ -54,6 +58,7 @@ class ApiClient {
     const response = await fetch(`${this.baseUrl}${endpoint}`, {
       method: 'DELETE',
       headers: this.getAuthHeaders(),
+      credentials: 'include', // Include httpOnly cookies
     })
     return this.handleResponse<T>(response)
   }
@@ -66,9 +71,12 @@ class ApiClient {
         'Content-Type': 'application/x-www-form-urlencoded',
       },
       body: formData,
+      credentials: 'include', // Include httpOnly cookies
     })
     return this.handleResponse<T>(response)
   }
 }
 
 export const apiClient = new ApiClient()
+
+// Remove the axios instance since we're using fetch with credentials
