@@ -44,9 +44,23 @@ export function InviteOrgAdminModal({ open, onOpenChange }: InviteOrgAdminModalP
     setError("")
 
     try {
-      await invitationService.createOrgAdminInvitation(formData)
+      console.log('🚀 Submitting invitation data:', formData)
+      console.log('🌐 API Base URL:', process.env.NEXT_PUBLIC_API_URL)
+      
+      // Test authentication first
+      const authTest = await fetch(`${process.env.NEXT_PUBLIC_API_URL}/api/v1/auth/me`, {
+        credentials: 'include'
+      })
+      console.log('🔐 Auth test response:', authTest.status, authTest.statusText)
+      
+      if (!authTest.ok) {
+        throw new Error('Authentication failed')
+      }
+      
+      const result = await invitationService.createOrgAdminInvitation(formData)
+      console.log('✅ Invitation created successfully:', result)
+      
       setSuccess(true)
-      // Reset form after success
       setTimeout(() => {
         setFormData({
           email: "",
@@ -58,6 +72,7 @@ export function InviteOrgAdminModal({ open, onOpenChange }: InviteOrgAdminModalP
         onOpenChange(false)
       }, 2000)
     } catch (err: any) {
+      console.error('❌ Invitation creation failed:', err)
       setError(err.message || "Failed to send invitation")
     } finally {
       setIsLoading(false)

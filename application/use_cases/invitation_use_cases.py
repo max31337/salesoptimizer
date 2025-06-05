@@ -1,4 +1,4 @@
-from typing import Tuple
+from typing import Tuple, List
 from application.commands.invitation_command import CreateInvitationCommand
 from domain.organization.entities.invitation import Invitation
 from domain.organization.entities.tenant import Tenant
@@ -50,3 +50,39 @@ class InvitationUseCases:
             command.slug,
             invited_by_name
         )
+    
+    async def list_invitations(self) -> List[Invitation]:
+        """Get all invitations."""
+        return await self._invitation_service.get_all_invitations()
+    
+    async def get_invitation_by_token(self, token: str) -> Invitation:
+        """Get invitation by token."""
+        from domain.organization.value_objects.invitation_token import InvitationToken
+        invitation_token = InvitationToken(token)
+        invitation = await self._invitation_service.get_invitation_by_token(invitation_token)
+        if not invitation:
+            raise ValueError("Invitation not found")
+        return invitation
+    
+    async def accept_invitation(self, token: str, user_id: str) -> Tenant:
+        """Accept invitation and assign user to tenant."""
+        from domain.organization.value_objects.invitation_token import InvitationToken
+        from domain.organization.value_objects.user_id import UserId
+        from uuid import UUID
+        
+        invitation_token = InvitationToken(token)
+        user_id_obj = UserId(UUID(user_id))
+        
+        invitation = await self._invitation_service.get_invitation_by_token(invitation_token)
+        if not invitation:
+            raise ValueError("Invitation not found")
+        
+        return await self._invitation_service.accept_invitation(invitation, user_id_obj)
+    
+    async def delete_invitation(self, invitation_id: str) -> bool:
+        """Delete an invitation."""
+        from domain.organization.value_objects.user_id import UserId
+        from uuid import UUID
+        
+        invitation_id_obj = UserId(UUID(invitation_id))
+        return await self._invitation_service.delete_invitation(invitation_id_obj)

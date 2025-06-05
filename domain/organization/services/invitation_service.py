@@ -1,9 +1,11 @@
-from typing import Tuple
+from typing import Tuple, List, Optional
 from domain.organization.entities.invitation import Invitation
 from domain.organization.entities.tenant import Tenant
 from domain.organization.value_objects.email import Email
 from domain.organization.value_objects.user_id import UserId
+from domain.organization.value_objects.tenant_id import TenantId
 from domain.organization.value_objects.tenant_name import TenantName
+from domain.organization.value_objects.invitation_token import InvitationToken
 from domain.organization.repositories.invitation_repository import InvitationRepository
 from domain.organization.repositories.tenant_repository import TenantRepository
 from domain.shared.services.email_service import EmailService
@@ -59,7 +61,6 @@ class InvitationService:
             organization_name,
             created_tenant.id.value
         )
-        
         created_invitation = await self._invitation_repository.save(invitation)
         
         # Send invitation email
@@ -79,23 +80,40 @@ class InvitationService:
         
         return created_invitation, created_tenant
     
+    async def get_all_invitations(self) -> List[Invitation]:
+        """Get all invitations."""
+        return await self._invitation_repository.get_all()
+    
+    async def get_invitation_by_token(self, token: InvitationToken) -> Optional[Invitation]:
+        """Get invitation by token."""
+        return await self._invitation_repository.get_by_token(token)
+    
     async def accept_invitation(
         self,
         invitation: Invitation,
         user_id: UserId
     ) -> Tenant:
         """Accept invitation and set user as tenant owner."""
+        if invitation.is_used:
+            raise ValueError("Invitation has already been used")
+        
+        if invitation.is_expired():
+            raise ValueError("Invitation has expired")
+        
         # Mark invitation as used
         invitation.mark_as_used()
         await self._invitation_repository.update(invitation)
-        
-        # Get the tenant and set the owner
-        tenant = await self._tenant_repository.get_by_id(UserId(invitation.tenant_id))
+        # Get the tenant and set the user as owner
+        tenant = await self._tenant_repository.get_by_id(TenantId(invitation.tenant_id))
         if not tenant:
-            raise ValueError("Tenant not found for invitation")
+            raise ValueError("Associated tenant not found")
         
-        # Set the user as tenant owner
+        # Update tenant owner
         tenant.set_owner(user_id)
         updated_tenant = await self._tenant_repository.update(tenant)
         
         return updated_tenant
+    
+    async def delete_invitation(self, invitation_id: UserId) -> bool:
+        """Delete an invitation."""
+        return await self._invitation_repository.delete(invitation_id)

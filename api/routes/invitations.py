@@ -1,26 +1,27 @@
-from typing import Annotated
-from datetime import datetime
+from typing import Annotated, List
 from fastapi import APIRouter, Depends, HTTPException, status
+from datetime import datetime
 
-from infrastructure.dependencies.service_container import get_application_service
 from application.services.application_service import ApplicationService
 from application.dtos.invitation_dto import (
     CreateInvitationRequest,
-    InvitationWithTenantResponse,
     InvitationResponse,
+    InvitationWithTenantResponse,
     TenantResponse
 )
 from application.commands.invitation_command import CreateInvitationCommand
-from api.dependencies.auth import require_invitation_and_tenant_creation
 from domain.organization.entities.user import User
+from infrastructure.dependencies.service_container import get_application_service
+from api.dependencies.auth import get_current_user_from_cookie  
 
 router = APIRouter(prefix="/invitations", tags=["invitations"])
+
 
 @router.post("/", response_model=InvitationWithTenantResponse)
 async def create_org_admin_invitation_with_tenant(
     request: CreateInvitationRequest,
     app_service: Annotated[ApplicationService, Depends(get_application_service)],
-    current_user: User = Depends(require_invitation_and_tenant_creation)
+    current_user: User = Depends(get_current_user_from_cookie)  # Use cookie auth instead
 ) -> InvitationWithTenantResponse:
     """
     Create organization admin invitation and create the organization/tenant (SuperAdmin only).
@@ -30,6 +31,14 @@ async def create_org_admin_invitation_with_tenant(
     - **subscription_tier**: Subscription level (basic, pro, enterprise) - defaults to basic
     - **slug**: Custom URL slug for the organization (auto-generated if not provided)
     """
+    
+    # Check permissions manually since we're using cookie auth
+    if not current_user.can_create_invitations() or not current_user.can_create_tenants():
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail="Insufficient permissions to create invitations and tenants"
+        )
+    
     try:
         command = CreateInvitationCommand(
             email=request.email,
@@ -83,3 +92,69 @@ async def create_org_admin_invitation_with_tenant(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
             detail=f"An unexpected error occurred: {str(e)}"
         )
+
+
+@router.get("/", response_model=List[InvitationResponse])
+async def get_invitations(
+    app_service: Annotated[ApplicationService, Depends(get_application_service)],
+    current_user: User = Depends(get_current_user_from_cookie)  # Use cookie auth
+) -> List[InvitationResponse]:
+    """Get all invitations (SuperAdmin only)."""
+    if not current_user.can_create_invitations():
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail="Insufficient permissions to view invitations"
+        )
+    
+    try:
+        invitations = await app_service.invitation_use_cases.list_invitations()
+        return [
+            InvitationResponse(
+                id=inv.id.value,
+                email=str(inv.email),
+                role=inv.role.value,
+                token=inv.token.value,
+                invited_by_id=inv.invited_by_id.value,
+                organization_name=inv.organization_name,
+                tenant_id=inv.tenant_id,
+                expires_at=inv.expires_at,
+                is_used=inv.is_used,
+                used_at=inv.used_at,
+                created_at=inv.created_at or datetime.now()
+            )
+            for inv in invitations
+        ]
+    except Exception as e:
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail=f"An unexpected error occurred: {str(e)}"
+        )
+
+
+# TODO: Implement delete_invitation method in InvitationUseCases class
+# @router.delete("/{invitation_id}")
+# async def delete_invitation(
+#     invitation_id: str,
+#     app_service: Annotated[ApplicationService, Depends(get_application_service)],
+#     current_user: User = Depends(get_current_user_from_cookie)  # Use cookie auth
+# ):
+#     """Delete an invitation (SuperAdmin only)."""
+#     if not current_user.can_create_invitations():
+#         raise HTTPException(
+#             status_code=status.HTTP_403_FORBIDDEN,
+#             detail="Insufficient permissions to delete invitations"
+#         )
+#     
+#     try:
+#         success = await app_service.invitation_use_cases.delete_invitation(invitation_id)
+#         if not success:
+#             raise HTTPException(
+#                 status_code=status.HTTP_404_NOT_FOUND,
+#                 detail="Invitation not found"
+#             )
+#         return {"message": "Invitation deleted successfully"}
+#     except Exception as e:
+#         raise HTTPException(
+#             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+#             detail=f"An unexpected error occurred: {str(e)}"
+#         )

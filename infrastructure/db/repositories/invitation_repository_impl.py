@@ -1,7 +1,6 @@
-from typing import Optional
+from typing import Optional, List
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy import select
-from sqlalchemy.orm import selectinload
 
 from domain.organization.entities.invitation import Invitation
 from domain.organization.repositories.invitation_repository import InvitationRepository
@@ -44,28 +43,29 @@ class InvitationRepositoryImpl(InvitationRepository):
     async def get_by_token(self, token: InvitationToken) -> Optional[Invitation]:
         """Get invitation by token."""
         result = await self._session.execute(
-            select(InvitationModel)
-            .options(selectinload(InvitationModel.invited_by))
-            .where(InvitationModel.token == token.value)
+            select(InvitationModel).where(InvitationModel.token == token.value)
         )
         model = result.scalar_one_or_none()
-        
         return self._model_to_entity(model) if model else None
     
     async def get_by_email(self, email: Email) -> Optional[Invitation]:
         """Get active invitation by email."""
         result = await self._session.execute(
             select(InvitationModel)
-            .options(selectinload(InvitationModel.invited_by))
-            .where(
-                InvitationModel.email == str(email),
-                InvitationModel.is_used == False
-            )
+            .where(InvitationModel.email == str(email))
+            .where(InvitationModel.is_used == False)
             .order_by(InvitationModel.created_at.desc())
         )
         model = result.scalar_one_or_none()
-        
         return self._model_to_entity(model) if model else None
+    
+    async def get_all(self) -> List[Invitation]:
+        """Get all invitations."""
+        result = await self._session.execute(
+            select(InvitationModel).order_by(InvitationModel.created_at.desc())
+        )
+        models = result.scalars().all()
+        return [self._model_to_entity(model) for model in models]
     
     async def update(self, invitation: Invitation) -> Invitation:
         """Update invitation."""
@@ -82,6 +82,18 @@ class InvitationRepositoryImpl(InvitationRepository):
         await self._session.refresh(model)
         
         return self._model_to_entity(model)
+    
+    async def delete(self, invitation_id: UserId) -> bool:
+        """Delete invitation by ID."""
+        result = await self._session.execute(
+            select(InvitationModel).where(InvitationModel.id == invitation_id.value)
+        )
+        model = result.scalar_one_or_none()
+        
+        if model:
+            await self._session.delete(model)
+            return True
+        return False
     
     def _model_to_entity(self, model: InvitationModel) -> Invitation:
         """Convert database model to domain entity."""
