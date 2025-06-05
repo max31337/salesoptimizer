@@ -1,4 +1,4 @@
-from typing import Tuple
+from typing import Tuple, Optional
 
 from domain.organization.entities.user import User
 from domain.organization.services.auth_service import AuthService
@@ -61,3 +61,11 @@ class AuthUseCases:
             command.provider,
             command.redirect_uri
         )
+    
+    async def refresh_token(self, refresh_token: str) -> Tuple[User, str, str]:
+        """Refresh access token and rotate refresh token."""
+        return await self._auth_service.refresh_token(refresh_token)
+    
+    async def get_user_by_email(self, email: str) -> Optional[User]:
+        """Get user by email."""
+        return await self._auth_service.get_user_by_email(email)

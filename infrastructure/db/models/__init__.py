@@ -1,7 +1,6 @@
 """Database models."""
 from typing import List, Type, Any
 
-# Import all models in the correct order to ensure proper registration
 from .user_model import UserModel, GUID
 from .tenant_model import TenantModel
 from .team_model import TeamModel

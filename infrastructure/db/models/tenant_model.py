@@ -1,36 +1,52 @@
 import uuid
 from datetime import datetime, timezone
-from sqlalchemy import Column, String, Boolean, DateTime, JSON
-from sqlalchemy.orm import relationship
+from typing import Any, TYPE_CHECKING
+from sqlalchemy import String, Boolean, DateTime, JSON
+from sqlalchemy.orm import relationship, Mapped, mapped_column
 
 from infrastructure.db.database import Base
 from infrastructure.db.models.user_model import GUID
+
+# Use TYPE_CHECKING for forward references
+if TYPE_CHECKING:
+    from infrastructure.db.models.user_model import UserModel
+    from infrastructure.db.models.team_model import TeamModel
+    from infrastructure.db.models.invitation_model import InvitationModel
 
 
 class TenantModel(Base):
     __tablename__ = "tenants"
 
-    id = Column(GUID(), primary_key=True, default=uuid.uuid4)
-    name = Column(String(255), nullable=False)
-    slug = Column(String(100), unique=True, nullable=False, index=True)
-    subscription_tier = Column(String(50), nullable=False, default="basic")
-    is_active = Column(Boolean, default=True)
-    owner_id = Column(GUID(), nullable=True)  
-    settings = Column(JSON, nullable=True, default=dict)
-    created_at = Column(DateTime(timezone=True), default=lambda: datetime.now(timezone.utc))
-    updated_at = Column(DateTime(timezone=True), nullable=True, onupdate=lambda: datetime.now(timezone.utc))
+    id: Mapped[uuid.UUID] = mapped_column(GUID(), primary_key=True, default=uuid.uuid4)
+    name: Mapped[str] = mapped_column(String(255), nullable=False)
+    slug: Mapped[str] = mapped_column(String(100), unique=True, nullable=False, index=True)
+    subscription_tier: Mapped[str] = mapped_column(String(50), nullable=False, default="basic")
+    is_active: Mapped[bool] = mapped_column(Boolean, default=True)
+    owner_id: Mapped[uuid.UUID] = mapped_column(GUID(), nullable=True)
+    settings: Mapped[dict[str, Any]] = mapped_column(JSON, nullable=True, default=dict)
+    created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=lambda: datetime.now(timezone.utc))
+    updated_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), nullable=True, onupdate=lambda: datetime.now(timezone.utc))
 
-    # Relationships
-    users = relationship(
+    # Relationships using string references (no imports needed)
+    users: Mapped[list["UserModel"]] = relationship(
         "UserModel", 
         foreign_keys="UserModel.tenant_id",
         back_populates="tenant"
     )
+
+    teams: Mapped[list["TeamModel"]] = relationship(
+        "TeamModel", 
+        foreign_keys="TeamModel.tenant_id",
+        back_populates="tenant"
+    )
     
-    teams = relationship("TeamModel", back_populates="tenant")
-    invitations = relationship("InvitationModel", back_populates="tenant")
-    
-    owner = relationship(
+    invitations: Mapped[list["InvitationModel"]] = relationship(
+        "InvitationModel", 
+        foreign_keys="InvitationModel.tenant_id",
+        back_populates="tenant"
+    )
+
+    owner: Mapped["UserModel"] = relationship(
         "UserModel",
         primaryjoin="foreign(TenantModel.owner_id) == UserModel.id", 
         back_populates="owned_tenants",

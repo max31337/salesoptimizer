@@ -1,10 +1,12 @@
-from typing import Tuple, Optional, Dict, Any
-from uuid import uuid4
+from typing import Tuple, Optional, Dict, Any, TYPE_CHECKING
+from uuid import uuid4, UUID
 
-from domain.organization.entities.user import User, UserRole, UserStatus
+from domain.organization.entities.user import User
 from domain.organization.value_objects.email import Email
 from domain.organization.value_objects.user_id import UserId
 from domain.organization.value_objects.password import Password
+from domain.organization.value_objects.user_role import UserRole
+from domain.organization.value_objects.user_status import UserStatus
 from domain.organization.repositories.user_repository import UserRepository
 from domain.organization.exceptions.auth_exceptions import (
     AuthenticationError,
@@ -14,6 +16,10 @@ from domain.organization.exceptions.auth_exceptions import (
 )
 from infrastructure.services.password_service import PasswordService
 from infrastructure.services.jwt_service import JWTService
+
+if TYPE_CHECKING:
+    from domain.organization.entities.invitation import Invitation
+    from domain.organization.value_objects.tenant_id import TenantId
 
 
 class AuthService:
@@ -58,8 +64,8 @@ class AuthService:
         if not user.is_active():
             raise InactiveUserError()
         
-        # Verify password
-        if not user.has_password() or not user.password_hash or not self._password_service.verify_password(
+        # Verify password - Fix: Check password_hash directly instead of has_password()
+        if not user.password_hash or not self._password_service.verify_password(
             password, user.password_hash
         ):
             raise InvalidCredentialsError()
@@ -133,7 +139,7 @@ class AuthService:
             
             # If invitation exists, use the invited role
             if invitation:
-                user._role = invitation.role
+                user.role = invitation.role
             
             user = await self._user_repository.save(user)
         else:
@@ -143,7 +149,7 @@ class AuthService:
             
             # Update tenant if provided and user doesn't have one
             if tenant_id and not user.tenant_id:
-                user._tenant_id = tenant_id
+                user.tenant_id = tenant_id.value
                 user = await self._user_repository.update(user)
             
             # Update last login
@@ -151,6 +157,39 @@ class AuthService:
             user = await self._user_repository.update(user)
         
         return user, is_new_user
+
+    async def refresh_token(self, refresh_token: str) -> Tuple[User, str, str]:
+        """Refresh access token and rotate refresh token."""
+        # Verify refresh token using JWT service
+        payload = self._jwt_service.verify_token(refresh_token)
+        if not payload:
+            raise AuthenticationError("Invalid refresh token")
+        
+        # Validate token type
+        if not self._jwt_service.validate_token_type(refresh_token, "refresh"):
+            raise AuthenticationError("Invalid token type")
+        
+        # Extract user ID from token
+        user_id_str = self._jwt_service.extract_user_id_from_token(refresh_token)
+        if not user_id_str:
+            raise AuthenticationError("Invalid refresh token - no user ID")
+        
+        # Get user from database
+        user = await self.get_user_by_id(user_id_str)
+        if not user or not user.is_active():
+            raise AuthenticationError("User not found or inactive")
+        
+        # Generate new tokens using token rotation
+        access_token, new_refresh_token = self.create_tokens(user)
+        
+        # TODO: Add refresh token to blacklist/revocation list
+        # This prevents the old refresh token from being reused
+        
+        return user, access_token, new_refresh_token
+
+    def verify_token(self, token: str) -> Optional[Dict[str, Any]]:
+        """Verify JWT token and return payload."""
+        return self._jwt_service.verify_token(token)
 
     def _create_oauth_user(
         self, 
@@ -188,7 +227,7 @@ class AuthService:
             username=username,
             first_name=first_name or 'Unknown',
             last_name=last_name or 'User',
-            password_hash='',  # No password for OAuth users
+            password_hash='',  # Empty string for OAuth users (not None)
             role=UserRole.sales_rep(),
             status=UserStatus.active(),
             _oauth_provider=provider,
@@ -203,16 +242,36 @@ class AuthService:
         tenant_id: Optional['TenantId'] = None
     ) -> User:
         """Create new user from OAuth with tenant."""
-        full_name = self._extract_full_name(user_info)
+        # Create user using existing method
+        user = self._create_oauth_user(provider, user_info, email)
         
-        return User.create_oauth_user(
-            email=email,
-            full_name=full_name,
-            provider=provider,
-            provider_id=str(user_info.get('id', user_info.get('sub'))),
-            role=UserRole.user(),  # Default role, will be overridden by invitation
-            tenant_id=tenant_id  # Set tenant during creation
-        )
+        # Override role to user instead of sales_rep
+        user.role = UserRole.sales_rep()
+        
+        # Set tenant if provided
+        if tenant_id:
+            user.tenant_id = tenant_id.value
+        
+        return user
+
+    def _extract_full_name(self, provider: str, user_info: Dict[str, Any]) -> str:
+        """Extract full name from OAuth user info based on provider."""
+        if provider == "google":
+            first_name = user_info.get('given_name', '')
+            last_name = user_info.get('family_name', '')
+            full_name = user_info.get('name', f"{first_name} {last_name}".strip())
+        elif provider == "github":
+            full_name = user_info.get('name', '')
+            if not full_name:
+                full_name = user_info.get('login', '')
+        elif provider == "microsoft":
+            first_name = user_info.get('given_name', '')
+            last_name = user_info.get('family_name', '')
+            full_name = user_info.get('name', f"{first_name} {last_name}".strip())
+        else:
+            full_name = user_info.get('name', '')
+        
+        return full_name or 'Unknown User'
 
     def create_tokens(self, user: User) -> Tuple[str, str]:
         """Create access and refresh tokens for user."""
@@ -229,3 +288,23 @@ class AuthService:
         refresh_token = self._jwt_service.create_refresh_token(user.id.value)
         
         return access_token, refresh_token
+
+    async def get_user_by_email(self, email: str) -> Optional[User]:
+        """Get user by email address."""
+        try:
+            email_obj = Email(email)
+            return await self._user_repository.get_by_email(email_obj)
+        except ValueError:
+            return None
+
+    async def get_user_by_id(self, user_id: str) -> Optional[User]:
+        """Get user by ID."""
+        try:
+            user_id_obj = UserId(UUID(user_id))
+            return await self._user_repository.get_by_id(user_id_obj)
+        except (ValueError, TypeError):
+            return None
+
+    async def get_user_by_username(self, username: str) -> Optional[User]:
+        """Get user by username."""
+        return await self._user_repository.get_by_username(username)

@@ -13,112 +13,122 @@ from infrastructure.db.models.user_model import UserModel
 class UserRepositoryImpl(UserRepository):
     """User repository implementation."""
     
-    def __init__(self, session: AsyncSession) -> None:
+    def __init__(self, session: AsyncSession):
         self._session = session
-    
+
+    async def save(self, user: User) -> User:
+        """Save a new user."""
+        model = self._entity_to_model(user)
+        self._session.add(model)
+        await self._session.flush()
+        await self._session.refresh(model)
+        
+        return self._model_to_entity(model)
+
     async def get_by_id(self, user_id: UserId) -> Optional[User]:
         """Get user by ID."""
         stmt = select(UserModel).where(UserModel.id == user_id.value)
         result = await self._session.execute(stmt)
         model = result.scalar_one_or_none()
         
-        if not model:
-            return None
-        
-        return self._model_to_entity(model)
-    
+        return self._model_to_entity(model) if model else None
+
     async def get_by_email(self, email: Email) -> Optional[User]:
         """Get user by email."""
         stmt = select(UserModel).where(UserModel.email == str(email))
         result = await self._session.execute(stmt)
         model = result.scalar_one_or_none()
         
-        if not model:
-            return None
+        return self._model_to_entity(model) if model else None
+
+    async def exists_by_email(self, email: Email) -> bool:
+        """Check if user exists by email."""
+        stmt = select(UserModel.id).where(UserModel.email == str(email))
+        result = await self._session.execute(stmt)
         
-        return self._model_to_entity(model)
-    
+        return result.scalar_one_or_none() is not None
+
     async def get_by_username(self, username: str) -> Optional[User]:
         """Get user by username."""
         stmt = select(UserModel).where(UserModel.username == username)
         result = await self._session.execute(stmt)
         model = result.scalar_one_or_none()
         
-        if not model:
-            return None
-        
-        return self._model_to_entity(model)
-    
-    async def save(self, user: User) -> User:
-        """Save user."""
-        model = self._entity_to_model(user)
-        self._session.add(model)
-        await self._session.commit()
-        await self._session.refresh(model)
-        return self._model_to_entity(model)
-    
+        return self._model_to_entity(model) if model else None
+
     async def update(self, user: User) -> User:
-        """Update user."""
-        if not user.id:
-            raise ValueError("User ID is required for update")
+        """Update existing user."""
+        if user.id is None:
+            raise ValueError("User ID cannot be None for update operation")
         
         stmt = select(UserModel).where(UserModel.id == user.id.value)
         result = await self._session.execute(stmt)
         model = result.scalar_one_or_none()
         
         if not model:
-            raise ValueError("User not found")
+            raise ValueError(f"User with ID {user.id.value} not found")
         
         # Update model fields
-        setattr(model, "email", str(user.email))
-        setattr(model, "username", user.username)
-        setattr(model, "first_name", user.first_name)
-        setattr(model, "last_name", user.last_name)
-        setattr(model, "password_hash", user.password_hash)
-        setattr(model, "role", user.role.value)
-        setattr(model, "status", user.status.value)
-        setattr(model, "tenant_id", user.tenant_id)
-        setattr(model, "team_id", user.team_id)
-        setattr(model, "phone", user.phone)
-        setattr(model, "is_email_verified", user.is_email_verified)
-        setattr(model, "last_login", user.last_login)
-        setattr(model, "invitation_token", user.invitation_token)
-        setattr(model, "invitation_expires_at", user.invitation_expires_at)
-        setattr(model, "updated_at", user.updated_at)
-
-        await self._session.commit()
+        model.email = str(user.email)
+        model.username = user.username or ""
+        model.first_name = user.first_name
+        model.last_name = user.last_name
+        if user.password_hash is not None:
+            model.password_hash = user.password_hash
+        model.role = user.role.value
+        model.status = user.status.value
+        if user.tenant_id is not None:
+            model.tenant_id = user.tenant_id
+        if user.team_id is not None:
+            model.team_id = user.team_id
+        if user.phone is not None:
+            model.phone = user.phone
+        model.is_email_verified = user.is_email_verified
+        if user.oauth_provider is not None:
+            model.oauth_provider = user.oauth_provider
+        if user.oauth_provider_id is not None:
+            model.oauth_provider_id = user.oauth_provider_id
+        model.updated_at = datetime.now()
+        
+        await self._session.flush()
         await self._session.refresh(model)
+        
         return self._model_to_entity(model)
-    
-    async def exists_by_email(self, email: Email) -> bool:
-        """Check if user exists by email."""
-        stmt = select(UserModel.id).where(UserModel.email == str(email))
+
+    async def delete(self, user_id: UserId) -> bool:
+        """Delete user by ID."""
+        stmt = select(UserModel).where(UserModel.id == user_id.value)
         result = await self._session.execute(stmt)
-        return result.scalar_one_or_none() is not None
-    
+        model = result.scalar_one_or_none()
+        
+        if model:
+            await self._session.delete(model)
+            return True
+        return False
+
     def _model_to_entity(self, model: UserModel) -> User:
         """Convert database model to domain entity."""
         return User(
-            id=UserId(model.id), #type: ignore
+            id=UserId(model.id),
             email=Email(str(model.email)),
-            username=getattr(model, "username", ""),
-            first_name=getattr(model, "first_name", ""),
-            last_name=getattr(model, "last_name", ""),
-            password_hash=getattr(model, "password_hash", None),
-            role=UserRole(getattr(model, "role", "") or ""),
-            status=UserStatus(getattr(model, "status", "") or ""),
-            tenant_id=getattr(model, "tenant_id", None),
-            team_id=getattr(model, "team_id", None),
-            phone=getattr(model, "phone", None),
-            is_email_verified=getattr(model, "is_email_verified", False),
-            invitation_token=getattr(model, "invitation_token", None),
-            invitation_expires_at=getattr(model, "invitation_expires_at", None),
-            created_at=getattr(model, "created_at", datetime.now()),
-            updated_at=getattr(model, "updated_at", datetime.now()),
-            _oauth_provider=getattr(model, "oauth_provider", None),
-            _oauth_provider_id=getattr(model, "oauth_provider_id", None)
+            username=model.username,
+            first_name=model.first_name,
+            last_name=model.last_name,
+            password_hash=model.password_hash,
+            role=UserRole(model.role),
+            status=UserStatus(model.status),
+            tenant_id=model.tenant_id,
+            team_id=model.team_id,
+            phone=model.phone,
+            is_email_verified=model.is_email_verified,
+            invitation_token=model.invitation_token,
+            invitation_expires_at=model.invitation_expires_at,
+            created_at=model.created_at,
+            updated_at=model.updated_at,
+            _oauth_provider=model.oauth_provider,
+            _oauth_provider_id=model.oauth_provider_id
         )
-    
+
     def _entity_to_model(self, user: User) -> UserModel:
         """Convert domain entity to database model."""
         return UserModel(

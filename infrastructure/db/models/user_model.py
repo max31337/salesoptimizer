@@ -1,20 +1,25 @@
 import uuid
 from datetime import datetime, timezone
-from typing import Optional, Union, Any
-from sqlalchemy import Column, String, Boolean, DateTime, ForeignKey
+from typing import Optional, Union, Any, TYPE_CHECKING
+from sqlalchemy import String, Boolean, DateTime, ForeignKey
 from sqlalchemy.dialects.postgresql import UUID
 from sqlalchemy.dialects.sqlite import CHAR
-from sqlalchemy.orm import relationship
+from sqlalchemy.orm import relationship, Mapped, mapped_column
 from sqlalchemy import TypeDecorator, String as SqlString
 from sqlalchemy.engine import Dialect
+
 from infrastructure.db.database import Base
+
+# Use TYPE_CHECKING for forward references
+if TYPE_CHECKING:
+    from infrastructure.db.models.tenant_model import TenantModel
+    from infrastructure.db.models.team_model import TeamModel
+    from infrastructure.db.models.invitation_model import InvitationModel
 
 
 class GUID(TypeDecorator[uuid.UUID]):
-    """Platform-independent GUID type.
-    Uses PostgreSQL's UUID type, otherwise uses CHAR(36).
-    Always returns uuid.UUID objects.
-    """
+    """Platform-independent GUID type."""
+    
     impl = SqlString
     cache_ok = True
 
@@ -46,74 +51,69 @@ class GUID(TypeDecorator[uuid.UUID]):
             return str(uuid_obj)
 
     def process_result_value(self, value: Optional[Union[str, uuid.UUID]], dialect: Dialect) -> Optional[uuid.UUID]:
-        """Convert stored value back to UUID object."""
+        """Convert value from database to UUID object."""
         if value is None:
             return None
         
-        # Always return UUID objects for consistency
         if isinstance(value, str):
-            try:
-                return uuid.UUID(value)
-            except ValueError:
-                raise ValueError(f"Invalid UUID string from database: {value}")
+            return uuid.UUID(value)
         return value
 
 
 class UserModel(Base):
     __tablename__ = "users"
 
-    id = Column(GUID(), primary_key=True, default=uuid.uuid4)
-    tenant_id = Column(GUID(), ForeignKey("tenants.id"), nullable=True)
-    team_id = Column(GUID(), ForeignKey("teams.id"), nullable=True)
-    email = Column(String(255), unique=True, nullable=False, index=True)
-    username = Column(String(50), unique=True, nullable=True, index=True)
-    first_name = Column(String(100), nullable=False)
-    last_name = Column(String(100), nullable=False)
-    phone = Column(String(20), nullable=True)
-    password_hash = Column(String(255), nullable=True)
-    role = Column(String(50), nullable=False, default="sales_rep")
-    status = Column(String(20), nullable=False, default="pending")
-    is_email_verified = Column(Boolean, default=False)
-    last_login = Column(DateTime(timezone=True), nullable=True)
-    invitation_token = Column(String(255), nullable=True, index=True)
-    invitation_expires_at = Column(DateTime(timezone=True), nullable=True)
-    created_at = Column(DateTime(timezone=True), default=lambda: datetime.now(timezone.utc))
-    updated_at = Column(DateTime(timezone=True), nullable=True, onupdate=lambda: datetime.now(timezone.utc))
-    oauth_provider = Column(String(50), nullable=True)
-    oauth_provider_id = Column(String(255), nullable=True)
-    
-# Relationships
-    tenant = relationship(
+    id: Mapped[uuid.UUID] = mapped_column(GUID(), primary_key=True, default=uuid.uuid4)
+    tenant_id: Mapped[uuid.UUID] = mapped_column(GUID(), ForeignKey("tenants.id"), nullable=True)
+    team_id: Mapped[uuid.UUID] = mapped_column(GUID(), ForeignKey("teams.id"), nullable=True)
+    email: Mapped[str] = mapped_column(String(255), unique=True, nullable=False, index=True)
+    username: Mapped[str] = mapped_column(String(50), unique=True, nullable=True, index=True)
+    first_name: Mapped[str] = mapped_column(String(100), nullable=False)
+    last_name: Mapped[str] = mapped_column(String(100), nullable=False)
+    phone: Mapped[str] = mapped_column(String(20), nullable=True)
+    password_hash: Mapped[str] = mapped_column(String(255), nullable=True)
+    role: Mapped[str] = mapped_column(String(50), nullable=False, default="sales_rep")
+    status: Mapped[str] = mapped_column(String(20), nullable=False, default="pending")
+    is_email_verified: Mapped[bool] = mapped_column(Boolean, default=False)
+    last_login: Mapped[datetime] = mapped_column(DateTime(timezone=True), nullable=True)
+    invitation_token: Mapped[str] = mapped_column(String(255), nullable=True, index=True)
+    invitation_expires_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), nullable=True)
+    created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=lambda: datetime.now(timezone.utc))
+    updated_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), nullable=True, onupdate=lambda: datetime.now(timezone.utc))
+    oauth_provider: Mapped[str] = mapped_column(String(50), nullable=True)
+    oauth_provider_id: Mapped[str] = mapped_column(String(255), nullable=True)
+
+    # Relationships using string references (no imports needed)
+    tenant: Mapped["TenantModel"] = relationship(
         "TenantModel", 
-        foreign_keys=[tenant_id],  # User belongs to tenant
+        foreign_keys=[tenant_id],
         back_populates="users"
     )
-    
+
     # Tenants owned by this user (different relationship)
-    owned_tenants = relationship(
+    owned_tenants: Mapped[list["TenantModel"]] = relationship(
         "TenantModel",
-        primaryjoin="UserModel.id == foreign(TenantModel.owner_id)", 
+        primaryjoin="UserModel.id == foreign(TenantModel.owner_id)",
         back_populates="owner",
         post_update=True
     )
-    
-    # User's team membership
-    team = relationship(
+
+    team: Mapped["TeamModel"] = relationship(
         "TeamModel", 
         foreign_keys=[team_id], 
         back_populates="members"
     )
-    
+
     # Teams managed by this user
-    managed_teams = relationship(
+    managed_teams: Mapped[list["TeamModel"]] = relationship(
         "TeamModel",
-        primaryjoin="UserModel.id == foreign(TeamModel.manager_id)",  
+        primaryjoin="UserModel.id == foreign(TeamModel.manager_id)",
         back_populates="manager",
         post_update=True
     )
     
     # Invitations sent by this user
-    sent_invitations = relationship(
+    sent_invitations: Mapped[list["InvitationModel"]] = relationship(
         "InvitationModel",
         foreign_keys="InvitationModel.invited_by_id",
         back_populates="invited_by"
