@@ -3,7 +3,7 @@ import { ThemeToggle } from "@/components/ui/theme-toggle"
 
 export default function LoginPage() {
   return (
-    <div className="min-h-screen flex items-center justify-center bg-background py-12 px-4 sm:px-6 lg:px-8 relative">
+    <div className="min-h-screen flex items-center justify-center py-12 px-4 sm:px-6 lg:px-8 relative w-full">
       {/* Background decoration */}
       <div className="absolute inset-0 overflow-hidden pointer-events-none">
         <div className="absolute top-1/4 left-1/4 w-96 h-96 bg-blue-200 dark:bg-blue-800/20 rounded-full mix-blend-multiply dark:mix-blend-soft-light filter blur-xl opacity-20 animate-pulse"></div>
@@ -13,7 +13,7 @@ export default function LoginPage() {
       <div className="absolute top-4 right-4 z-50">
         <ThemeToggle />
       </div>
-
+      
       <div className="max-w-md w-full space-y-8 relative z-10">
         <div className="text-center">
           <div className="flex items-center justify-center mb-6">

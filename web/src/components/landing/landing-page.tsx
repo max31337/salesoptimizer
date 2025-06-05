@@ -880,7 +880,7 @@ export function LandingPage() {
               </Button>
             </Link>
             
-            <Button variant="outline" size="lg" className="border-white text-white hover:bg-white hover:text-blue-600 px-8 py-3 text-lg font-semibold transition-all duration-200">
+            <Button variant="outline" size="lg" className="border-white  text-blue-600 hover:bg-white hover:text-blue-600 px-8 py-3 text-lg font-semibold transition-all duration-200">
               Contact Sales
             </Button>
           </div>
