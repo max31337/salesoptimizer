@@ -16,7 +16,7 @@ interface User {
 interface AuthContextType {
   user: User | null
   isLoading: boolean
-  login: (credentials: { email: string; password: string }) => Promise<{ user: User; access_token: string }>
+  login: (credentials: { emailOrUsername: string; password: string }) => Promise<{ user: User; access_token: string }>
   logout: () => Promise<void>
   isAuthenticated: boolean
   getToken: () => string | null
@@ -58,7 +58,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     setIsLoading(false)
   }, [])
 
-  const login = async (credentials: { email: string; password: string }) => {
+  const login = async (credentials: { emailOrUsername: string; password: string }) => {
     setIsLoading(true)
     try {
       const response = await fetch(`${process.env.NEXT_PUBLIC_API_URL}/api/v1/auth/login`, {
@@ -67,7 +67,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
           'Content-Type': 'application/x-www-form-urlencoded',
         },
         body: new URLSearchParams({
-          username: credentials.email,
+          username: credentials.emailOrUsername, // Backend expects 'username' field
           password: credentials.password,
         }),
       })
@@ -94,7 +94,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       localStorage.setItem('user_data', JSON.stringify(user))
       
       setUser(user)
-      
+
       return {
         user,
         access_token: data.access_token
@@ -131,7 +131,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       localStorage.removeItem('access_token')
       localStorage.removeItem('refresh_token')
       localStorage.removeItem('user_data')
-      
+
       // Clear user state
       setUser(null)
       

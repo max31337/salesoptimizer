@@ -12,7 +12,7 @@ export interface User {
 }
 
 export interface LoginRequest {
-  email: string
+  emailOrUsername: string
   password: string
 }
 

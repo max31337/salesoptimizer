@@ -10,7 +10,7 @@ import { Alert, AlertDescription } from "@/components/ui/alert"
 import { useAuth } from "@/features/auth/hooks/useAuth"
 
 export function LoginForm() {
-  const [email, setEmail] = useState("")
+  const [emailOrUsername, setEmailOrUsername] = useState("")
   const [password, setPassword] = useState("")
   const [isLoading, setIsLoading] = useState(false)
   const [error, setError] = useState("")
@@ -23,7 +23,7 @@ export function LoginForm() {
     setError("")
 
     try {
-      const result = await login({ email, password })
+      const result = await login({ emailOrUsername, password })
       
       // Redirect based on user role
       if (result.user.role === "super_admin") {
@@ -58,15 +58,15 @@ export function LoginForm() {
           )}
           
           <div className="space-y-2">
-            <Label htmlFor="email" className="text-sm font-medium text-card-foreground">
-              Email
+            <Label htmlFor="emailOrUsername" className="text-sm font-medium text-card-foreground">
+              Email or Username
             </Label>
             <Input
-              id="email"
-              type="email"
-              placeholder="Enter your email"
-              value={email}
-              onChange={(e) => setEmail(e.target.value)}
+              id="emailOrUsername"
+              type="text"
+              placeholder="Enter your email or username"
+              value={emailOrUsername}
+              onChange={(e) => setEmailOrUsername(e.target.value)}
               required
               disabled={isLoading}
               className="bg-background border-border text-foreground placeholder:text-muted-foreground focus:border-primary focus:ring-primary"
