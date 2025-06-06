@@ -99,15 +99,6 @@ export class TokenRevocationService {
   }
 
   /**
-   * Revoke a specific token
-   */
-  async revokeSpecificToken(token: string): Promise<RevocationResponse> {
-    return await apiClient.post<RevocationResponse>('/auth/revoke-token', {
-      token
-    })
-  }
-
-  /**
    * Revoke a specific session by ID
    */
   async revokeSessionById(sessionId: string): Promise<RevocationResponse> {

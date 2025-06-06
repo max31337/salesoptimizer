@@ -247,11 +247,6 @@ async def get_user_refresh_tokens(
         )
 
 
-class RevokeTokenRequest(BaseModel):
-    """Request to revoke a specific token."""
-    token: str
-
-
 class RevokeSessionRequest(BaseModel):
     """Request to revoke a specific session by ID."""
     session_id: str
@@ -285,40 +280,4 @@ async def revoke_session_by_id(
         raise HTTPException(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
             detail=f"Session revocation failed: {str(e)}"
-        )
-
-
-@router.post("/revoke-token")
-async def revoke_specific_token(
-    request: RevokeTokenRequest,
-    response: Response,
-    app_service: Annotated[ApplicationService, Depends(get_application_service)],
-    current_user: User = Depends(get_current_user_from_cookie)
-) -> Dict[str, Any]:
-    """Revoke a specific token."""
-    try:
-        success = await app_service.token_revocation_use_cases.revoke_specific_token(
-            request.token,
-            current_user
-        )
-        
-        if not success:
-            raise HTTPException(
-                status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-                detail="Failed to revoke token"
-            )
-        
-        # Clear cookies
-        response.delete_cookie(key="access_token")
-        response.delete_cookie(key="refresh_token")
-        
-        return {
-            "message": "Token revoked successfully",
-            "success": True
-        }
-        
-    except Exception as e:
-        raise HTTPException(
-            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-            detail=f"Token revocation failed: {str(e)}"
         )

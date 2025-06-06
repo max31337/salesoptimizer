@@ -165,13 +165,13 @@ export function SecuritySettings() {
       setActionLoading(null)
     }
   }
-  const handleRevokeSession = async (token: string) => {
+  const handleRevokeSession = async (sessionId: string) => {
     try {
-      setActionLoading(token)
+      setActionLoading(sessionId)
       setError("")
       setSuccess("")
       
-      await tokenRevocationService.revokeSpecificToken(token)
+      await tokenRevocationService.revokeSessionById(sessionId)
       setSuccess('Session revoked successfully')
       
       // Reload active sessions to update the list
