@@ -874,13 +874,13 @@ export function LandingPage() {
           
           <div className="flex flex-col sm:flex-row gap-4 justify-center items-center">
             <Link href="/login">
-              <Button size="lg" variant="secondary" className="bg-white text-blue-600 hover:bg-gray-100 px-8 py-3 text-lg font-semibold shadow-lg hover:shadow-xl transition-all duration-200">
+              <Button size="lg" variant="secondary" className="bg-white text-blue-600 hover:bg-gray-300 px-8 py-3 text-lg font-semibold shadow-lg hover:shadow-xl transition-all duration-200">
                 Start Free Trial
                 <ArrowRight className="ml-2 h-5 w-5" />
               </Button>
             </Link>
             
-            <Button variant="outline" size="lg" className="border-white  text-blue-600 hover:bg-white hover:text-blue-600 px-8 py-3 text-lg font-semibold transition-all duration-200">
+            <Button variant="outline" size="lg" className="bg-white border-white text-blue-600 hover:bg-gray-300 hover:text-blue-600 px-8 py-3 text-lg font-semibold transition-all duration-200">
               Contact Sales
             </Button>
           </div>
