@@ -128,6 +128,7 @@ async def get_active_sessions(
 @router.post("/revoke-token")
 async def revoke_specific_token(
     token: str,
+    response: Response,
     app_service: Annotated[ApplicationService, Depends(get_application_service)],
     current_user: User = Depends(get_current_user_from_cookie)
 ) -> Dict[str, Any]:
@@ -143,6 +144,10 @@ async def revoke_specific_token(
                 status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
                 detail="Failed to revoke token"
             )
+        
+        # Clear cookies
+        response.delete_cookie(key="access_token")
+        response.delete_cookie(key="refresh_token")
         
         return {
             "message": "Token revoked successfully",
