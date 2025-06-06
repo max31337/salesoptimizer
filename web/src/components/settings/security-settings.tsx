@@ -126,6 +126,8 @@ export function SecuritySettings() {
   }
 
   const getDeviceIcon = (userAgent: string) => {
+    if (!userAgent) return <Monitor className="h-4 w-4" />
+    
     if (userAgent.toLowerCase().includes('mobile') || userAgent.toLowerCase().includes('android') || userAgent.toLowerCase().includes('iphone')) {
       return <Smartphone className="h-4 w-4" />
     }
@@ -138,6 +140,8 @@ export function SecuritySettings() {
 
   const formatUserAgent = (userAgent: string) => {
     // Extract browser and OS info from user agent
+    if (!userAgent) return 'Unknown Browser'
+    
     if (userAgent.includes('Chrome')) {
       if (userAgent.includes('Windows')) return 'Chrome on Windows'
       if (userAgent.includes('Mac')) return 'Chrome on macOS'
