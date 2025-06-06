@@ -78,10 +78,14 @@ class TokenRevocationUseCases:
     async def get_user_active_sessions(self, user: User) -> List[Dict[str, Any]]:
         """Get active sessions for a user."""
         try:
-            user_id = user.id.value if user.id else "unknown"
-            logger.info(f"Getting active sessions for user {user_id}")
-            # TODO: Implement actual session retrieval logic
-            return []
+            if not user.id:
+                raise ValueError("User ID is required")
+            
+            user_id = str(user.id.value)
+            sessions = await self._auth_service.get_user_active_sessions(user_id)
+            logger.info(f"Retrieved {len(sessions)} active sessions for user {user_id}")
+            return sessions
+            
         except Exception as e:
             user_id = user.id.value if user.id else "unknown"
             logger.error(f"Failed to get active sessions for user {user_id}: {e}")
@@ -97,3 +101,24 @@ class TokenRevocationUseCases:
         except Exception as e:
             logger.error(f"Failed to cleanup expired tokens: {e}")
             return 0
+    
+    async def revoke_session_by_id(self, session_id: str, user: User) -> bool:
+        """Revoke a specific session by ID."""
+        try:
+            if not user.id:
+                raise ValueError("User ID is required")
+            
+            success = await self._auth_service.revoke_session_by_id(
+                session_id,
+                str(user.id.value)
+            )
+            
+            if success:
+                logger.info(f"Session {session_id} revoked for user {user.id.value}")
+            
+            return success
+            
+        except Exception as e:
+            user_id = user.id.value if user.id else "unknown"
+            logger.error(f"Failed to revoke session {session_id} for user {user_id}: {e}")
+            return False

@@ -64,6 +64,21 @@ class RefreshTokenRepositoryImpl:
         )
         return result.rowcount > 0
     
+    async def revoke_refresh_token_by_id(self, token_id: str) -> bool:
+        """Revoke specific refresh token by database ID."""
+        try:
+            result = await self._session.execute(
+                update(RefreshTokenModel)
+                .where(RefreshTokenModel.id == uuid.UUID(token_id))
+                .values(
+                    is_revoked=True,
+                    revoked_at=datetime.now(timezone.utc)
+                )
+            )
+            return result.rowcount > 0
+        except Exception:
+            return False
+
     async def revoke_all_user_refresh_tokens(self, user_id: uuid.UUID) -> int:
         """Revoke all refresh tokens for a user."""
         result = await self._session.execute(

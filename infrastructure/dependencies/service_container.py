@@ -2,6 +2,7 @@ import os
 from functools import lru_cache
 from sqlalchemy.ext.asyncio import AsyncSession
 from fastapi import Depends
+import redis
 
 from infrastructure.config.settings import settings
 from infrastructure.db.database import get_async_session
@@ -14,6 +15,7 @@ from infrastructure.services.password_service import PasswordService
 from infrastructure.services.jwt_service import JWTService
 from infrastructure.services.oauth_service import OAuthService
 from infrastructure.config.oauth_config import OAuthConfig
+from infrastructure.config.redis_config import redis_config
 
 # Domain services
 from domain.organization.services.auth_service import AuthService
@@ -64,6 +66,10 @@ def get_email_service() -> EmailService:
         base_url=settings.FRONTEND_URL
     )
 
+@lru_cache()
+def get_redis_client() -> redis.Redis:
+    """Get Redis client."""
+    return redis_config.get_redis_client()
 
 async def get_application_service(
     session: AsyncSession = Depends(get_async_session)

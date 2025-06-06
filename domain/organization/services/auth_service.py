@@ -1,5 +1,6 @@
-from typing import Tuple, Optional, Dict, Any, TYPE_CHECKING
+from typing import Tuple, Optional, Dict, Any, List, TYPE_CHECKING
 from uuid import uuid4, UUID
+import logging
 
 from domain.organization.entities.user import User
 from domain.organization.value_objects.email import Email
@@ -34,6 +35,7 @@ class AuthService:
         self._user_repository = user_repository
         self._password_service = password_service
         self._jwt_service = jwt_service
+        self._logger = logging.getLogger(__name__)
 
     async def authenticate_user(self, email_or_username: str, password: str) -> User:
         """Authenticate a user with email/username and password."""
@@ -190,25 +192,129 @@ class AuthService:
 
     async def revoke_token(self, token: str) -> bool:
         """Revoke a specific token."""
-        # For now, return True as token revocation logic needs to be implemented
-        # This would typically involve adding the token to a blacklist
-        return True
+        try:
+            # Verify and extract payload
+            payload = self._jwt_service.verify_token_sync(token)
+            if not payload:
+                return False
+            
+            token_type = payload.get("type")
+            jti = payload.get("jti")
+            
+            if not jti:
+                return False
+            
+            if token_type == "access":
+                # Add access token to blacklist
+                if self._jwt_service.token_blacklist_service:
+                    from datetime import datetime, timezone
+                    await self._jwt_service.token_blacklist_service.revoke_token(
+                        jti,
+                        datetime.now(timezone.utc)
+                    )
+                    return True
+            elif token_type == "refresh":
+                # Revoke refresh token in database
+                if self._jwt_service.refresh_token_repository:
+                    return await self._jwt_service.refresh_token_repository.revoke_refresh_token_by_jti(
+                        jti
+                    )
+            
+            return False
+            
+        except Exception as e:
+            self._logger.error(f"Failed to revoke token: {e}")
+            return False
 
-    async def revoke_all_user_tokens(self, user_id: str) -> bool:
-        """Revoke all tokens for a user (logout from all devices)."""
-        # For now, return True as token revocation logic needs to be implemented
-        # This would typically involve blacklisting all tokens for the user
-        return True
+    async def get_user_active_sessions(self, user_id: str) -> List[Dict[str, Any]]:
+        """Get active sessions for a user."""
+        try:
+            from uuid import UUID
+            user_uuid = UUID(user_id)
+            if self._jwt_service.refresh_token_repository:
+                return await self._jwt_service.refresh_token_repository.get_user_active_sessions(
+                    user_uuid
+                )
+            
+            return []
+            
+        except Exception as e:
+            self._logger.error(f"Failed to get active sessions: {e}")
+            return []
 
-    async def logout_from_current_device(self, access_token: str, refresh_token: str) -> bool:
-        """Logout from current device by revoking both tokens."""
-        # For now, return True as token revocation logic needs to be implemented
-        return True
+    async def logout_from_current_device(
+        self, 
+        access_token: str, 
+        refresh_token: str
+    ) -> bool:
+        """Logout from current device by revoking the specific tokens."""
+        try:
+            # Extract JTI from access token
+            access_payload = self._jwt_service.verify_token_sync(access_token)
+            if access_payload and access_payload.get("jti"):
+                access_jti = access_payload["jti"]
+                # Add access token to blacklist
+                if self._jwt_service.token_blacklist_service:
+                    from datetime import datetime, timezone
+                    await self._jwt_service.token_blacklist_service.revoke_token(
+                        access_jti,
+                        datetime.now(timezone.utc)
+                    )
+            
+            # Extract JTI from refresh token and revoke it
+            refresh_payload = self._jwt_service.verify_token_sync(refresh_token)
+            if refresh_payload and refresh_payload.get("jti"):
+                refresh_jti = refresh_payload["jti"]
+                # Revoke refresh token in database
+                if self._jwt_service.refresh_token_repository:
+                    await self._jwt_service.refresh_token_repository.revoke_refresh_token_by_jti(
+                        refresh_jti
+                    )
+            
+            return True
+            
+        except Exception as e:
+            self._logger.error(f"Failed to logout from current device: {e}")
+            return False
 
     async def logout_from_all_devices(self, user_id: str) -> bool:
-        """Logout from all devices by revoking all refresh tokens."""
-        # For now, return True as token revocation logic needs to be implemented
-        return True
+        """Logout from all devices by revoking all user tokens."""
+        try:
+            user_uuid = UUID(user_id)
+            
+            # Revoke all refresh tokens for the user
+            if self._jwt_service.refresh_token_repository:
+                count = await self._jwt_service.refresh_token_repository.revoke_all_user_refresh_tokens(
+                    user_uuid
+                )
+                return count > 0
+            
+            return False
+                
+        except Exception as e:
+            self._logger.error(f"Failed to logout from all devices: {e}")
+            return False
+    async def revoke_session_by_id(self, session_id: str, user_id: str) -> bool:
+        """Revoke a specific session by session ID."""
+        try:
+            if not self._jwt_service.refresh_token_repository:
+                self._logger.error("Refresh token repository not available")
+                return False
+                
+            # Revoke the refresh token by its database ID (session_id is the database ID)
+            success = await self._jwt_service.refresh_token_repository.revoke_refresh_token_by_id(
+                session_id
+            )
+            
+            if success:
+                self._logger.info(f"Successfully revoked session {session_id} for user {user_id}")
+            else:
+                self._logger.warning(f"Session {session_id} not found or already revoked for user {user_id}")
+            
+            return success
+        except Exception as e:
+            self._logger.error(f"Failed to revoke session {session_id} for user {user_id}: {e}")
+            return False
 
     def _create_oauth_user(
         self, 

@@ -1,4 +1,4 @@
-from typing import Annotated, Dict, Any
+from typing import Annotated, Dict, Any, List
 from fastapi import APIRouter, Depends, HTTPException, status, Request, Response
 from pydantic import BaseModel
 
@@ -113,9 +113,23 @@ async def get_active_sessions(
     try:
         sessions = await app_service.token_revocation_use_cases.get_user_active_sessions(current_user)
         
+        # Format sessions for frontend consumption
+        formatted_sessions: List[Dict[str, Any]] = []
+        for session in sessions:
+            formatted_sessions.append({
+                "id": session["id"],
+                "device_info": session.get("device_info", "Unknown Device"),
+                "ip_address": session.get("ip_address", "Unknown IP"),
+                "user_agent": session.get("user_agent", "Unknown Browser"),
+                "created_at": session["created_at"].isoformat() if session.get("created_at") else None,
+                "expires_at": session["expires_at"].isoformat() if session.get("expires_at") else None,
+                "last_used_at": session["created_at"].isoformat() if session.get("created_at") else None,  # Use created_at as last_used_at for now
+                "is_current": False  # TODO: Determine if this is the current session
+            })
+        
         return {
-            "sessions": sessions,
-            "total_count": len(sessions)
+            "sessions": formatted_sessions,
+            "total_count": len(formatted_sessions)
         }
         
     except Exception as e:
@@ -125,9 +139,85 @@ async def get_active_sessions(
         )
 
 
+@router.get("/refresh-tokens")
+async def get_user_refresh_tokens(
+    app_service: Annotated[ApplicationService, Depends(get_application_service)],
+    current_user: User = Depends(get_current_user_from_cookie)
+) -> Dict[str, Any]:
+    """Get user's refresh tokens from database for session management display."""
+    try:
+        sessions = await app_service.token_revocation_use_cases.get_user_active_sessions(current_user)
+        
+        # Format the response for frontend consumption
+        formatted_sessions: List[Dict[str, Any]] = []
+        for session in sessions:
+            formatted_sessions.append({
+                "id": session["id"],
+                "device_info": session.get("device_info", "Unknown Device"),
+                "ip_address": session.get("ip_address", "Unknown IP"),
+                "user_agent": session.get("user_agent", "Unknown Browser"),
+                "created_at": session["created_at"].isoformat() if session.get("created_at") else None,
+                "expires_at": session["expires_at"].isoformat() if session.get("expires_at") else None,
+                "is_current": False  # TODO: Determine if this is the current session
+            })
+        
+        return {
+            "refresh_tokens": formatted_sessions,
+            "total_count": len(formatted_sessions)
+        }
+        
+    except Exception as e:
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail=f"Failed to get refresh tokens: {str(e)}"
+        )
+
+
+class RevokeSessionRequest(BaseModel):
+    """Request to revoke a specific session."""
+    session_id: str
+
+
+@router.post("/revoke-session")
+async def revoke_session(
+    request: RevokeSessionRequest,
+    response: Response,
+    app_service: Annotated[ApplicationService, Depends(get_application_service)],
+    current_user: User = Depends(get_current_user_from_cookie)
+) -> Dict[str, Any]:
+    """Revoke a specific session by session ID."""
+    try:
+        success = await app_service.token_revocation_use_cases.revoke_session_by_id(
+            request.session_id,
+            current_user
+        )
+        
+        if not success:
+            raise HTTPException(
+                status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+                detail="Failed to revoke session"
+            )
+        
+        return {
+            "message": "Session revoked successfully",
+            "success": True
+        }
+        
+    except Exception as e:
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail=f"Session revocation failed: {str(e)}"
+        )
+
+
+class RevokeTokenRequest(BaseModel):
+    """Request to revoke a specific token."""
+    token: str
+
+
 @router.post("/revoke-token")
 async def revoke_specific_token(
-    token: str,
+    request: RevokeTokenRequest,
     response: Response,
     app_service: Annotated[ApplicationService, Depends(get_application_service)],
     current_user: User = Depends(get_current_user_from_cookie)
@@ -135,7 +225,7 @@ async def revoke_specific_token(
     """Revoke a specific token."""
     try:
         success = await app_service.token_revocation_use_cases.revoke_specific_token(
-            token,
+            request.token,
             current_user
         )
         
