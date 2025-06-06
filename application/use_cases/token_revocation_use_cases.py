@@ -1,4 +1,4 @@
-from typing import List, Dict, Any
+from typing import Dict, Any
 from domain.organization.entities.user import User
 from domain.organization.services.auth_service import AuthService
 from domain.shared.services.token_blacklist_service import TokenBlacklistService
@@ -75,21 +75,59 @@ class TokenRevocationUseCases:
             logger.error(f"Failed to revoke token for user {user_id}: {e}")
             return False
     
-    async def get_user_active_sessions(self, user: User) -> List[Dict[str, Any]]:
-        """Get active sessions for a user."""
+    async def get_user_active_sessions(
+        self, 
+        user: User, 
+        page: int = 1, 
+        page_size: int = 10
+    ) -> Dict[str, Any]:
+        """Get active sessions for a user with pagination."""
         try:
             if not user.id:
                 raise ValueError("User ID is required")
             
             user_id = str(user.id.value)
-            sessions = await self._auth_service.get_user_active_sessions(user_id)
-            logger.info(f"Retrieved {len(sessions)} active sessions for user {user_id}")
-            return sessions
+            result = await self._auth_service.get_user_active_sessions(user_id, page, page_size)
+            logger.info(f"Retrieved {len(result.get('sessions', []))} active sessions for user {user_id} (page {page})")
+            return result
             
         except Exception as e:
             user_id = user.id.value if user.id else "unknown"
             logger.error(f"Failed to get active sessions for user {user_id}: {e}")
-            return []
+            return {
+                "sessions": [],
+                "total_count": 0,
+                "page": page,
+                "page_size": page_size,
+                "total_pages": 0
+            }
+
+    async def get_user_revoked_sessions(
+        self, 
+        user: User, 
+        page: int = 1, 
+        page_size: int = 10
+    ) -> Dict[str, Any]:
+        """Get revoked sessions for a user with pagination."""
+        try:
+            if not user.id:
+                raise ValueError("User ID is required")
+            
+            user_id = str(user.id.value)
+            result = await self._auth_service.get_user_revoked_sessions(user_id, page, page_size)
+            logger.info(f"Retrieved {len(result.get('sessions', []))} revoked sessions for user {user_id} (page {page})")
+            return result
+            
+        except Exception as e:
+            user_id = user.id.value if user.id else "unknown"
+            logger.error(f"Failed to get revoked sessions for user {user_id}: {e}")
+            return {
+                "sessions": [],
+                "total_count": 0,
+                "page": page,
+                "page_size": page_size,
+                "total_pages": 0
+            }
     
     async def cleanup_expired_tokens(self) -> int:
         """Clean up expired tokens from blacklist."""

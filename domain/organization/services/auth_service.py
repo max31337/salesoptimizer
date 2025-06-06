@@ -1,4 +1,4 @@
-from typing import Tuple, Optional, Dict, Any, List, TYPE_CHECKING
+from typing import Tuple, Optional, Dict, Any, TYPE_CHECKING
 from uuid import uuid4, UUID
 import logging
 
@@ -216,31 +216,83 @@ class AuthService:
             elif token_type == "refresh":
                 # Revoke refresh token in database
                 if self._jwt_service.refresh_token_repository:
-                    return await self._jwt_service.refresh_token_repository.revoke_refresh_token_by_jti(
-                        jti
-                    )
-            
-            return False
-            
+                        return await self._jwt_service.refresh_token_repository.revoke_refresh_token_by_jti(
+                            jti
+                        )
+                
+                return False
+                    
         except Exception as e:
             self._logger.error(f"Failed to revoke token: {e}")
-            return False
-
-    async def get_user_active_sessions(self, user_id: str) -> List[Dict[str, Any]]:
-        """Get active sessions for a user."""
+        return False
+    
+    async def get_user_active_sessions(
+        self, 
+        user_id: str, 
+        page: int = 1, 
+        page_size: int = 10
+    ) -> Dict[str, Any]:
+        """Get active sessions for a user with pagination."""
         try:
             from uuid import UUID
             user_uuid = UUID(user_id)
             if self._jwt_service.refresh_token_repository:
-                return await self._jwt_service.refresh_token_repository.get_user_active_sessions(
-                    user_uuid
+                result = await self._jwt_service.refresh_token_repository.get_user_active_sessions(
+                    user_uuid, page, page_size
                 )
+                return result
             
-            return []
+            return {
+                "sessions": [],
+                "total_count": 0,
+                "page": page,
+                "page_size": page_size,
+                "total_pages": 0
+            }
             
         except Exception as e:
             self._logger.error(f"Failed to get active sessions: {e}")
-            return []
+            return {
+                "sessions": [],
+                "total_count": 0,
+                "page": page,
+                "page_size": page_size,
+                "total_pages": 0
+            }
+
+    async def get_user_revoked_sessions(
+        self, 
+        user_id: str, 
+        page: int = 1, 
+        page_size: int = 10
+    ) -> Dict[str, Any]:
+        """Get revoked sessions for a user with pagination."""
+        try:
+            from uuid import UUID
+            user_uuid = UUID(user_id)
+            if self._jwt_service.refresh_token_repository:
+                result = await self._jwt_service.refresh_token_repository.get_user_revoked_sessions(
+                    user_uuid, page, page_size
+                )
+                return result
+            
+            return {
+                "sessions": [],
+                "total_count": 0,
+                "page": page,
+                "page_size": page_size,
+                "total_pages": 0
+            }
+            
+        except Exception as e:
+            self._logger.error(f"Failed to get revoked sessions: {e}")
+            return {
+                "sessions": [],
+                "total_count": 0,
+                "page": page,
+                "page_size": page_size,
+                "total_pages": 0
+            }
 
     async def logout_from_current_device(
         self, 
