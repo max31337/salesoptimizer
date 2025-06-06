@@ -24,9 +24,10 @@ try:
     from infrastructure.db.models.tenant_model import TenantModel
     from infrastructure.db.models.team_model import TeamModel
     from infrastructure.db.models.invitation_model import InvitationModel
+    from infrastructure.db.models.refresh_token_model import RefreshTokenModel
 
     # Reference models to avoid "import not accessed" warning
-    _models: list[type] = [UserModel, TenantModel, TeamModel, InvitationModel]
+    _models: list[type] = [UserModel, TenantModel, TeamModel, InvitationModel, RefreshTokenModel]
 
     print(f"✅ Successfully imported Base and models")
     print(f"📋 Registered tables: {list(Base.metadata.tables.keys())}")

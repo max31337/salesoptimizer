@@ -9,11 +9,16 @@ export default function HomePage() {
   const { isAuthenticated, user, isLoading } = useAuth()
   const router = useRouter()
   const [showLanding, setShowLanding] = useState(false)
+  const [hasCheckedAuth, setHasCheckedAuth] = useState(false)
 
   useEffect(() => {
-    if (!isLoading) {
+    // Only run redirect logic after auth has been checked
+    if (!isLoading && !hasCheckedAuth) {
+      setHasCheckedAuth(true)
+
       if (isAuthenticated && user) {
         // Redirect authenticated users based on role
+        console.log('Redirecting authenticated user:', user.role)
         if (user.role === 'super_admin') {
           router.push('/admin')
         } else {
@@ -21,11 +26,13 @@ export default function HomePage() {
         }
       } else {
         // Show landing page for unauthenticated users
+        console.log('Showing landing page for unauthenticated user')
         setShowLanding(true)
       }
     }
-  }, [isAuthenticated, user, isLoading, router])
+  }, [isAuthenticated, user, isLoading, router, hasCheckedAuth])
 
+  // Show loading only when actively checking auth
   if (isLoading) {
     return (
       <div className="min-h-screen flex items-center justify-center">
@@ -34,11 +41,24 @@ export default function HomePage() {
     )
   }
 
+  // Show landing page for unauthenticated users
   if (showLanding) {
     return <LandingPage />
   }
 
   // Show loading while redirecting authenticated users
+  if (isAuthenticated && user && hasCheckedAuth) {
+    return (
+      <div className="min-h-screen flex items-center justify-center">
+        <div className="text-center">
+          <div className="animate-spin rounded-full h-32 w-32 border-b-2 border-blue-500 mx-auto mb-4"></div>
+          <p className="text-muted-foreground">Redirecting...</p>
+        </div>
+      </div>
+    )
+  }
+
+  // Fallback loading state
   return (
     <div className="min-h-screen flex items-center justify-center">
       <div className="animate-spin rounded-full h-32 w-32 border-b-2 border-blue-500"></div>

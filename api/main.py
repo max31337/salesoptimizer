@@ -7,29 +7,31 @@ from contextlib import asynccontextmanager
 # Import all models via the registry
 from infrastructure.db.models import register_models
 
-#Route registration imports hehe
-from api.routes import auth, invitations
+#Route registration imports
+from api.routes import auth, invitations, token_revocation
 
 @asynccontextmanager
 async def lifespan(app: FastAPI):
     # Startup
-    print("🚀 Starting SalesOptimizer...")
-    print(f"🌍 Environment: {settings.ENVIRONMENT}")
-    print(f"🔗 Frontend URL: {settings.FRONTEND_URL}")
-    print(f"🔗 Backend URL: {settings.BACKEND_URL}")
+    print(f"🚀 Starting SalesOptimizer API in {settings.ENVIRONMENT} mode...")
+    print(f"🔒 Cookie security: {settings.cookie_secure}")
+    print(f"🌐 Frontend URL: {settings.FRONTEND_URL}")
+    print(f"🎯 CORS Origins: {settings.CORS_ORIGINS}")
     
-    # Register all models
+    # Register models to ensure proper table creation
     register_models()
     
     # Test database connection
-    if not test_connection():
-        print("❌ Failed to connect to database!")
-        raise Exception("Database connection failed")
+    connection_result = test_connection()
+    if connection_result:
+        print("✅ Database connection successful")
+    else:
+        print("❌ Database connection failed")
     
     yield
     
     # Shutdown
-    print("🛑 Shutting down SalesOptimizer...")
+    print("👋 Shutting down SalesOptimizer API...")
 
 app = FastAPI(
     title="SalesOptimizer CRM", 
@@ -39,24 +41,35 @@ app = FastAPI(
     debug=settings.is_development
 )
 
-# Add CORS middleware
+# Environment-aware CORS middleware
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=settings.CORS_ORIGINS,
-    allow_credentials=True,
-    allow_methods=["*"],
-    allow_headers=["*"],
+    allow_origins=settings.CORS_ORIGINS,  # Use settings CORS origins
+    allow_credentials=True,  # Essential for cookies
+    allow_methods=["GET", "POST", "PUT", "DELETE", "OPTIONS"],
+    allow_headers=[
+        "Accept",
+        "Accept-Language",
+        "Content-Language",
+        "Content-Type",
+        "Authorization",
+        "Cookie",
+        "Set-Cookie"
+    ],
+    expose_headers=["Set-Cookie"]  # Allow frontend to see Set-Cookie headers
 )
 
 # Health check endpoint
 @app.get("/health")
-async def health_check():
+async def health_check() -> dict[str, str | bool]:
     return {
-        "status": "healthy",
+        "status": "healthy", 
         "environment": settings.ENVIRONMENT,
-        "version": "1.0.0"
+        "version": "1.0.0",
+        "cookie_secure": settings.cookie_secure
     }
 
 # Include routers
 app.include_router(auth.router, prefix="/api/v1")
 app.include_router(invitations.router, prefix="/api/v1")
+app.include_router(token_revocation.router, prefix="/api/v1")

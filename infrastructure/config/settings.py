@@ -7,6 +7,8 @@ load_dotenv()
 
 class Settings:
     """Application settings."""
+
+    SECONDS_PER_DAY = 24 * 60 * 60
     
     # Environment
     ENVIRONMENT: str = os.getenv("ENVIRONMENT", "development")
@@ -68,11 +70,31 @@ class Settings:
     def is_production(self) -> bool:
         """Check if running in production environment."""
         return self.ENVIRONMENT.lower() == "production"
-    
+
     @property
     def is_development(self) -> bool:
         """Check if running in development environment."""
-        return self.ENVIRONMENT.lower() == "development"
+        return self.ENVIRONMENT.lower() in ["development", "dev", "local"]
+    
+    @property
+    def cookie_secure(self) -> bool:
+        """Get secure cookie setting based on environment."""
+        return self.is_production
+    
+    @property
+    def cookie_samesite(self) -> str:
+        """Get SameSite cookie setting based on environment."""
+        return "none" if self.is_production else "lax"
+    
+    @property
+    def cookie_domain(self) -> str:
+        """Get cookie domain based on environment."""
+        if self.is_production:
+            # Extract domain from frontend URL for production
+            from urllib.parse import urlparse
+            parsed = urlparse(self.FRONTEND_URL)
+            return parsed.hostname or "localhost"
+        return "localhost"  # Use localhost for development
     
     def get_database_url(self) -> str:
         """Get database URL with proper configuration."""

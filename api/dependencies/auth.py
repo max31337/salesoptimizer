@@ -16,7 +16,7 @@ async def get_current_user(
 ) -> User:
     """Extract current user from JWT token in Authorization header."""
     # Verify token using auth service
-    payload = app_service.auth_service.verify_token(credentials.credentials)
+    payload = await app_service.auth_service.verify_token(credentials.credentials)
     if not payload:
         raise HTTPException(
             status_code=status.HTTP_401_UNAUTHORIZED,
@@ -59,13 +59,13 @@ async def get_current_user_from_cookie(
         raise credentials_exception
     
     try:
-        # Verify and decode token through auth service
-        payload = app_service.auth_service.verify_token(token)
+        # Verify and decode token through auth service (includes revocation check)
+        payload = await app_service.auth_service.verify_token(token)  # Now async!
         if not payload:
             raise credentials_exception
         
-        # Extract user ID from payload directly (fix: don't validate token type yet)
-        user_id_str = payload.get("sub")  # JWT 'sub' claim contains user ID
+        # Extract user ID from payload
+        user_id_str = payload.get("sub")
         if not user_id_str:
             raise credentials_exception
             

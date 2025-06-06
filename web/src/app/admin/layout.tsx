@@ -2,7 +2,7 @@
 
 import { useAuth } from "@/features/auth/hooks/useAuth"
 import { useRouter } from "next/navigation"
-import { useEffect } from "react"
+import { useEffect, useState } from "react"
 
 export default function AdminLayout({
   children,
@@ -11,9 +11,12 @@ export default function AdminLayout({
 }) {
   const { user, isLoading, isAuthenticated } = useAuth()
   const router = useRouter()
+  const [hasCheckedAccess, setHasCheckedAccess] = useState(false)
 
   useEffect(() => {
-    if (!isLoading) {
+    if (!isLoading && !hasCheckedAccess) {
+      setHasCheckedAccess(true)
+      
       if (!isAuthenticated) {
         router.push('/login')
         return
@@ -24,7 +27,7 @@ export default function AdminLayout({
         return
       }
     }
-  }, [user, isLoading, isAuthenticated, router])
+  }, [user, isLoading, isAuthenticated, router, hasCheckedAccess])
 
   if (isLoading) {
     return (
@@ -35,7 +38,14 @@ export default function AdminLayout({
   }
 
   if (!isAuthenticated || user?.role !== 'super_admin') {
-    return null // Will redirect in useEffect
+    return (
+      <div className="min-h-screen flex items-center justify-center">
+        <div className="text-center">
+          <div className="animate-spin rounded-full h-32 w-32 border-b-2 border-blue-500 mx-auto mb-4"></div>
+          <p className="text-muted-foreground">Checking access...</p>
+        </div>
+      </div>
+    )
   }
 
   return <>{children}</>

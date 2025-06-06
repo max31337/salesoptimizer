@@ -1,228 +1,133 @@
 import jwt
-from datetime import datetime, timedelta, timezone
-from typing import Optional, Dict, Any
-from uuid import UUID
-import os
-from infrastructure.config.settings import settings
+from datetime import datetime, timezone, timedelta
+from typing import Dict, Any, Optional, Union
+import uuid
+import logging
+
+logger = logging.getLogger(__name__)
+
 
 class JWTService:
-    """Service for JWT token creation and verification with strict type hints."""
+    """JWT token service with revocation support."""
     
-    def __init__(self) -> None:
-        self.secret_key: str = os.getenv("JWT_SECRET_KEY", "")
-        if not self.secret_key:
-            raise ValueError("JWT_SECRET_KEY must be set")
-        if len(self.secret_key) < 32:
-            raise ValueError("JWT_SECRET_KEY must be at least 32 characters long")
-        
-        self.algorithm: str = settings.JWT_ALGORITHM
-        self.access_token_expire_minutes: int = settings.JWT_EXPIRE_MINUTES
-        self.refresh_token_expire_days: int = settings.REFRESH_TOKEN_EXPIRE_DAYS
-        self.invitation_token_expire_hours: int = settings.INVITATION_TOKEN_EXPIRE_HOURS
-
+    def __init__(
+        self,
+        secret_key: str,
+        algorithm: str = "HS256",
+        access_token_expire_minutes: int = 60,
+        refresh_token_expire_days: int = 7,
+        token_blacklist_service: Optional[Any] = None
+    ):
+        self.secret_key = secret_key
+        self.algorithm = algorithm
+        self.access_token_expire_minutes = access_token_expire_minutes
+        self.refresh_token_expire_days = refresh_token_expire_days
+        self.token_blacklist_service = token_blacklist_service
+    
     def create_access_token(
-        self, 
-        user_id: UUID, 
-        tenant_id: Optional[UUID], 
-        role: str, 
-        email: str
+        self,
+        user_id: str,
+        tenant_id: Optional[str] = None,
+        role: str = "user",
+        email: str = ""
     ) -> str:
-        """Create access token for authenticated user."""
-        expire: datetime = datetime.now(timezone.utc) + timedelta(minutes=self.access_token_expire_minutes)
+        """Create access token."""
+        now = datetime.now(timezone.utc)
+        expire = now + timedelta(minutes=self.access_token_expire_minutes)
         
-        payload: Dict[str, Any] = {
-            "sub": str(user_id),
-            "tenant_id": str(tenant_id) if tenant_id else None,
-            "role": role,
+        payload: Dict[str, Union[str, int, None]] = {
+            "sub": user_id,
             "email": email,
+            "role": role,
+            "tenant_id": tenant_id,
             "type": "access",
-            "exp": expire,
-            "iat": datetime.now(timezone.utc)
+            "iat": int(now.timestamp()),
+            "exp": int(expire.timestamp()),
+            "jti": str(uuid.uuid4())  # Unique token ID for revocation
         }
         
         return jwt.encode(payload, self.secret_key, algorithm=self.algorithm)
-
-    def create_refresh_token(self, user_id: UUID) -> str:
-        """Create refresh token for token renewal."""
-        expire: datetime = datetime.now(timezone.utc) + timedelta(days=self.refresh_token_expire_days)
+    
+    def create_refresh_token(self, user_id: str) -> str:
+        """Create refresh token (simple version for now)."""
+        now = datetime.now(timezone.utc)
+        expire = now + timedelta(days=self.refresh_token_expire_days)
         
-        payload: Dict[str, Any] = {
-            "sub": str(user_id),
+        payload: Dict[str, Union[str, int]] = {
+            "sub": user_id,
             "type": "refresh",
-            "exp": expire,
-            "iat": datetime.now(timezone.utc)
+            "iat": int(now.timestamp()),
+            "exp": int(expire.timestamp()),
+            "jti": str(uuid.uuid4())  # Unique token ID for revocation
         }
         
         return jwt.encode(payload, self.secret_key, algorithm=self.algorithm)
-
-    def create_invitation_token(
+    
+    # For now, create a simple async version that calls the sync version
+    async def create_refresh_token_with_storage(
         self, 
-        email: str, 
-        tenant_id: Optional[UUID], 
-        role: str,
-        expires_hours: Optional[int] = None
+        user_id: str,
+        device_info: Optional[str] = None,
+        ip_address: Optional[str] = None,
+        user_agent: Optional[str] = None
     ) -> str:
-        """Create invitation token for user registration."""
-        if expires_hours is None:
-            expires_hours = self.invitation_token_expire_hours
-            
-        expire: datetime = datetime.now(timezone.utc) + timedelta(hours=expires_hours)
-        
-        payload: Dict[str, Any] = {
-            "email": email,
-            "tenant_id": str(tenant_id) if tenant_id else None,
-            "role": role,
-            "type": "invitation",
-            "exp": expire,
-            "iat": datetime.now(timezone.utc)
-        }
-        
-        return jwt.encode(payload, self.secret_key, algorithm=self.algorithm)
-
-    def verify_token(self, token: str) -> Optional[Dict[str, Any]]:
-        """Verify and decode JWT token."""
-        if not token:
-            return None
-            
-        # Remove Bearer prefix if present
-        if token.startswith("Bearer "):
-            token = token[7:]
-        
+        """Create refresh token with storage (simplified for now)."""
+        # For now, just return the regular refresh token
+        # Later you can implement the database storage
+        return self.create_refresh_token(user_id)
+    
+    async def verify_token(self, token: str) -> Optional[Dict[str, Any]]:
+        """Verify token (async version)."""
         try:
-            payload: Dict[str, Any] = jwt.decode(
-                token, 
-                self.secret_key, 
-                algorithms=[self.algorithm]
-            )
+            # First decode the token
+            payload = jwt.decode(token, self.secret_key, algorithms=[self.algorithm])
+            
+            # Check if token is blacklisted (if service is available)
+            if self.token_blacklist_service:
+                if await self.token_blacklist_service.is_token_revoked(token):
+                    logger.warning("Token is revoked")
+                    return None
+            
             return payload
+            
         except jwt.ExpiredSignatureError:
+            logger.warning("Token has expired")
             return None
         except jwt.InvalidTokenError:
+            logger.warning("Invalid token")
             return None
-        except Exception:
+        except Exception as e:
+            logger.error(f"Token verification error: {e}")
             return None
-        
-
-    def decode_token(self, token: str) -> Dict[str, Any]:
-        """Decode a JWT token and return the payload."""
-        # Replace 'your-secret-key' and 'HS256' with your actual secret and algorithm
+    
+    def verify_token_sync(self, token: str) -> Optional[Dict[str, Any]]:
+        """Verify token (sync version for backward compatibility)."""
         try:
             payload = jwt.decode(token, self.secret_key, algorithms=[self.algorithm])
             return payload
-        except jwt.PyJWTError:
-            raise
-        except Exception:
-            raise
-
-    def decode_token_without_verification(self, token: str) -> Optional[Dict[str, Any]]:
-        """Decode token without verification (for debugging only)."""
-        if not token:
+        except jwt.ExpiredSignatureError:
+            logger.warning("Token has expired")
             return None
-            
-        # Remove Bearer prefix if present
-        if token.startswith("Bearer "):
-            token = token[7:]
-            
-        try:
-            payload: Dict[str, Any] = jwt.decode(
-                token, 
-                options={"verify_signature": False}
-            )
-            return payload
-        except Exception:
+        except jwt.InvalidTokenError:
+            logger.warning("Invalid token")
             return None
-
-    def get_token_expiry(self, token: str) -> Optional[datetime]:
-        """Get token expiry time."""
-        payload: Optional[Dict[str, Any]] = self.decode_token_without_verification(token)
-        if payload and "exp" in payload:
-            try:
-                return datetime.fromtimestamp(payload["exp"], tz=timezone.utc)
-            except (ValueError, TypeError, OSError):
-                return None
-        return None
-
-    def is_token_expired(self, token: str) -> bool:
-        """Check if token is expired."""
-        expiry: Optional[datetime] = self.get_token_expiry(token)
-        if expiry:
-            return datetime.now(timezone.utc) > expiry
-        return True
-
+        except Exception as e:
+            logger.error(f"Token verification error: {e}")
+            return None
+    
     def extract_user_id_from_token(self, token: str) -> Optional[str]:
-        """
-        Extract the user ID ('sub' claim) from the given JWT token.
-        Returns the user ID as a string, or None if extraction fails.
-        """
-        payload: Optional[Dict[str, Any]] = self.verify_token(token)
-        if payload and "sub" in payload:
-            sub_claim: Any = payload["sub"]
-            if isinstance(sub_claim, str):
-                return sub_claim
-            elif sub_claim is not None:
-                return str(sub_claim)
-        return None
-
-    def refresh_access_token(self, refresh_token: str) -> Optional[str]:
-        """Create new access token from refresh token."""
-        payload: Optional[Dict[str, Any]] = self.verify_token(refresh_token)
-        
-        if not payload or payload.get("type") != "refresh":
-            return None
-        
-        user_id_str: Optional[str] = payload.get("sub")
-        if not user_id_str:
-            return None
-        
+        """Extract user ID from token without verification."""
         try:
-            user_id: UUID = UUID(user_id_str)
-            # Note: In a real implementation, you'd fetch user data from database
-            # For now, we'll create a basic access token
-            return self.create_access_token(
-                user_id=user_id,
-                tenant_id=None,  # Would be fetched from database
-                role="sales_rep",  # Would be fetched from database
-                email=""  # Would be fetched from database
-            )
-        except ValueError:
+            # Decode without verification to get payload
+            payload = jwt.decode(token, options={"verify_signature": False})
+            return payload.get("sub")
+        except Exception:
             return None
-
+    
     def validate_token_type(self, token: str, expected_type: str) -> bool:
-        """Validate that token is of expected type."""
-        payload: Optional[Dict[str, Any]] = self.verify_token(token)
-        if not payload:
+        """Validate token type (access/refresh)."""
+        try:
+            payload = jwt.decode(token, options={"verify_signature": False})
+            return payload.get("type") == expected_type
+        except Exception:
             return False
-        return payload.get("type") == expected_type
-
-    def get_token_claims(self, token: str) -> Optional[Dict[str, Any]]:
-        """Get all claims from token if valid."""
-        return self.verify_token(token)
-
-    def extract_email_from_token(self, token: str) -> Optional[str]:
-        """Extract email from token if present."""
-        payload: Optional[Dict[str, Any]] = self.verify_token(token)
-        if payload and "email" in payload:
-            email_claim: Any = payload["email"]
-            if isinstance(email_claim, str):
-                return email_claim
-        return None
-
-    def extract_role_from_token(self, token: str) -> Optional[str]:
-        """Extract role from token if present."""
-        payload: Optional[Dict[str, Any]] = self.verify_token(token)
-        if payload and "role" in payload:
-            role_claim: Any = payload["role"]
-            if isinstance(role_claim, str):
-                return role_claim
-        return None
-
-    def extract_tenant_id_from_token(self, token: str) -> Optional[str]:
-        """Extract tenant ID from token if present."""
-        payload: Optional[Dict[str, Any]] = self.verify_token(token)
-        if payload and "tenant_id" in payload:
-            tenant_id_claim: Any = payload["tenant_id"]
-            if isinstance(tenant_id_claim, str):
-                return tenant_id_claim
-            elif tenant_id_claim is not None:
-                return str(tenant_id_claim)
-        return None

@@ -23,7 +23,12 @@ from domain.organization.services.tenant_service import TenantService
 from application.services.application_service import ApplicationService
 from application.use_cases.auth_use_cases import AuthUseCases
 from application.use_cases.invitation_use_cases import InvitationUseCases
+from application.use_cases.token_revocation_use_cases import TokenRevocationUseCases
 from domain.shared.services.email_service import EmailService
+from domain.shared.services.token_blacklist_service import InMemoryTokenBlacklistService
+
+# use for later 
+#from infrastructure.services.redis_token_blacklist_service import RedisTokenBlacklistService
 
 
 def create_oauth_config() -> OAuthConfig:
@@ -66,7 +71,12 @@ async def get_application_service(
     
     # Infrastructure services
     password_service = PasswordService()
-    jwt_service = JWTService()
+    jwt_service = JWTService(
+        secret_key=settings.JWT_SECRET_KEY,
+        algorithm=settings.JWT_ALGORITHM,
+        access_token_expire_minutes=settings.JWT_EXPIRE_MINUTES,
+        refresh_token_expire_days=settings.REFRESH_TOKEN_EXPIRE_DAYS
+    )
     oauth_config = create_oauth_config()
     oauth_service = OAuthService(config=oauth_config)
     
@@ -92,6 +102,24 @@ async def get_application_service(
         email_service=email_service
     )
     
+    # Token blacklist service (use Redis in production)
+    token_blacklist_service = InMemoryTokenBlacklistService()  # or RedisTokenBlacklistService()
+    
+    # Update JWT service with blacklist
+    jwt_service = JWTService(
+        secret_key=settings.JWT_SECRET_KEY,
+        algorithm=settings.JWT_ALGORITHM,
+        access_token_expire_minutes=settings.JWT_EXPIRE_MINUTES,
+        refresh_token_expire_days=settings.REFRESH_TOKEN_EXPIRE_DAYS,
+        token_blacklist_service=token_blacklist_service
+    )
+    
+    # Token revocation use cases
+    token_revocation_use_cases = TokenRevocationUseCases(
+        auth_service,
+        token_blacklist_service
+    )
+    
     # Application use cases
     auth_use_cases = AuthUseCases(auth_service, oauth_service)
     invitation_use_cases = InvitationUseCases(invitation_service, auth_service)
@@ -103,5 +131,6 @@ async def get_application_service(
         tenant_service=tenant_service,
         auth_use_cases=auth_use_cases,
         invitation_use_cases=invitation_use_cases,
-        oauth_config=oauth_config
+        oauth_config=oauth_config,
+        token_revocation_use_cases=token_revocation_use_cases
     )

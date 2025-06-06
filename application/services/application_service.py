@@ -1,10 +1,10 @@
-
 from infrastructure.config.oauth_config import OAuthConfig
 from domain.organization.services.auth_service import AuthService
 from domain.organization.services.invitation_service import InvitationService
 from domain.organization.services.tenant_service import TenantService
 from application.use_cases.auth_use_cases import AuthUseCases
 from application.use_cases.invitation_use_cases import InvitationUseCases
+from application.use_cases.token_revocation_use_cases import TokenRevocationUseCases
 
 class ApplicationService:
     """Application service container - Pure application layer."""
@@ -18,6 +18,7 @@ class ApplicationService:
         # Use cases
         auth_use_cases: AuthUseCases,
         invitation_use_cases: InvitationUseCases,
+        token_revocation_use_cases: TokenRevocationUseCases,
         # Configuration
         oauth_config: OAuthConfig
     ):
@@ -29,6 +30,7 @@ class ApplicationService:
         # Use cases
         self._auth_use_cases = auth_use_cases
         self._invitation_use_cases = invitation_use_cases
+        self.token_revocation_use_cases = token_revocation_use_cases
         
         # Configuration
         self._oauth_config = oauth_config

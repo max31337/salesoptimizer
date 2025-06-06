@@ -21,6 +21,8 @@ interface AuthContextType {
   logout: () => Promise<void>
   isAuthenticated: boolean
   checkAuth: () => Promise<void>
+  showSessionExpiredModal: boolean
+  dismissSessionExpiredModal: () => void
 }
 
 const AuthContext = createContext<AuthContextType | undefined>(undefined)
@@ -35,11 +37,30 @@ export function useAuth() {
 
 export function AuthProvider({ children }: { children: ReactNode }) {
   const [user, setUser] = useState<User | null>(null)
-  const [isLoading, setIsLoading] = useState(true)
+  const [isLoading, setIsLoading] = useState(false) // Start as false, only load when needed
+  const [hasInitialized, setHasInitialized] = useState(false)
+  const [showSessionExpiredModal, setShowSessionExpiredModal] = useState(false)
   const router = useRouter()
 
-  // Check authentication status on mount
+  // Check if we have any indication of being logged in
+  const hasAuthIndicators = () => {
+    if (typeof window === 'undefined') return false
+    
+    // Check for cookies or localStorage indicators
+    return document.cookie.includes('access_token') || 
+           localStorage.getItem('salesoptimizer_was_logged_in') === 'true'
+  }
+
+  // Check authentication status only when we think user might be logged in
   const checkAuth = async () => {
+    // Don't check if we have no indicators of being logged in
+    if (!hasAuthIndicators()) {
+      setUser(null)
+      setHasInitialized(true)
+      return
+    }
+
+    setIsLoading(true)
     try {
       const userData = await apiClient.get<{
         user_id: string
@@ -60,21 +81,30 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       }
       
       setUser(user)
+      // Mark that user was logged in
+      localStorage.setItem('salesoptimizer_was_logged_in', 'true')
     } catch (error) {
-      // User not authenticated or token expired
+      console.log('Auth check failed - user not authenticated')
       setUser(null)
+      
+      // If we had indicators but auth failed, show session expired modal
+      if (hasAuthIndicators()) {
+        setShowSessionExpiredModal(true)
+        // Clear the login indicator
+        localStorage.removeItem('salesoptimizer_was_logged_in')
+      }
+    } finally {
+      setIsLoading(false)
+      setHasInitialized(true)
     }
   }
 
+  // Only run auth check on mount if we have indicators
   useEffect(() => {
-    const initAuth = async () => {
-      setIsLoading(true)
-      await checkAuth()
-      setIsLoading(false)
+    if (!hasInitialized) {
+      checkAuth()
     }
-    
-    initAuth()
-  }, [])
+  }, [hasInitialized])
 
   const login = async (credentials: { emailOrUsername: string; password: string }) => {
     setIsLoading(true)
@@ -103,6 +133,8 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       }
       
       setUser(user)
+      // Mark that user is logged in
+      localStorage.setItem('salesoptimizer_was_logged_in', 'true')
       return { user }
     } catch (error) {
       console.error('Login error:', error)
@@ -116,16 +148,19 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     setIsLoading(true)
     try {
       await apiClient.post('/auth/logout', {})
-      setUser(null)
-      router.push('/')
     } catch (error) {
       console.error('Logout error:', error)
-      // Clear local state even if backend fails
-      setUser(null)
-      router.push('/')
     } finally {
+      setUser(null)
+      // Clear the login indicator
+      localStorage.removeItem('salesoptimizer_was_logged_in')
       setIsLoading(false)
+      router.push('/')
     }
+  }
+
+  const dismissSessionExpiredModal = () => {
+    setShowSessionExpiredModal(false)
   }
 
   const value: AuthContextType = {
@@ -134,7 +169,9 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     login,
     logout,
     isAuthenticated: !!user,
-    checkAuth
+    checkAuth,
+    showSessionExpiredModal,
+    dismissSessionExpiredModal
   }
 
   return (

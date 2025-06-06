@@ -15,6 +15,7 @@ if TYPE_CHECKING:
     from infrastructure.db.models.tenant_model import TenantModel
     from infrastructure.db.models.team_model import TeamModel
     from infrastructure.db.models.invitation_model import InvitationModel
+    from infrastructure.db.models.refresh_token_model import RefreshTokenModel
 
 
 class GUID(TypeDecorator[uuid.UUID]):
@@ -117,4 +118,12 @@ class UserModel(Base):
         "InvitationModel",
         foreign_keys="InvitationModel.invited_by_id",
         back_populates="invited_by"
+    )
+
+    # Refresh tokens relationship
+    refresh_tokens: Mapped[list["RefreshTokenModel"]] = relationship(
+        "RefreshTokenModel",
+        foreign_keys="RefreshTokenModel.user_id",
+        back_populates="user",
+        cascade="all, delete-orphan"
     )

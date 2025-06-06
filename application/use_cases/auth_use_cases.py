@@ -25,7 +25,7 @@ class AuthUseCases:
             command.password
         )
         
-        access_token, refresh_token = self._auth_service.create_tokens(user)
+        access_token, refresh_token = await self._auth_service.create_tokens(user)
         
         return user, access_token, refresh_token
     
@@ -50,8 +50,8 @@ class AuthUseCases:
             user_info
         )
         
-        # Create tokens
-        access_token, refresh_token = self._auth_service.create_tokens(user)
+        # Create tokens - Add await here too
+        access_token, refresh_token = await self._auth_service.create_tokens(user)
         
         return user, access_token, refresh_token, is_new_user
     

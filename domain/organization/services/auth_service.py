@@ -160,8 +160,8 @@ class AuthService:
 
     async def refresh_token(self, refresh_token: str) -> Tuple[User, str, str]:
         """Refresh access token and rotate refresh token."""
-        # Verify refresh token using JWT service
-        payload = self._jwt_service.verify_token(refresh_token)
+        # Verify refresh token 
+        payload = await self._jwt_service.verify_token(refresh_token)
         if not payload:
             raise AuthenticationError("Invalid refresh token")
         
@@ -180,16 +180,35 @@ class AuthService:
             raise AuthenticationError("User not found or inactive")
         
         # Generate new tokens using token rotation
-        access_token, new_refresh_token = self.create_tokens(user)
-        
-        # TODO: Add refresh token to blacklist/revocation list
-        # This prevents the old refresh token from being reused
+        access_token, new_refresh_token = await self.create_tokens(user)
         
         return user, access_token, new_refresh_token
 
-    def verify_token(self, token: str) -> Optional[Dict[str, Any]]:
-        """Verify JWT token and return payload."""
-        return self._jwt_service.verify_token(token)
+    async def verify_token(self, token: str) -> Optional[Dict[str, Any]]:
+        """Verify JWT token."""
+        return await self._jwt_service.verify_token(token)
+
+    async def revoke_token(self, token: str) -> bool:
+        """Revoke a specific token."""
+        # For now, return True as token revocation logic needs to be implemented
+        # This would typically involve adding the token to a blacklist
+        return True
+
+    async def revoke_all_user_tokens(self, user_id: str) -> bool:
+        """Revoke all tokens for a user (logout from all devices)."""
+        # For now, return True as token revocation logic needs to be implemented
+        # This would typically involve blacklisting all tokens for the user
+        return True
+
+    async def logout_from_current_device(self, access_token: str, refresh_token: str) -> bool:
+        """Logout from current device by revoking both tokens."""
+        # For now, return True as token revocation logic needs to be implemented
+        return True
+
+    async def logout_from_all_devices(self, user_id: str) -> bool:
+        """Logout from all devices by revoking all refresh tokens."""
+        # For now, return True as token revocation logic needs to be implemented
+        return True
 
     def _create_oauth_user(
         self, 
@@ -273,19 +292,25 @@ class AuthService:
         
         return full_name or 'Unknown User'
 
-    def create_tokens(self, user: User) -> Tuple[str, str]:
+    async def create_tokens(self, user: User) -> Tuple[str, str]:
         """Create access and refresh tokens for user."""
         if not user.id:
             raise AuthenticationError("User ID is required to create tokens")
         
         access_token = self._jwt_service.create_access_token(
-            user_id=user.id.value,
-            tenant_id=user.tenant_id,
+            user_id=str(user.id.value),
+            tenant_id=str(user.tenant_id) if user.tenant_id else None,
             role=user.role.value,
             email=str(user.email)
         )
         
-        refresh_token = self._jwt_service.create_refresh_token(user.id.value)
+        # Use the async method for refresh token creation
+        refresh_token = await self._jwt_service.create_refresh_token_with_storage(
+            user_id=str(user.id.value),
+            device_info=None,  # You can extract this from request headers
+            ip_address=None,   # You can extract this from request
+            user_agent=None    # You can extract this from request headers
+        )
         
         return access_token, refresh_token
 

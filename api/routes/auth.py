@@ -1,4 +1,4 @@
-from typing import Annotated, Dict, Any
+from typing import Annotated, Dict, Any, Literal, cast
 from fastapi import APIRouter, Depends, HTTPException, status, Query, Response, Request
 from fastapi.security import OAuth2PasswordRequestForm
 from fastapi.responses import RedirectResponse
@@ -16,7 +16,10 @@ from domain.organization.exceptions.auth_exceptions import (
 )
 from domain.organization.entities.user import User
 from infrastructure.dependencies.service_container import get_application_service
+from infrastructure.config.settings import settings
+
 from api.dependencies.auth import get_current_user_from_cookie
+
 
 router = APIRouter(prefix="/auth", tags=["authentication"])
 
@@ -43,23 +46,26 @@ async def login(
                 detail="User ID is missing"
             )
         
-        # Set tokens in httpOnly cookies
+        # 🔧 FIX: Updated cookie settings for cross-origin
         response.set_cookie(
             key="access_token",
             value=access_token,
             httponly=True,
-            secure=True,
-            samesite="lax",
-            max_age=3600  # 1 hour
+            secure=settings.cookie_secure,  
+            samesite=cast(Literal['lax', 'strict', 'none'], settings.cookie_samesite), 
+            max_age=settings.JWT_EXPIRE_MINUTES * 60,  
+            domain=settings.cookie_domain,  
+            path="/"     
         )
         
         response.set_cookie(
             key="refresh_token",
             value=refresh_token,
             httponly=True,
-            secure=True,
-            samesite="lax",
-            max_age=604800  # 7 days
+            samesite=cast(Literal['lax', 'strict', 'none'], settings.cookie_samesite), 
+            max_age=settings.REFRESH_TOKEN_EXPIRE_DAYS * settings.SECONDS_PER_DAY,  
+            domain=settings.cookie_domain,  
+            path="/"
         )
         
         return LoginResponse(
@@ -101,9 +107,9 @@ async def login(
 @router.post("/logout")
 async def logout(response: Response):
     """Logout and clear httpOnly cookies."""
-    response.delete_cookie(key="access_token")
-    response.delete_cookie(key="refresh_token")
-    
+    response.delete_cookie(key="access_token", path="/")
+    response.delete_cookie(key="refresh_token", path="/")
+
     return {"message": "Logged out successfully"}
 
 @router.get("/me", response_model=UserResponse)
@@ -133,7 +139,7 @@ async def refresh_token(
     if not refresh_token:
         raise HTTPException(
             status_code=status.HTTP_401_UNAUTHORIZED,
-            detail="Refresh token not found"
+            detail="Refresh token not found in cookies"
         )
     
     try:
@@ -145,9 +151,10 @@ async def refresh_token(
             key="access_token",
             value=new_access_token,
             httponly=True,
-            secure=True,
-            samesite="lax",
-            max_age=3600  # 1 hour
+            samesite=cast(Literal['lax', 'strict', 'none'], settings.cookie_samesite), 
+            max_age=settings.JWT_EXPIRE_MINUTES * settings.SECONDS_PER_DAY,  
+            domain=settings.cookie_domain,  
+            path="/"
         )
         
         # Set new refresh token cookie (rotation)
@@ -155,9 +162,11 @@ async def refresh_token(
             key="refresh_token",
             value=new_refresh_token,
             httponly=True,
-            secure=True,
-            samesite="lax",
-            max_age=604800  # 7 days
+            secure=settings.cookie_secure,  
+            samesite=cast(Literal['lax', 'strict', 'none'], settings.cookie_samesite), 
+            max_age=settings.REFRESH_TOKEN_EXPIRE_DAYS * settings.SECONDS_PER_DAY,  # 7 days
+            domain=None,
+            path="/"
         )
         
         return {
@@ -173,21 +182,21 @@ async def refresh_token(
         
     except AuthenticationError as e:
         # Clear cookies if refresh fails
-        response.delete_cookie(key="access_token")
-        response.delete_cookie(key="refresh_token")
+        response.delete_cookie(key="access_token", path="/")
+        response.delete_cookie(key="refresh_token", path="/")
         
         raise HTTPException(
             status_code=status.HTTP_401_UNAUTHORIZED,
-            detail=str(e)
+            detail=f"Refresh failed: {str(e)}"
         )
     except Exception as e:
         # Clear cookies if refresh fails
-        response.delete_cookie(key="access_token")
-        response.delete_cookie(key="refresh_token")
+        response.delete_cookie(key="access_token", path="/")
+        response.delete_cookie(key="refresh_token", path="/")
         
         raise HTTPException(
-            status_code=status.HTTP_401_UNAUTHORIZED,
-            detail="Invalid or expired refresh token"
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail=f"Token refresh error: {str(e)}"
         )
 
 #===============================================================================
@@ -300,18 +309,22 @@ async def oauth_callback_get(
             key="access_token",
             value=access_token,
             httponly=True,
-            secure=True,
-            samesite="lax",
-            max_age=3600  # 1 hour
+            secure=settings.cookie_secure,  
+            samesite=cast(Literal['lax', 'strict', 'none'], settings.cookie_samesite), 
+            max_age=settings.JWT_EXPIRE_MINUTES * 60,  
+            domain=settings.cookie_domain,  
+            path="/"
         )
         
         redirect_response.set_cookie(
             key="refresh_token",
             value=refresh_token,
             httponly=True,
-            secure=True,
-            samesite="lax",
-            max_age=604800  # 7 days
+            secure=settings.cookie_secure,
+            samesite=cast(Literal['lax', 'strict', 'none'], settings.cookie_samesite),
+            max_age=settings.REFRESH_TOKEN_EXPIRE_DAYS * settings.SECONDS_PER_DAY,  # 7 days
+            domain=settings.cookie_domain,
+            path="/"
         )
         
         return redirect_response
@@ -354,4 +367,3 @@ async def oauth_config(
 #===============================================================================
 #                              🔐 Organization Routes                          |
 #===============================================================================
-
