@@ -8,6 +8,7 @@ from infrastructure.db.database import get_async_session
 from infrastructure.db.repositories.user_repository_impl import UserRepositoryImpl
 from infrastructure.db.repositories.invitation_repository_impl import InvitationRepositoryImpl
 from infrastructure.db.repositories.tenant_repository_impl import TenantRepositoryImpl
+from infrastructure.db.repositories.refresh_token_repository_impl import RefreshTokenRepositoryImpl
 from infrastructure.email.smtp_email_service import SMTPEmailService
 from infrastructure.services.password_service import PasswordService
 from infrastructure.services.jwt_service import JWTService
@@ -71,12 +72,6 @@ async def get_application_service(
     
     # Infrastructure services
     password_service = PasswordService()
-    jwt_service = JWTService(
-        secret_key=settings.JWT_SECRET_KEY,
-        algorithm=settings.JWT_ALGORITHM,
-        access_token_expire_minutes=settings.JWT_EXPIRE_MINUTES,
-        refresh_token_expire_days=settings.REFRESH_TOKEN_EXPIRE_DAYS
-    )
     oauth_config = create_oauth_config()
     oauth_service = OAuthService(config=oauth_config)
     
@@ -84,6 +79,20 @@ async def get_application_service(
     user_repository = UserRepositoryImpl(session)
     tenant_repository = TenantRepositoryImpl(session)
     invitation_repository = InvitationRepositoryImpl(session)
+    refresh_token_repository = RefreshTokenRepositoryImpl(session)
+    
+    # Token blacklist service (use Redis in production)
+    token_blacklist_service = InMemoryTokenBlacklistService()  # or RedisTokenBlacklistService()
+    
+    # JWT service with both blacklist and refresh token repository
+    jwt_service = JWTService(
+        secret_key=settings.JWT_SECRET_KEY,
+        algorithm=settings.JWT_ALGORITHM,
+        access_token_expire_minutes=settings.JWT_EXPIRE_MINUTES,
+        refresh_token_expire_days=settings.REFRESH_TOKEN_EXPIRE_DAYS,
+        token_blacklist_service=token_blacklist_service,
+        refresh_token_repository=refresh_token_repository
+    )
     
     # Domain services
     auth_service = AuthService(
@@ -100,18 +109,6 @@ async def get_application_service(
         invitation_repository=invitation_repository,
         tenant_repository=tenant_repository,
         email_service=email_service
-    )
-    
-    # Token blacklist service (use Redis in production)
-    token_blacklist_service = InMemoryTokenBlacklistService()  # or RedisTokenBlacklistService()
-    
-    # Update JWT service with blacklist
-    jwt_service = JWTService(
-        secret_key=settings.JWT_SECRET_KEY,
-        algorithm=settings.JWT_ALGORITHM,
-        access_token_expire_minutes=settings.JWT_EXPIRE_MINUTES,
-        refresh_token_expire_days=settings.REFRESH_TOKEN_EXPIRE_DAYS,
-        token_blacklist_service=token_blacklist_service
     )
     
     # Token revocation use cases

@@ -16,13 +16,15 @@ class JWTService:
         algorithm: str = "HS256",
         access_token_expire_minutes: int = 60,
         refresh_token_expire_days: int = 7,
-        token_blacklist_service: Optional[Any] = None
+        token_blacklist_service: Optional[Any] = None,
+        refresh_token_repository: Optional[Any] = None
     ):
         self.secret_key = secret_key
         self.algorithm = algorithm
         self.access_token_expire_minutes = access_token_expire_minutes
         self.refresh_token_expire_days = refresh_token_expire_days
         self.token_blacklist_service = token_blacklist_service
+        self.refresh_token_repository = refresh_token_repository
     
     def create_access_token(
         self,
@@ -62,8 +64,7 @@ class JWTService:
         }
         
         return jwt.encode(payload, self.secret_key, algorithm=self.algorithm)
-    
-    # For now, create a simple async version that calls the sync version
+      # For now, create a simple async version that calls the sync version
     async def create_refresh_token_with_storage(
         self, 
         user_id: str,
@@ -71,10 +72,39 @@ class JWTService:
         ip_address: Optional[str] = None,
         user_agent: Optional[str] = None
     ) -> str:
-        """Create refresh token with storage (simplified for now)."""
-        # For now, just return the regular refresh token
-        # Later you can implement the database storage
-        return self.create_refresh_token(user_id)
+        """Create refresh token with database storage."""
+        now = datetime.now(timezone.utc)
+        expire = now + timedelta(days=self.refresh_token_expire_days)
+        jti = str(uuid.uuid4())
+        
+        payload: Dict[str, Union[str, int]] = {
+            "sub": user_id,
+            "type": "refresh",
+            "iat": int(now.timestamp()),
+            "exp": int(expire.timestamp()),
+            "jti": jti
+        }
+        
+        refresh_token = jwt.encode(payload, self.secret_key, algorithm=self.algorithm)
+        
+        # Store refresh token in database if repository is available
+        if self.refresh_token_repository:
+            try:
+                await self.refresh_token_repository.save_refresh_token(
+                    user_id=uuid.UUID(user_id),
+                    token=refresh_token,
+                    jti=jti,
+                    expires_at=expire,
+                    device_info=device_info,
+                    ip_address=ip_address,
+                    user_agent=user_agent
+                )
+                logger.info(f"Refresh token stored in database for user {user_id}")
+            except Exception as e:
+                logger.error(f"Failed to store refresh token in database: {e}")
+                # Continue without database storage for now
+                
+        return refresh_token
     
     async def verify_token(self, token: str) -> Optional[Dict[str, Any]]:
         """Verify token (async version)."""

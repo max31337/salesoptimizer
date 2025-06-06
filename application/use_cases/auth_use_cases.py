@@ -29,6 +29,24 @@ class AuthUseCases:
         
         return user, access_token, refresh_token
     
+    async def login_with_device_info(
+        self, 
+        command: LoginCommand, 
+        user_agent: str, 
+        ip_address: str
+    ) -> Tuple[User, str, str]:
+        """Login user with device information and return user with tokens."""
+        user = await self._auth_service.authenticate_user(
+            command.email_or_username,
+            command.password
+        )
+        
+        access_token, refresh_token = await self._auth_service.create_tokens_with_device_info(
+            user, user_agent, ip_address
+        )
+        
+        return user, access_token, refresh_token
+    
     async def oauth_login(self, command: OAuthLoginCommand) -> Tuple[User, str, str, bool]:
         """OAuth login and return user with tokens."""
         # Exchange code for token

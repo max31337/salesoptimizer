@@ -26,6 +26,7 @@ router = APIRouter(prefix="/auth", tags=["authentication"])
 
 @router.post("/login", response_model=LoginResponse)
 async def login(
+    request: Request,
     response: Response,
     app_service: Annotated[ApplicationService, Depends(get_application_service)],
     form_data: OAuth2PasswordRequestForm = Depends()
@@ -38,7 +39,13 @@ async def login(
             password=form_data.password
         )
         
-        user, access_token, refresh_token = await app_service.auth_use_cases.login(command)
+        # Extract device information
+        user_agent = request.headers.get("user-agent", "")
+        ip_address = request.client.host if request.client else "unknown"
+        
+        user, access_token, refresh_token = await app_service.auth_use_cases.login_with_device_info(
+            command, user_agent, ip_address
+        )
         
         if not user.id:
             raise HTTPException(

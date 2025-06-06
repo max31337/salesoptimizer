@@ -291,7 +291,7 @@ class AuthService:
             full_name = user_info.get('name', '')
         
         return full_name or 'Unknown User'
-
+    
     async def create_tokens(self, user: User) -> Tuple[str, str]:
         """Create access and refresh tokens for user."""
         if not user.id:
@@ -310,6 +310,33 @@ class AuthService:
             device_info=None,  # You can extract this from request headers
             ip_address=None,   # You can extract this from request
             user_agent=None    # You can extract this from request headers
+        )
+        
+        return access_token, refresh_token
+    
+    async def create_tokens_with_device_info(
+        self, 
+        user: User, 
+        user_agent: str, 
+        ip_address: str
+    ) -> Tuple[str, str]:
+        """Create access and refresh tokens for user with device information."""
+        if not user.id:
+            raise AuthenticationError("User ID is required to create tokens")
+        
+        access_token = self._jwt_service.create_access_token(
+            user_id=str(user.id.value),
+            tenant_id=str(user.tenant_id) if user.tenant_id else None,
+            role=user.role.value,
+            email=str(user.email)
+        )
+        
+        # Use the async method for refresh token creation with device info
+        refresh_token = await self._jwt_service.create_refresh_token_with_storage(
+            user_id=str(user.id.value),
+            device_info=f"Login from {user_agent[:100]}",  # Truncate user agent
+            ip_address=ip_address,
+            user_agent=user_agent
         )
         
         return access_token, refresh_token
