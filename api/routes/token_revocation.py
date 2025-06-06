@@ -107,15 +107,25 @@ async def logout_all_devices(
 @router.get("/sessions")
 async def get_active_sessions(
     app_service: Annotated[ApplicationService, Depends(get_application_service)],
-    current_user: User = Depends(get_current_user_from_cookie)
+    current_user: User = Depends(get_current_user_from_cookie),
+    page: int = 1,
+    page_size: int = 10
 ) -> Dict[str, Any]:
-    """Get list of active sessions for user."""
+    """Get list of active sessions for user with pagination."""
     try:
-        sessions = await app_service.token_revocation_use_cases.get_user_active_sessions(current_user)
+        # Validate pagination parameters
+        if page < 1:
+            page = 1
+        if page_size < 1 or page_size > 100:
+            page_size = 10
+            
+        result = await app_service.token_revocation_use_cases.get_user_active_sessions(
+            current_user, page, page_size
+        )
         
         # Format sessions for frontend consumption
         formatted_sessions: List[Dict[str, Any]] = []
-        for session in sessions:
+        for session in result.get("sessions", []):
             formatted_sessions.append({
                 "id": session["id"],
                 "device_info": session.get("device_info", "Unknown Device"),
@@ -129,7 +139,10 @@ async def get_active_sessions(
         
         return {
             "sessions": formatted_sessions,
-            "total_count": len(formatted_sessions)
+            "total_count": result.get("total_count", 0),
+            "page": result.get("page", page),
+            "page_size": result.get("page_size", page_size),
+            "total_pages": result.get("total_pages", 0)
         }
         
     except Exception as e:
@@ -139,18 +152,76 @@ async def get_active_sessions(
         )
 
 
+@router.get("/sessions/revoked")
+async def get_revoked_sessions(
+    app_service: Annotated[ApplicationService, Depends(get_application_service)],
+    current_user: User = Depends(get_current_user_from_cookie),
+    page: int = 1,
+    page_size: int = 10
+) -> Dict[str, Any]:
+    """Get list of revoked sessions for user with pagination."""
+    try:
+        # Validate pagination parameters
+        if page < 1:
+            page = 1
+        if page_size < 1 or page_size > 100:
+            page_size = 10
+            
+        result = await app_service.token_revocation_use_cases.get_user_revoked_sessions(
+            current_user, page, page_size
+        )
+        
+        # Format sessions for frontend consumption
+        formatted_sessions: List[Dict[str, Any]] = []
+        for session in result.get("sessions", []):
+            formatted_sessions.append({
+                "id": session["id"],
+                "device_info": session.get("device_info", "Unknown Device"),
+                "ip_address": session.get("ip_address", "Unknown IP"),
+                "user_agent": session.get("user_agent", "Unknown Browser"),
+                "created_at": session["created_at"].isoformat() if session.get("created_at") and hasattr(session["created_at"], 'isoformat') else None,
+                "expires_at": session["expires_at"].isoformat() if session.get("expires_at") and hasattr(session["expires_at"], 'isoformat') else None,
+                "revoked_at": session["revoked_at"].isoformat() if session.get("revoked_at") and hasattr(session["revoked_at"], 'isoformat') else None,
+                "is_current": False
+            })
+        
+        return {
+            "sessions": formatted_sessions,
+            "total_count": result.get("total_count", 0),
+            "page": result.get("page", page),
+            "page_size": result.get("page_size", page_size),
+            "total_pages": result.get("total_pages", 0)
+        }
+        
+    except Exception as e:
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail=f"Failed to get revoked sessions: {str(e)}"
+        )
+
+
 @router.get("/refresh-tokens")
 async def get_user_refresh_tokens(
     app_service: Annotated[ApplicationService, Depends(get_application_service)],
-    current_user: User = Depends(get_current_user_from_cookie)
+    current_user: User = Depends(get_current_user_from_cookie),
+    page: int = 1,
+    page_size: int = 10
 ) -> Dict[str, Any]:
-    """Get user's refresh tokens from database for session management display."""
+    """Get user's refresh tokens from database for session management display with pagination."""
     try:
-        sessions = await app_service.token_revocation_use_cases.get_user_active_sessions(current_user)
+        # Validate pagination parameters
+        if page < 1:
+            page = 1
+        if page_size < 1 or page_size > 100:
+            page_size = 10
+            
+        result = await app_service.token_revocation_use_cases.get_user_active_sessions(
+            current_user, page, page_size
+        )
         
         # Format the response for frontend consumption
         formatted_sessions: List[Dict[str, Any]] = []
-        for session in sessions:
+        for session in result.get("sessions", []):
             formatted_sessions.append({
                 "id": session["id"],
                 "device_info": session.get("device_info", "Unknown Device"),
@@ -163,7 +234,10 @@ async def get_user_refresh_tokens(
         
         return {
             "refresh_tokens": formatted_sessions,
-            "total_count": len(formatted_sessions)
+            "total_count": result.get("total_count", 0),
+            "page": result.get("page", page),
+            "page_size": result.get("page_size", page_size),
+            "total_pages": result.get("total_pages", 0)
         }
         
     except Exception as e:
@@ -173,19 +247,23 @@ async def get_user_refresh_tokens(
         )
 
 
+class RevokeTokenRequest(BaseModel):
+    """Request to revoke a specific token."""
+    token: str
+
+
 class RevokeSessionRequest(BaseModel):
-    """Request to revoke a specific session."""
+    """Request to revoke a specific session by ID."""
     session_id: str
 
 
 @router.post("/revoke-session")
-async def revoke_session(
+async def revoke_session_by_id(
     request: RevokeSessionRequest,
-    response: Response,
     app_service: Annotated[ApplicationService, Depends(get_application_service)],
     current_user: User = Depends(get_current_user_from_cookie)
 ) -> Dict[str, Any]:
-    """Revoke a specific session by session ID."""
+    """Revoke a specific session by its database ID."""
     try:
         success = await app_service.token_revocation_use_cases.revoke_session_by_id(
             request.session_id,
@@ -194,8 +272,8 @@ async def revoke_session(
         
         if not success:
             raise HTTPException(
-                status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-                detail="Failed to revoke session"
+                status_code=status.HTTP_404_NOT_FOUND,
+                detail="Session not found or already revoked"
             )
         
         return {
@@ -208,11 +286,6 @@ async def revoke_session(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
             detail=f"Session revocation failed: {str(e)}"
         )
-
-
-class RevokeTokenRequest(BaseModel):
-    """Request to revoke a specific token."""
-    token: str
 
 
 @router.post("/revoke-token")

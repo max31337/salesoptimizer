@@ -5,7 +5,14 @@ import { Button } from "@/components/ui/button"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
 import { Badge } from "@/components/ui/badge"
 import { Alert, AlertDescription } from "@/components/ui/alert"
-import { tokenRevocationService } from "@/features/auth/services/token-revocation-service"
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
+import { 
+  tokenRevocationService, 
+  type Session, 
+  type RevokedSession,
+  type SessionsResponse,
+  type RevokedSessionsResponse
+} from "@/features/auth/services/token-revocation-service"
 import { useAuth } from "@/features/auth/hooks/useAuth"
 import { 
   Smartphone, 
@@ -15,7 +22,10 @@ import {
   Clock, 
   MapPin,
   AlertTriangle,
-  Loader2
+  Loader2,
+  ChevronLeft,
+  ChevronRight,
+  MoreHorizontal
 } from "lucide-react"
 import {
     AlertDialog,
@@ -29,36 +39,87 @@ import {
     AlertDialogTrigger,
 } from "@/components/ui/alert-dialog"
 
-interface Session {
-  id: string
-  device_info: string
-  ip_address: string
-  user_agent: string
-  created_at: string
-  last_used_at: string
-  is_current: boolean
+interface PaginationState {
+  page: number
+  pageSize: number
+  totalPages: number
+  totalCount: number
 }
 
 export function SecuritySettings() {
-  const [sessions, setSessions] = useState<Session[]>([])
+  const [activeSessions, setActiveSessions] = useState<Session[]>([])
+  const [revokedSessions, setRevokedSessions] = useState<RevokedSession[]>([])
+  const [activeTab, setActiveTab] = useState("active")
   const [isLoading, setIsLoading] = useState(true)
   const [error, setError] = useState("")
   const [success, setSuccess] = useState("")
   const [actionLoading, setActionLoading] = useState<string | null>(null)
+  const [activeSessionsPagination, setActiveSessionsPagination] = useState<PaginationState>({
+    page: 1,
+    pageSize: 10,
+    totalPages: 0,
+    totalCount: 0
+  })
+  const [revokedSessionsPagination, setRevokedSessionsPagination] = useState<PaginationState>({
+    page: 1,
+    pageSize: 10,
+    totalPages: 0,
+    totalCount: 0
+  })
   const { logout } = useAuth()
 
   useEffect(() => {
-    loadSessions()
-  }, [])
+    if (activeTab === "active") {
+      loadActiveSessions()
+    } else {
+      loadRevokedSessions()
+    }
+  }, [activeTab])
+
   const loadSessions = async () => {
+    if (activeTab === "active") {
+      await loadActiveSessions(activeSessionsPagination.page)
+    } else {
+      await loadRevokedSessions(revokedSessionsPagination.page)
+    }
+  }
+
+  const loadActiveSessions = async (page: number = 1) => {
     try {
       setIsLoading(true)
       setError("")
-      const response = await tokenRevocationService.getActiveSessions()
-      setSessions(response.sessions)
+      const response: SessionsResponse = await tokenRevocationService.getActiveSessions(page, activeSessionsPagination.pageSize)
+      setActiveSessions(response.sessions)
+      setActiveSessionsPagination({
+        page: response.page,
+        pageSize: response.page_size,
+        totalPages: response.total_pages,
+        totalCount: response.total_count
+      })
     } catch (err: any) {
-      console.error('Failed to load sessions:', err)
+      console.error('Failed to load active sessions:', err)
       const errorMessage = err?.message || err?.detail || 'Failed to load active sessions'
+      setError(errorMessage)
+    } finally {
+      setIsLoading(false)
+    }
+  }
+
+  const loadRevokedSessions = async (page: number = 1) => {
+    try {
+      setIsLoading(true)
+      setError("")
+      const response: RevokedSessionsResponse = await tokenRevocationService.getRevokedSessions(page, revokedSessionsPagination.pageSize)
+      setRevokedSessions(response.sessions)
+      setRevokedSessionsPagination({
+        page: response.page,
+        pageSize: response.page_size,
+        totalPages: response.total_pages,
+        totalCount: response.total_count
+      })
+    } catch (err: any) {
+      console.error('Failed to load revoked sessions:', err)
+      const errorMessage = err?.message || err?.detail || 'Failed to load revoked sessions'
       setError(errorMessage)
     } finally {
       setIsLoading(false)
@@ -104,18 +165,19 @@ export function SecuritySettings() {
       setActionLoading(null)
     }
   }
-
-  const handleRevokeSession = async (sessionId: string) => {
+  const handleRevokeSession = async (token: string) => {
     try {
-      setActionLoading(sessionId)
+      setActionLoading(token)
       setError("")
       setSuccess("")
       
-      await tokenRevocationService.revokeSessionById(sessionId)
+      await tokenRevocationService.revokeSpecificToken(token)
       setSuccess('Session revoked successfully')
       
-      // Reload sessions to update the list
-      await loadSessions()
+      // Reload active sessions to update the list
+      await loadActiveSessions(activeSessionsPagination.page)
+      // Load revoked sessions to update that list too
+      await loadRevokedSessions(revokedSessionsPagination.page)
     } catch (err: any) {
       console.error('Failed to revoke session:', err)
       const errorMessage = err?.message || err?.detail || 'Failed to revoke session'
@@ -125,7 +187,21 @@ export function SecuritySettings() {
     }
   }
 
+  const handleActivePageChange = (newPage: number) => {
+    if (newPage >= 1 && newPage <= activeSessionsPagination.totalPages) {
+      loadActiveSessions(newPage)
+    }
+  }
+
+  const handleRevokedPageChange = (newPage: number) => {
+    if (newPage >= 1 && newPage <= revokedSessionsPagination.totalPages) {
+      loadRevokedSessions(newPage)
+    }
+  }
+
   const getDeviceIcon = (userAgent: string) => {
+    if (!userAgent) return <Monitor className="h-4 w-4" />
+    
     if (userAgent.toLowerCase().includes('mobile') || userAgent.toLowerCase().includes('android') || userAgent.toLowerCase().includes('iphone')) {
       return <Smartphone className="h-4 w-4" />
     }
@@ -138,6 +214,8 @@ export function SecuritySettings() {
 
   const formatUserAgent = (userAgent: string) => {
     // Extract browser and OS info from user agent
+    if (!userAgent) return 'Unknown Browser'
+    
     if (userAgent.includes('Chrome')) {
       if (userAgent.includes('Windows')) return 'Chrome on Windows'
       if (userAgent.includes('Mac')) return 'Chrome on macOS'
@@ -242,105 +320,309 @@ export function SecuritySettings() {
             </AlertDialog>
           </div>
         </CardContent>
-      </Card>
-
-      {/* Active Sessions */}
-      <Card>
-        <CardHeader>
-          <CardTitle className="flex items-center gap-2">
-            <Monitor className="h-5 w-5" />
+      </Card>      {/* Sessions Management with Tabs */}
+      <Tabs value={activeTab} onValueChange={setActiveTab} className="space-y-4">
+        <TabsList className="grid w-full grid-cols-2">
+          <TabsTrigger value="active" className="flex items-center gap-2">
+            <Monitor className="h-4 w-4" />
             Active Sessions
-          </CardTitle>
-          <CardDescription>
-            Manage devices that are currently signed into your account
-          </CardDescription>
-        </CardHeader>
-        <CardContent>
-          {isLoading ? (
-            <div className="flex items-center justify-center py-8">
-              <Loader2 className="h-8 w-8 animate-spin" />
-              <span className="ml-2">Loading sessions...</span>
-            </div>
-          ) : sessions.length === 0 ? (
-            <div className="text-center py-8 text-muted-foreground">
-              No active sessions found
-            </div>
-          ) : (
-            <div className="space-y-4">
-              {sessions.map((session) => (
-                <div
-                  key={session.id}
-                  className="flex items-center justify-between p-4 border rounded-lg bg-card"
-                >
-                  <div className="flex items-center space-x-4">
-                    <div className="p-2 bg-muted rounded-lg">
-                      {getDeviceIcon(session.user_agent)}
-                    </div>
-                    <div className="space-y-1">
-                      <div className="flex items-center gap-2">
-                        <span className="font-medium">
-                          {formatUserAgent(session.user_agent)}
-                        </span>
-                        {session.is_current && (
-                          <Badge variant="secondary" className="bg-green-100 text-green-800 dark:bg-green-900 dark:text-green-200">
-                            Current Device
-                          </Badge>
+            {activeSessionsPagination.totalCount > 0 && (
+              <Badge variant="secondary" className="ml-1">
+                {activeSessionsPagination.totalCount}
+              </Badge>
+            )}
+          </TabsTrigger>
+          <TabsTrigger value="revoked" className="flex items-center gap-2">
+            <Shield className="h-4 w-4" />
+            Revoked Sessions
+            {revokedSessionsPagination.totalCount > 0 && (
+              <Badge variant="secondary" className="ml-1">
+                {revokedSessionsPagination.totalCount}
+              </Badge>
+            )}
+          </TabsTrigger>
+        </TabsList>
+
+        <TabsContent value="active">
+          <Card>
+            <CardHeader>
+              <CardTitle className="flex items-center gap-2">
+                <Monitor className="h-5 w-5" />
+                Active Sessions
+              </CardTitle>
+              <CardDescription>
+                Manage devices that are currently signed into your account
+              </CardDescription>
+            </CardHeader>
+            <CardContent>
+              {isLoading ? (
+                <div className="flex items-center justify-center py-8">
+                  <Loader2 className="h-8 w-8 animate-spin" />
+                  <span className="ml-2">Loading sessions...</span>
+                </div>
+              ) : activeSessions.length === 0 ? (
+                <div className="text-center py-8 text-muted-foreground">
+                  No active sessions found
+                </div>
+              ) : (
+                <>
+                  <div className="space-y-4">
+                    {activeSessions.map((session) => (
+                      <div
+                        key={session.id}
+                        className="flex items-center justify-between p-4 border rounded-lg bg-card"
+                      >
+                        <div className="flex items-center space-x-4">
+                          <div className="p-2 bg-muted rounded-lg">
+                            {getDeviceIcon(session.user_agent)}
+                          </div>
+                          <div className="space-y-1">
+                            <div className="flex items-center gap-2">
+                              <span className="font-medium">
+                                {formatUserAgent(session.user_agent)}
+                              </span>
+                              {session.is_current && (
+                                <Badge variant="secondary" className="bg-green-100 text-green-800 dark:bg-green-900 dark:text-green-200">
+                                  Current Device
+                                </Badge>
+                              )}
+                            </div>
+                            <div className="flex items-center gap-4 text-sm text-muted-foreground">
+                              <div className="flex items-center gap-1">
+                                <MapPin className="h-3 w-3" />
+                                {session.ip_address}
+                              </div>
+                              <div className="flex items-center gap-1">
+                                <Clock className="h-3 w-3" />
+                                Last used: {formatDate(session.last_used_at)}
+                              </div>
+                            </div>
+                          </div>
+                        </div>
+                        {!session.is_current && (
+                          <AlertDialog>
+                            <AlertDialogTrigger asChild>
+                              <Button 
+                                variant="outline" 
+                                size="sm"
+                                disabled={actionLoading === session.id}
+                              >
+                                {actionLoading === session.id ? (
+                                  <Loader2 className="h-4 w-4 animate-spin" />
+                                ) : (
+                                  <LogOut className="h-4 w-4" />
+                                )}
+                                {actionLoading === session.id ? 'Revoking...' : 'Revoke'}
+                              </Button>
+                            </AlertDialogTrigger>
+                            <AlertDialogContent>
+                              <AlertDialogHeader>
+                                <AlertDialogTitle>Revoke Session?</AlertDialogTitle>
+                                <AlertDialogDescription>
+                                  This will sign out the device "{formatUserAgent(session.user_agent)}" 
+                                  from IP {session.ip_address}. This action cannot be undone.
+                                </AlertDialogDescription>
+                              </AlertDialogHeader>
+                              <AlertDialogFooter>
+                                <AlertDialogCancel>Cancel</AlertDialogCancel>
+                                <AlertDialogAction 
+                                  onClick={() => handleRevokeSession(session.id)}
+                                  disabled={actionLoading === session.id}
+                                >
+                                  {actionLoading === session.id ? 'Revoking...' : 'Revoke Session'}
+                                </AlertDialogAction>
+                              </AlertDialogFooter>
+                            </AlertDialogContent>
+                          </AlertDialog>
                         )}
                       </div>
-                      <div className="flex items-center gap-4 text-sm text-muted-foreground">
-                        <div className="flex items-center gap-1">
-                          <MapPin className="h-3 w-3" />
-                          {session.ip_address}
+                    ))}
+                  </div>
+                  
+                  {/* Pagination for Active Sessions */}
+                  {activeSessionsPagination.totalPages > 1 && (
+                    <div className="flex items-center justify-between mt-6 pt-4 border-t">
+                      <div className="text-sm text-muted-foreground">
+                        Showing {(activeSessionsPagination.page - 1) * activeSessionsPagination.pageSize + 1} to{' '}
+                        {Math.min(activeSessionsPagination.page * activeSessionsPagination.pageSize, activeSessionsPagination.totalCount)} of{' '}
+                        {activeSessionsPagination.totalCount} sessions
+                      </div>
+                      <div className="flex items-center space-x-2">
+                        <Button
+                          variant="outline"
+                          size="sm"
+                          onClick={() => handleActivePageChange(activeSessionsPagination.page - 1)}
+                          disabled={activeSessionsPagination.page <= 1}
+                        >
+                          <ChevronLeft className="h-4 w-4" />
+                          Previous
+                        </Button>
+                        <div className="flex items-center space-x-1">
+                          {Array.from({ length: activeSessionsPagination.totalPages }, (_, i) => i + 1)
+                            .filter(page => 
+                              page === 1 || 
+                              page === activeSessionsPagination.totalPages || 
+                              Math.abs(page - activeSessionsPagination.page) <= 1
+                            )
+                            .map((page, index, array) => (
+                              <div key={page} className="flex items-center">
+                                {index > 0 && array[index - 1] !== page - 1 && (
+                                  <span className="px-2 text-muted-foreground">
+                                    <MoreHorizontal className="h-4 w-4" />
+                                  </span>
+                                )}
+                                <Button
+                                  variant={page === activeSessionsPagination.page ? "default" : "outline"}
+                                  size="sm"
+                                  onClick={() => handleActivePageChange(page)}
+                                  className="min-w-[2.5rem]"
+                                >
+                                  {page}
+                                </Button>
+                              </div>
+                            ))}
                         </div>
-                        <div className="flex items-center gap-1">
-                          <Clock className="h-3 w-3" />
-                          Last used: {formatDate(session.last_used_at)}
-                        </div>
+                        <Button
+                          variant="outline"
+                          size="sm"
+                          onClick={() => handleActivePageChange(activeSessionsPagination.page + 1)}
+                          disabled={activeSessionsPagination.page >= activeSessionsPagination.totalPages}
+                        >
+                          Next
+                          <ChevronRight className="h-4 w-4" />
+                        </Button>
                       </div>
                     </div>
-                  </div>
-                  {!session.is_current && (
-                    <AlertDialog>
-                      <AlertDialogTrigger asChild>
-                        <Button 
-                          variant="outline" 
-                          size="sm"
-                          disabled={actionLoading === session.id}
-                        >
-                          {actionLoading === session.id ? (
-                            <Loader2 className="h-4 w-4 animate-spin" />
-                          ) : (
-                            <LogOut className="h-4 w-4" />
-                          )}
-                          {actionLoading === session.id ? 'Revoking...' : 'Revoke'}
-                        </Button>
-                      </AlertDialogTrigger>
-                      <AlertDialogContent>
-                        <AlertDialogHeader>
-                          <AlertDialogTitle>Revoke Session?</AlertDialogTitle>
-                          <AlertDialogDescription>
-                            This will sign out the device "{formatUserAgent(session.user_agent)}" 
-                            from IP {session.ip_address}. This action cannot be undone.
-                          </AlertDialogDescription>
-                        </AlertDialogHeader>
-                        <AlertDialogFooter>
-                          <AlertDialogCancel>Cancel</AlertDialogCancel>
-                          <AlertDialogAction 
-                            onClick={() => handleRevokeSession(session.id)}
-                            disabled={actionLoading === session.id}
-                          >
-                            {actionLoading === session.id ? 'Revoking...' : 'Revoke Session'}
-                          </AlertDialogAction>
-                        </AlertDialogFooter>
-                      </AlertDialogContent>
-                    </AlertDialog>
                   )}
+                </>
+              )}
+            </CardContent>
+          </Card>
+        </TabsContent>
+
+        <TabsContent value="revoked">
+          <Card>
+            <CardHeader>
+              <CardTitle className="flex items-center gap-2">
+                <Shield className="h-5 w-5" />
+                Revoked Sessions
+              </CardTitle>
+              <CardDescription>
+                Sessions that have been logged out or revoked
+              </CardDescription>
+            </CardHeader>
+            <CardContent>
+              {isLoading ? (
+                <div className="flex items-center justify-center py-8">
+                  <Loader2 className="h-8 w-8 animate-spin" />
+                  <span className="ml-2">Loading revoked sessions...</span>
                 </div>
-              ))}
-            </div>
-          )}
-        </CardContent>
-      </Card>
-    </div>
+              ) : revokedSessions.length === 0 ? (
+                <div className="text-center py-8 text-muted-foreground">
+                  No revoked sessions found
+                </div>
+              ) : (
+                <>
+                  <div className="space-y-4">
+                    {revokedSessions.map((session) => (
+                      <div
+                        key={session.id}
+                        className="flex items-center justify-between p-4 border rounded-lg bg-card opacity-75"
+                      >
+                        <div className="flex items-center space-x-4">
+                          <div className="p-2 bg-muted rounded-lg">
+                            {getDeviceIcon(session.user_agent)}
+                          </div>
+                          <div className="space-y-1">
+                            <div className="flex items-center gap-2">
+                              <span className="font-medium">
+                                {formatUserAgent(session.user_agent)}
+                              </span>
+                              <Badge variant="destructive">
+                                Revoked
+                              </Badge>
+                            </div>
+                            <div className="flex items-center gap-4 text-sm text-muted-foreground">
+                              <div className="flex items-center gap-1">
+                                <MapPin className="h-3 w-3" />
+                                {session.ip_address}
+                              </div>
+                              <div className="flex items-center gap-1">
+                                <Clock className="h-3 w-3" />
+                                Created: {formatDate(session.created_at)}
+                              </div>
+                              <div className="flex items-center gap-1">
+                                <Clock className="h-3 w-3" />
+                                Revoked: {formatDate(session.revoked_at)}
+                              </div>
+                            </div>
+                          </div>
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                  
+                  {/* Pagination for Revoked Sessions */}
+                  {revokedSessionsPagination.totalPages > 1 && (
+                    <div className="flex items-center justify-between mt-6 pt-4 border-t">
+                      <div className="text-sm text-muted-foreground">
+                        Showing {(revokedSessionsPagination.page - 1) * revokedSessionsPagination.pageSize + 1} to{' '}
+                        {Math.min(revokedSessionsPagination.page * revokedSessionsPagination.pageSize, revokedSessionsPagination.totalCount)} of{' '}
+                        {revokedSessionsPagination.totalCount} sessions
+                      </div>
+                      <div className="flex items-center space-x-2">
+                        <Button
+                          variant="outline"
+                          size="sm"
+                          onClick={() => handleRevokedPageChange(revokedSessionsPagination.page - 1)}
+                          disabled={revokedSessionsPagination.page <= 1}
+                        >
+                          <ChevronLeft className="h-4 w-4" />
+                          Previous
+                        </Button>
+                        <div className="flex items-center space-x-1">
+                          {Array.from({ length: revokedSessionsPagination.totalPages }, (_, i) => i + 1)
+                            .filter(page => 
+                              page === 1 || 
+                              page === revokedSessionsPagination.totalPages || 
+                              Math.abs(page - revokedSessionsPagination.page) <= 1
+                            )
+                            .map((page, index, array) => (
+                              <div key={page} className="flex items-center">
+                                {index > 0 && array[index - 1] !== page - 1 && (
+                                  <span className="px-2 text-muted-foreground">
+                                    <MoreHorizontal className="h-4 w-4" />
+                                  </span>
+                                )}
+                                <Button
+                                  variant={page === revokedSessionsPagination.page ? "default" : "outline"}
+                                  size="sm"
+                                  onClick={() => handleRevokedPageChange(page)}
+                                  className="min-w-[2.5rem]"
+                                >
+                                  {page}
+                                </Button>
+                              </div>
+                            ))}
+                        </div>
+                        <Button
+                          variant="outline"
+                          size="sm"
+                          onClick={() => handleRevokedPageChange(revokedSessionsPagination.page + 1)}
+                          disabled={revokedSessionsPagination.page >= revokedSessionsPagination.totalPages}
+                        >
+                          Next
+                          <ChevronRight className="h-4 w-4" />
+                        </Button>
+                      </div>
+                    </div>
+                  )}
+                </>
+              )}
+            </CardContent>
+          </Card>
+        </TabsContent>
+      </Tabs>    </div>
   )
 }
+
