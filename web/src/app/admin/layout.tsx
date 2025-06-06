@@ -2,7 +2,7 @@
 
 import { useAuth } from "@/features/auth/hooks/useAuth"
 import { useRouter } from "next/navigation"
-import { useEffect, useState } from "react"
+import { useEffect } from "react"
 
 export default function AdminLayout({
   children,
@@ -11,24 +11,27 @@ export default function AdminLayout({
 }) {
   const { user, isLoading, isAuthenticated } = useAuth()
   const router = useRouter()
-  const [hasCheckedAccess, setHasCheckedAccess] = useState(false)
 
   useEffect(() => {
-    if (!isLoading && !hasCheckedAccess) {
-      setHasCheckedAccess(true)
-      
+    // Only perform checks when loading is complete
+    if (!isLoading) {
       if (!isAuthenticated) {
+        console.log('Admin layout: User not authenticated, redirecting to login')
         router.push('/login')
         return
       }
       
       if (user?.role !== 'super_admin') {
-        router.push('/dashboard') // Redirect non-super admins
+        console.log('Admin layout: User not super admin, redirecting to dashboard')
+        router.push('/dashboard')
         return
       }
+      
+      console.log('Admin layout: Access granted for super admin')
     }
-  }, [user, isLoading, isAuthenticated, router, hasCheckedAccess])
+  }, [user, isLoading, isAuthenticated, router])
 
+  // Show loading while authentication is being checked
   if (isLoading) {
     return (
       <div className="min-h-screen flex items-center justify-center">
@@ -37,6 +40,7 @@ export default function AdminLayout({
     )
   }
 
+  // Show loading while redirect is happening
   if (!isAuthenticated || user?.role !== 'super_admin') {
     return (
       <div className="min-h-screen flex items-center justify-center">

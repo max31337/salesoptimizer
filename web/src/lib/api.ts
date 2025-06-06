@@ -6,7 +6,7 @@ const API_VERSION = '/api/v1'
 class ApiClient {
   private baseUrl: string
   private isRefreshing = false
-  private refreshSubscribers: Array<(token: string) => void> = []
+  private refreshSubscribers: Array<(success: boolean) => void> = []
 
   constructor() {
     this.baseUrl = `${BASE_URL}${API_VERSION}`
@@ -31,7 +31,9 @@ class ApiClient {
             console.log('✅ Token refreshed, retrying request')
             throw new Error('RETRY_REQUEST')
           } else {
-            console.log('❌ Token refresh failed')
+            console.log('❌ Token refresh failed - session expired')
+            // Signal session expiry to the auth store
+            this.handleSessionExpiry()
           }
         }
       }
@@ -41,26 +43,33 @@ class ApiClient {
     }
     return response.json()
   }
+  private handleSessionExpiry() {
+    // Clear auth indicators
+    if (typeof window !== 'undefined') {
+      localStorage.removeItem('salesoptimizer_was_logged_in')
+      // Notify auth store about session expiry
+      const event = new CustomEvent('session-expired')
+      window.dispatchEvent(event)
+    }
+  }
 
   private hasAuthIndicators(): boolean {
     if (typeof window === 'undefined') return false
     
     // Check for cookies more reliably
-    const hasAccessToken = document.cookie.split(';').some(cookie => 
-      cookie.trim().startsWith('access_token=')
-    )
     const hasRefreshToken = document.cookie.split(';').some(cookie => 
       cookie.trim().startsWith('refresh_token=')
     )
     
-    return hasAccessToken || hasRefreshToken || 
+    return hasRefreshToken || 
            localStorage.getItem('salesoptimizer_was_logged_in') === 'true'
   }
 
   private async attemptTokenRefresh(): Promise<boolean> {
     if (this.isRefreshing) {
+      // Wait for the ongoing refresh to complete
       return new Promise((resolve) => {
-        this.refreshSubscribers.push(() => resolve(true))
+        this.refreshSubscribers.push(resolve)
       })
     }
 
@@ -70,7 +79,7 @@ class ApiClient {
     try {
       const response = await fetch(`${this.baseUrl}/auth/refresh`, {
         method: 'POST',
-        credentials: 'include',  // ✅ Include cookies
+        credentials: 'include',  // Include cookies
         headers: {
           'Content-Type': 'application/json',
         },
@@ -78,26 +87,24 @@ class ApiClient {
 
       if (response.ok) {
         console.log('✅ Token refresh successful')
-        this.refreshSubscribers.forEach(callback => callback('refreshed'))
+        this.refreshSubscribers.forEach(callback => callback(true))
         this.refreshSubscribers = []
         this.isRefreshing = false
         return true
       } else {
         console.log('❌ Token refresh failed:', response.status, response.statusText)
+        this.refreshSubscribers.forEach(callback => callback(false))
+        this.refreshSubscribers = []
+        this.isRefreshing = false
+        return false
       }
     } catch (error) {
       console.error('❌ Token refresh failed:', error)
+      this.refreshSubscribers.forEach(callback => callback(false))
+      this.refreshSubscribers = []
+      this.isRefreshing = false
+      return false
     }
-
-    this.isRefreshing = false
-    this.refreshSubscribers = []
-    
-    // Clear auth indicators on refresh failure
-    if (typeof window !== 'undefined') {
-      localStorage.removeItem('salesoptimizer_was_logged_in')
-    }
-    
-    return false
   }
 
   async get<T>(endpoint: string): Promise<T> {

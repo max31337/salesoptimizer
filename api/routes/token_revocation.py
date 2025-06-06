@@ -121,9 +121,9 @@ async def get_active_sessions(
                 "device_info": session.get("device_info", "Unknown Device"),
                 "ip_address": session.get("ip_address", "Unknown IP"),
                 "user_agent": session.get("user_agent", "Unknown Browser"),
-                "created_at": session["created_at"].isoformat() if session.get("created_at") else None,
-                "expires_at": session["expires_at"].isoformat() if session.get("expires_at") else None,
-                "last_used_at": session["created_at"].isoformat() if session.get("created_at") else None,  # Use created_at as last_used_at for now
+                "created_at": session["created_at"].isoformat() if session.get("created_at") and hasattr(session["created_at"], 'isoformat') else None,
+                "expires_at": session["expires_at"].isoformat() if session.get("expires_at") and hasattr(session["expires_at"], 'isoformat') else None,
+                "last_used_at": session["created_at"].isoformat() if session.get("created_at") and hasattr(session["created_at"], 'isoformat') else None,  # Use created_at as last_used_at for now
                 "is_current": False  # TODO: Determine if this is the current session
             })
         
@@ -156,8 +156,8 @@ async def get_user_refresh_tokens(
                 "device_info": session.get("device_info", "Unknown Device"),
                 "ip_address": session.get("ip_address", "Unknown IP"),
                 "user_agent": session.get("user_agent", "Unknown Browser"),
-                "created_at": session["created_at"].isoformat() if session.get("created_at") else None,
-                "expires_at": session["expires_at"].isoformat() if session.get("expires_at") else None,
+                "created_at": session["created_at"].isoformat() if session.get("created_at") and hasattr(session["created_at"], 'isoformat') else None,
+                "expires_at": session["expires_at"].isoformat() if session.get("expires_at") and hasattr(session["expires_at"], 'isoformat') else None,
                 "is_current": False  # TODO: Determine if this is the current session
             })
         

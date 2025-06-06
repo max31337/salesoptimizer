@@ -2,14 +2,17 @@ import { create } from 'zustand'
 import { persist } from 'zustand/middleware'
 import Cookies from 'js-cookie'
 import { User, AuthState, LoginRequest, LoginResponse } from '@/types/auth'
-import api from '@/lib/api'
+import { apiClient } from '@/lib/api'
 
 interface AuthStore extends AuthState {
   login: (credentials: LoginRequest) => Promise<void>
-  logout: () => void
+  logout: () => Promise<void>
   setUser: (user: User | null) => void
   setLoading: (loading: boolean) => void
   checkAuth: () => Promise<void>
+  refreshAuth: () => Promise<boolean>
+  sessionExpired: boolean
+  setSessionExpired: (expired: boolean) => void
 }
 
 export const useAuthStore = create<AuthStore>()(
@@ -18,22 +21,27 @@ export const useAuthStore = create<AuthStore>()(
       user: null,
       isAuthenticated: false,
       isLoading: false,
+      sessionExpired: false,
 
       login: async (credentials: LoginRequest) => {
         try {
-          set({ isLoading: true })
+          set({ isLoading: true, sessionExpired: false })
           
-          const response = await api.post<LoginResponse>('/api/v1/auth/login', credentials)
-          const { access_token, refresh_token, user } = response.data
+          const formData = new URLSearchParams()
+          formData.append('username', credentials.emailOrUsername)
+          formData.append('password', credentials.password)
 
-          // Store tokens in cookies
-          Cookies.set('access_token', access_token, { expires: 1 }) // 1 day
-          Cookies.set('refresh_token', refresh_token, { expires: 7 }) // 7 days
+          const response = await apiClient.postForm<LoginResponse>('/auth/login', formData)
+          const { user } = response
+
+          // Mark as logged in for auth persistence
+          localStorage.setItem('salesoptimizer_was_logged_in', 'true')
 
           set({
             user,
             isAuthenticated: true,
             isLoading: false,
+            sessionExpired: false,
           })
         } catch (error) {
           set({ isLoading: false })
@@ -41,14 +49,24 @@ export const useAuthStore = create<AuthStore>()(
         }
       },
 
-      logout: () => {
-        Cookies.remove('access_token')
-        Cookies.remove('refresh_token')
-        set({
-          user: null,
-          isAuthenticated: false,
-          isLoading: false,
-        })
+      logout: async () => {
+        try {
+          // Call logout endpoint to revoke tokens on server
+          await apiClient.post('/auth/logout', {})
+        } catch (error) {
+          console.error('Server logout failed:', error)
+        } finally {
+          // Clear local state regardless of server response
+          Cookies.remove('access_token')
+          Cookies.remove('refresh_token')
+          localStorage.removeItem('salesoptimizer_was_logged_in')
+          set({
+            user: null,
+            isAuthenticated: false,
+            isLoading: false,
+            sessionExpired: false,
+          })
+        }
       },
 
       setUser: (user: User | null) => {
@@ -62,29 +80,62 @@ export const useAuthStore = create<AuthStore>()(
         set({ isLoading: loading })
       },
 
-      checkAuth: async () => {
-        const token = Cookies.get('access_token')
-        if (!token) {
+      setSessionExpired: (expired: boolean) => {
+        set({ sessionExpired: expired })
+      },
+
+      refreshAuth: async () => {
+        try {
+          // The API client will automatically handle token refresh
+          const response = await apiClient.get<User>('/auth/me')
+          set({
+            user: response,
+            isAuthenticated: true,
+            sessionExpired: false,
+          })
+          return true
+        } catch (error) {
+          console.error('Auth refresh failed:', error)
+          set({
+            user: null,
+            isAuthenticated: false,
+            sessionExpired: true,
+          })
+          return false
+        }
+      },      checkAuth: async () => {
+        // Don't auto-logout on page refresh if user was previously logged in
+        const wasLoggedIn = localStorage.getItem('salesoptimizer_was_logged_in') === 'true'
+        const hasRefreshToken = document.cookie.split(';').some(cookie => 
+          cookie.trim().startsWith('refresh_token=')
+        )
+
+        if (!wasLoggedIn || !hasRefreshToken) {
           set({ user: null, isAuthenticated: false })
           return
         }
 
         try {
           set({ isLoading: true })
-          const response = await api.get<User>('/api/v1/auth/me')
+          const response = await apiClient.get<User>('/auth/me')
           set({
-            user: response.data,
+            user: response,
             isAuthenticated: true,
             isLoading: false,
+            sessionExpired: false,
           })
         } catch (error) {
-          set({
-            user: null,
-            isAuthenticated: false,
-            isLoading: false,
-          })
-          Cookies.remove('access_token')
-          Cookies.remove('refresh_token')
+          console.error('Auth check failed:', error)
+          // Only clear auth state if it's a definitive failure, not a network issue
+          if (error instanceof Error && (error.message.includes('401') || error.message.includes('Unauthorized'))) {
+            set({
+              user: null,
+              isAuthenticated: false,
+              sessionExpired: true,
+            })
+            localStorage.removeItem('salesoptimizer_was_logged_in')
+          }
+          set({ isLoading: false })
         }
       },
     }),

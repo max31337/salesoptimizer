@@ -1,3 +1,5 @@
+import { apiClient } from '@/lib/api'
+
 const API_BASE_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8000'
 
 interface LoginCredentials {
@@ -19,37 +21,23 @@ interface LoginResponse {
 
 class AuthService {
   async login(credentials: LoginCredentials): Promise<LoginResponse> {
-    const response = await fetch(`${API_BASE_URL}/auth/login`, {
-      method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-      },
-      body: JSON.stringify(credentials),
-    })
+    const formData = new URLSearchParams()
+    formData.append('username', credentials.email)
+    formData.append('password', credentials.password)
 
-    if (!response.ok) {
-      const error = await response.json()
-      throw new Error(error.detail || 'Login failed')
-    }
-
-    return response.json()
+    return await apiClient.postForm<LoginResponse>('/auth/login', formData)
   }
 
   async getCurrentUser() {
-    const token = localStorage.getItem('access_token')
-    if (!token) throw new Error('No token found')
+    return await apiClient.get('/auth/me')
+  }
 
-    const response = await fetch(`${API_BASE_URL}/auth/me`, {
-      headers: {
-        'Authorization': `Bearer ${token}`,
-      },
-    })
+  async logout() {
+    return await apiClient.post('/auth/logout', {})
+  }
 
-    if (!response.ok) {
-      throw new Error('Failed to get user info')
-    }
-
-    return response.json()
+  async refreshToken() {
+    return await apiClient.post('/auth/refresh', {})
   }
 }
 

@@ -37,7 +37,7 @@ export function useAuth() {
 
 export function AuthProvider({ children }: { children: ReactNode }) {
   const [user, setUser] = useState<User | null>(null)
-  const [isLoading, setIsLoading] = useState(false) // Start as false, only load when needed
+  const [isLoading, setIsLoading] = useState(true) // Start as true to prevent premature redirects
   const [hasInitialized, setHasInitialized] = useState(false)
   const [showSessionExpiredModal, setShowSessionExpiredModal] = useState(false)
   const router = useRouter()
@@ -53,13 +53,18 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
   // Check authentication status only when we think user might be logged in
   const checkAuth = async () => {
+    console.log('🔍 Checking auth state...')
+    
     // Don't check if we have no indicators of being logged in
     if (!hasAuthIndicators()) {
+      console.log('❌ No auth indicators found, user not logged in')
       setUser(null)
+      setIsLoading(false)
       setHasInitialized(true)
       return
     }
 
+    console.log('✅ Auth indicators found, verifying with server...')
     setIsLoading(true)
     try {
       const userData = await apiClient.get<{
@@ -80,11 +85,12 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         tenant_id: userData.tenant_id
       }
       
+      console.log('✅ Auth check successful, user:', user.email, 'role:', user.role)
       setUser(user)
       // Mark that user was logged in
       localStorage.setItem('salesoptimizer_was_logged_in', 'true')
     } catch (error) {
-      console.log('Auth check failed - user not authenticated')
+      console.log('❌ Auth check failed - user not authenticated')
       setUser(null)
       
       // If we had indicators but auth failed, show session expired modal
@@ -98,11 +104,23 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       setHasInitialized(true)
     }
   }
-
   // Only run auth check on mount if we have indicators
   useEffect(() => {
     if (!hasInitialized) {
       checkAuth()
+    }
+
+    // Listen for session expired events from API client
+    const handleSessionExpired = () => {
+      setShowSessionExpiredModal(true)
+      setUser(null)
+    }
+
+    if (typeof window !== 'undefined') {
+      window.addEventListener('session-expired', handleSessionExpired)
+      return () => {
+        window.removeEventListener('session-expired', handleSessionExpired)
+      }
     }
   }, [hasInitialized])
 

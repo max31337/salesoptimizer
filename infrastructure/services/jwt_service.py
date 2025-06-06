@@ -3,19 +3,18 @@ from datetime import datetime, timezone, timedelta
 from typing import Dict, Any, Optional, Union
 import uuid
 import logging
+from infrastructure.config.settings import settings
 
 logger = logging.getLogger(__name__)
 
 
 class JWTService:
-    """JWT token service with revocation support."""
-    
     def __init__(
         self,
-        secret_key: str,
-        algorithm: str = "HS256",
-        access_token_expire_minutes: int = 60,
-        refresh_token_expire_days: int = 7,
+        secret_key: str = settings.JWT_SECRET_KEY,
+        algorithm: str = settings.JWT_ALGORITHM if hasattr(settings, 'JWT_ALGORITHM') else "HS256",
+        access_token_expire_minutes: int = settings.JWT_EXPIRE_MINUTES if hasattr(settings, 'JWT_EXPIRE_MINUTES') else 30,
+        refresh_token_expire_days: int = settings.REFRESH_TOKEN_EXPIRE_DAYS if hasattr(settings, 'REFRESH_TOKEN_EXPIRE_DAYS') else 7,
         token_blacklist_service: Optional[Any] = None,
         refresh_token_repository: Optional[Any] = None
     ):
@@ -107,16 +106,27 @@ class JWTService:
         return refresh_token
     
     async def verify_token(self, token: str) -> Optional[Dict[str, Any]]:
-        """Verify token (async version)."""
+        """Verify token (async version) with comprehensive blacklist checking."""
         try:
-            # First decode the token
+            # First decode the token to get payload
             payload = jwt.decode(token, self.secret_key, algorithms=[self.algorithm])
             
             # Check if token is blacklisted (if service is available)
             if self.token_blacklist_service:
+                # Check if specific token is revoked
                 if await self.token_blacklist_service.is_token_revoked(token):
-                    logger.warning("Token is revoked")
+                    logger.warning("Token is specifically revoked")
                     return None
+                
+                # Check if user's tokens were revoked globally
+                user_id = payload.get("sub")
+                token_issued_at_timestamp = payload.get("iat")
+                if user_id and token_issued_at_timestamp:
+                    from datetime import datetime, timezone
+                    token_issued_at = datetime.fromtimestamp(token_issued_at_timestamp, tz=timezone.utc)
+                    if await self.token_blacklist_service.is_user_token_revoked(user_id, token_issued_at):
+                        logger.warning(f"User {user_id} tokens were globally revoked")
+                        return None
             
             return payload
             

@@ -152,14 +152,13 @@ async def refresh_token(
     try:
         # Validate refresh token and get new tokens (with rotation)
         user, new_access_token, new_refresh_token = await app_service.auth_use_cases.refresh_token(refresh_token)
-        
-        # Set new access token cookie
+          # Set new access token cookie
         response.set_cookie(
             key="access_token",
             value=new_access_token,
             httponly=True,
             samesite=cast(Literal['lax', 'strict', 'none'], settings.cookie_samesite), 
-            max_age=settings.JWT_EXPIRE_MINUTES * settings.SECONDS_PER_DAY,  
+            max_age=settings.JWT_EXPIRE_MINUTES * 60,  # Convert minutes to seconds
             domain=settings.cookie_domain,  
             path="/"
         )

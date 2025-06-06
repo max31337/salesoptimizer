@@ -9,16 +9,13 @@ export default function HomePage() {
   const { isAuthenticated, user, isLoading } = useAuth()
   const router = useRouter()
   const [showLanding, setShowLanding] = useState(false)
-  const [hasCheckedAuth, setHasCheckedAuth] = useState(false)
 
   useEffect(() => {
     // Only run redirect logic after auth has been checked
-    if (!isLoading && !hasCheckedAuth) {
-      setHasCheckedAuth(true)
-
+    if (!isLoading) {
       if (isAuthenticated && user) {
         // Redirect authenticated users based on role
-        console.log('Redirecting authenticated user:', user.role)
+        console.log('HomePage: Redirecting authenticated user:', user.role)
         if (user.role === 'super_admin') {
           router.push('/admin')
         } else {
@@ -26,11 +23,11 @@ export default function HomePage() {
         }
       } else {
         // Show landing page for unauthenticated users
-        console.log('Showing landing page for unauthenticated user')
+        console.log('HomePage: Showing landing page for unauthenticated user')
         setShowLanding(true)
       }
     }
-  }, [isAuthenticated, user, isLoading, router, hasCheckedAuth])
+  }, [isAuthenticated, user, isLoading, router])
 
   // Show loading only when actively checking auth
   if (isLoading) {
@@ -47,7 +44,7 @@ export default function HomePage() {
   }
 
   // Show loading while redirecting authenticated users
-  if (isAuthenticated && user && hasCheckedAuth) {
+  if (isAuthenticated && user) {
     return (
       <div className="min-h-screen flex items-center justify-center">
         <div className="text-center">
