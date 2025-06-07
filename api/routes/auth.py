@@ -123,7 +123,7 @@ async def logout(response: Response):
 async def get_current_user_info(
     current_user: Annotated[User, Depends(get_current_user_from_cookie)]
 ) -> UserResponse:
-    """Get current authenticated user information."""    
+    """Get current authenticated user information."""      
     return UserResponse(
         user_id=str(current_user.id.value) if current_user.id else "",
         email=str(current_user.email),
@@ -132,7 +132,8 @@ async def get_current_user_info(
         tenant_id=str(current_user.tenant_id) if current_user.tenant_id else "",
         is_active=current_user.is_active(),
         profile_picture_url=current_user.profile_picture_url,
-        phone=current_user.phone
+        phone=current_user.phone,
+        bio=current_user.bio
     )
 
 

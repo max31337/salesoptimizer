@@ -49,5 +49,6 @@ class LoginResponse(BaseModel):
     role: str
     email: str
     full_name: str
+    bio: Optional[str] = None
     status: str = "active"
     message: Optional[str] = None

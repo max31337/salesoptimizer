@@ -6,6 +6,7 @@ export interface UserProfile {
   first_name?: string
   last_name?: string
   phone?: string
+  bio?: string
   profile_picture_url?: string
   role: string
   organization_id?: string
@@ -19,6 +20,7 @@ export interface ProfileUpdateRequest {
   first_name?: string
   last_name?: string
   phone?: string
+  bio?: string
 }
 
 export interface ProfileUpdateResponse {

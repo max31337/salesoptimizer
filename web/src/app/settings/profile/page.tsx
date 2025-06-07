@@ -4,6 +4,7 @@ import { useState, useRef, useEffect } from "react"
 import { useAuth } from "@/features/auth/hooks/useAuth"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
+import { Textarea } from "@/components/ui/textarea"
 import { Label } from "@/components/ui/label"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
 import { Alert, AlertDescription } from "@/components/ui/alert"
@@ -14,13 +15,13 @@ import { User, Mail, Phone, Building, Upload, Trash2, Loader2, AlertTriangle } f
 
 export default function ProfileSettingsPage() {
   const { user, refreshUser } = useAuth()
-  const fileInputRef = useRef<HTMLInputElement>(null)
-    // Form state
+  const fileInputRef = useRef<HTMLInputElement>(null)    // Form state
   const [formData, setFormData] = useState({
     email: user?.email || '',
     first_name: user?.first_name || '',
     last_name: user?.last_name || '',
-    phone: user?.phone || ''
+    phone: user?.phone || '',
+    bio: user?.bio || ''
   })
     // UI state
   const [isSubmitting, setIsSubmitting] = useState(false)
@@ -50,15 +51,15 @@ export default function ProfileSettingsPage() {
   // Modal state
   const [modalOpen, setModalOpen] = useState(false)
   const [modalType, setModalType] = useState<'success' | 'pending' | 'error'>('success')
-  const [modalMessage, setModalMessage] = useState('')
-  // Update form data when user data changes
+  const [modalMessage, setModalMessage] = useState('')  // Update form data when user data changes
   useEffect(() => {
     if (user) {
       setFormData({
         email: user.email || '',
         first_name: user.first_name || '',
         last_name: user.last_name || '',
-        phone: user.phone || ''
+        phone: user.phone || '',
+        bio: user.bio || ''
       })
     }
   }, [user])
@@ -89,9 +90,11 @@ export default function ProfileSettingsPage() {
       }
       if (formData.last_name !== (user?.last_name || '')) {
         changedFields.last_name = formData.last_name
-      }
-      if (formData.phone !== (user?.phone || '')) {
+      }      if (formData.phone !== (user?.phone || '')) {
         changedFields.phone = formData.phone
+      }
+      if (formData.bio !== (user?.bio || '')) {
+        changedFields.bio = formData.bio
       }
 
       // If no changes, show message
@@ -320,9 +323,7 @@ export default function ProfileSettingsPage() {
                   : "Email cannot be changed. Contact support if you need to update it."
                 }
               </p>
-            </div>
-
-            <div className="space-y-2">
+            </div>            <div className="space-y-2">
               <Label htmlFor="phone" className="flex items-center gap-2">
                 <Phone className="h-4 w-4" />
                 Phone Number
@@ -334,6 +335,21 @@ export default function ProfileSettingsPage() {
                 onChange={(e) => handleInputChange('phone', e.target.value)}
                 placeholder="Enter your phone number"
               />
+            </div>
+
+            <div className="space-y-2">
+              <Label htmlFor="bio">Bio</Label>
+              <Textarea
+                id="bio"
+                value={formData.bio}
+                onChange={(e) => handleInputChange('bio', e.target.value)}
+                placeholder="Tell us about yourself... (optional, max 1000 characters)"
+                maxLength={1000}
+                rows={4}
+              />
+              <p className="text-xs text-muted-foreground">
+                {formData.bio.length}/1000 characters
+              </p>
             </div>
 
             <div className="space-y-2">

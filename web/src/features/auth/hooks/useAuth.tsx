@@ -14,6 +14,7 @@ interface User {
   tenant_id?: string
   full_name?: string
   phone?: string
+  bio?: string
   profile_picture_url?: string
 }
 
@@ -66,11 +67,10 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       setIsLoading(false)
       setHasInitialized(true)
       return
-    }
-
-    console.log('✅ Auth indicators found, verifying with server...')
+    }    console.log('✅ Auth indicators found, verifying with server...')
     setIsLoading(true)
-    try {      const userData = await apiClient.get<{
+    try {
+      const userData = await apiClient.get<{
         user_id: string
         email: string
         role: string
@@ -79,13 +79,13 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         first_name?: string
         last_name?: string
         phone?: string
+        bio?: string
         profile_picture_url?: string      }>('/auth/me')
       
       const nameComponents = getNameComponents({
         first_name: userData.first_name,
         last_name: userData.last_name,
-        full_name: userData.full_name
-      })
+        full_name: userData.full_name      })
 
       const user: User = {
         id: userData.user_id,
@@ -96,6 +96,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         last_name: nameComponents.last_name,
         tenant_id: userData.tenant_id,
         phone: userData.phone,
+        bio: userData.bio,
         profile_picture_url: userData.profile_picture_url
       }
       
@@ -154,8 +155,8 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         first_name?: string
         last_name?: string
         phone?: string
-        profile_picture_url?: string
-      }>('/auth/login', formData)
+        bio?: string
+        profile_picture_url?: string      }>('/auth/login', formData)
         const nameComponents = getNameComponents({
         first_name: data.first_name,
         last_name: data.last_name,
@@ -171,6 +172,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         last_name: nameComponents.last_name,
         tenant_id: data.tenant_id,
         phone: data.phone,
+        bio: data.bio,
         profile_picture_url: data.profile_picture_url
       }
       
@@ -205,8 +207,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   }
 
   const refreshUser = async () => {
-    try {
-      const userData = await apiClient.get<{
+    try {      const userData = await apiClient.get<{
         user_id: string
         email: string
         role: string
@@ -215,9 +216,10 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         first_name?: string
         last_name?: string
         phone?: string
-        profile_picture_url?: string      }>('/auth/me')
-      
-      const nameComponents = getNameComponents({
+        bio?: string
+        profile_picture_url?: string
+      }>('/auth/me')
+        const nameComponents = getNameComponents({
         first_name: userData.first_name,
         last_name: userData.last_name,
         full_name: userData.full_name
@@ -232,6 +234,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         last_name: nameComponents.last_name,
         tenant_id: userData.tenant_id,
         phone: userData.phone,
+        bio: userData.bio,
         profile_picture_url: userData.profile_picture_url
       }
       
