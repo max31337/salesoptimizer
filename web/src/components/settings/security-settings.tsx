@@ -1,6 +1,6 @@
 "use client"
 
-import { useState, useEffect } from "react"
+import React, { useState, useEffect } from "react"
 import { Button } from "@/components/ui/button"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
 import { Badge } from "@/components/ui/badge"
@@ -11,7 +11,9 @@ import {
   type Session, 
   type RevokedSession,
   type SessionsResponse,
-  type RevokedSessionsResponse
+  type RevokedSessionsResponse,
+  type GroupedSessionsResponse,
+  type GroupedRevokedSessionsResponse
 } from "@/features/auth/services/token-revocation-service"
 import { useAuth } from "@/features/auth/hooks/useAuth"
 import { 
@@ -25,7 +27,10 @@ import {
   Loader2,
   ChevronLeft,
   ChevronRight,
-  MoreHorizontal
+  MoreHorizontal,
+  List,
+  Users,
+  Globe
 } from "lucide-react"
 import {
     AlertDialog,
@@ -46,10 +51,17 @@ interface PaginationState {
   totalCount: number
 }
 
+type ViewMode = 'list' | 'device' | 'ip'
+type SessionData = SessionsResponse | GroupedSessionsResponse
+type RevokedSessionData = RevokedSessionsResponse | GroupedRevokedSessionsResponse
+
 export function SecuritySettings() {
   const [activeSessions, setActiveSessions] = useState<Session[]>([])
+  const [groupedActiveSessions, setGroupedActiveSessions] = useState<Record<string, Session[]>>({})
   const [revokedSessions, setRevokedSessions] = useState<RevokedSession[]>([])
+  const [groupedRevokedSessions, setGroupedRevokedSessions] = useState<Record<string, RevokedSession[]>>({})
   const [activeTab, setActiveTab] = useState("active")
+  const [viewMode, setViewMode] = useState<ViewMode>('list')
   const [isLoading, setIsLoading] = useState(true)
   const [error, setError] = useState("")
   const [success, setSuccess] = useState("")
@@ -67,14 +79,9 @@ export function SecuritySettings() {
     totalCount: 0
   })
   const { logout } = useAuth()
-
   useEffect(() => {
-    if (activeTab === "active") {
-      loadActiveSessions()
-    } else {
-      loadRevokedSessions()
-    }
-  }, [activeTab])
+    loadSessions()
+  }, [activeTab, viewMode])
 
   const loadSessions = async () => {
     if (activeTab === "active") {
@@ -83,19 +90,37 @@ export function SecuritySettings() {
       await loadRevokedSessions(revokedSessionsPagination.page)
     }
   }
-
   const loadActiveSessions = async (page: number = 1) => {
     try {
       setIsLoading(true)
       setError("")
-      const response: SessionsResponse = await tokenRevocationService.getActiveSessions(page, activeSessionsPagination.pageSize)
-      setActiveSessions(response.sessions)
-      setActiveSessionsPagination({
-        page: response.page,
-        pageSize: response.page_size,
-        totalPages: response.total_pages,
-        totalCount: response.total_count
-      })
+      
+      let response: SessionData
+      
+      if (viewMode === 'list') {
+        response = await tokenRevocationService.getActiveSessions(page, activeSessionsPagination.pageSize)
+        const sessionResponse = response as SessionsResponse
+        setActiveSessions(sessionResponse.sessions)
+        setGroupedActiveSessions({})
+        setActiveSessionsPagination({
+          page: sessionResponse.page,
+          pageSize: sessionResponse.page_size,
+          totalPages: sessionResponse.total_pages,
+          totalCount: sessionResponse.total_count
+        })
+      } else {
+        const groupBy = viewMode === 'device' ? 'device' : 'ip'
+        response = await tokenRevocationService.getActiveSessions(page, activeSessionsPagination.pageSize, groupBy)
+        const groupedResponse = response as GroupedSessionsResponse
+        setActiveSessions([])
+        setGroupedActiveSessions(groupedResponse.grouped_sessions)
+        setActiveSessionsPagination({
+          page: groupedResponse.page,
+          pageSize: groupedResponse.page_size,
+          totalPages: groupedResponse.total_pages,
+          totalCount: groupedResponse.total_sessions
+        })
+      }
     } catch (err: any) {
       console.error('Failed to load active sessions:', err)
       const errorMessage = err?.message || err?.detail || 'Failed to load active sessions'
@@ -104,19 +129,37 @@ export function SecuritySettings() {
       setIsLoading(false)
     }
   }
-
   const loadRevokedSessions = async (page: number = 1) => {
     try {
       setIsLoading(true)
       setError("")
-      const response: RevokedSessionsResponse = await tokenRevocationService.getRevokedSessions(page, revokedSessionsPagination.pageSize)
-      setRevokedSessions(response.sessions)
-      setRevokedSessionsPagination({
-        page: response.page,
-        pageSize: response.page_size,
-        totalPages: response.total_pages,
-        totalCount: response.total_count
-      })
+      
+      let response: RevokedSessionData
+      
+      if (viewMode === 'list') {
+        response = await tokenRevocationService.getRevokedSessions(page, revokedSessionsPagination.pageSize)
+        const sessionResponse = response as RevokedSessionsResponse
+        setRevokedSessions(sessionResponse.sessions)
+        setGroupedRevokedSessions({})
+        setRevokedSessionsPagination({
+          page: sessionResponse.page,
+          pageSize: sessionResponse.page_size,
+          totalPages: sessionResponse.total_pages,
+          totalCount: sessionResponse.total_count
+        })
+      } else {
+        const groupBy = viewMode === 'device' ? 'device' : 'ip'
+        response = await tokenRevocationService.getRevokedSessions(page, revokedSessionsPagination.pageSize, groupBy)
+        const groupedResponse = response as GroupedRevokedSessionsResponse
+        setRevokedSessions([])
+        setGroupedRevokedSessions(groupedResponse.grouped_sessions)
+        setRevokedSessionsPagination({
+          page: groupedResponse.page,
+          pageSize: groupedResponse.page_size,
+          totalPages: groupedResponse.total_pages,
+          totalCount: groupedResponse.total_sessions
+        })
+      }
     } catch (err: any) {
       console.error('Failed to load revoked sessions:', err)
       const errorMessage = err?.message || err?.detail || 'Failed to load revoked sessions'
@@ -344,8 +387,7 @@ export function SecuritySettings() {
         </TabsList>
 
         <TabsContent value="active">
-          <Card>
-            <CardHeader>
+          <Card>            <CardHeader>
               <CardTitle className="flex items-center gap-2">
                 <Monitor className="h-5 w-5" />
                 Active Sessions
@@ -353,156 +395,281 @@ export function SecuritySettings() {
               <CardDescription>
                 Manage devices that are currently signed into your account
               </CardDescription>
+              
+              {/* View Mode Selector */}
+              <div className="flex flex-wrap gap-2 mt-4">
+                <Button
+                  variant={viewMode === 'list' ? 'default' : 'outline'}
+                  size="sm"
+                  onClick={() => setViewMode('list')}
+                  className="flex items-center gap-2"
+                >
+                  <List className="h-4 w-4" />
+                  List View
+                </Button>
+                <Button
+                  variant={viewMode === 'device' ? 'default' : 'outline'}
+                  size="sm"
+                  onClick={() => setViewMode('device')}
+                  className="flex items-center gap-2"
+                >
+                  <Monitor className="h-4 w-4" />
+                  Group by Device
+                </Button>
+                <Button
+                  variant={viewMode === 'ip' ? 'default' : 'outline'}
+                  size="sm"
+                  onClick={() => setViewMode('ip')}
+                  className="flex items-center gap-2"
+                >
+                  <Globe className="h-4 w-4" />
+                  Group by IP
+                </Button>
+              </div>
             </CardHeader>
-            <CardContent>
-              {isLoading ? (
+            <CardContent>              {isLoading ? (
                 <div className="flex items-center justify-center py-8">
                   <Loader2 className="h-8 w-8 animate-spin" />
                   <span className="ml-2">Loading sessions...</span>
                 </div>
-              ) : activeSessions.length === 0 ? (
-                <div className="text-center py-8 text-muted-foreground">
-                  No active sessions found
-                </div>
-              ) : (
-                <>
-                  <div className="space-y-4">
-                    {activeSessions.map((session) => (
-                      <div
-                        key={session.id}
-                        className="flex items-center justify-between p-4 border rounded-lg bg-card"
-                      >
-                        <div className="flex items-center space-x-4">
-                          <div className="p-2 bg-muted rounded-lg">
-                            {getDeviceIcon(session.user_agent)}
-                          </div>
-                          <div className="space-y-1">
-                            <div className="flex items-center gap-2">
-                              <span className="font-medium">
-                                {formatUserAgent(session.user_agent)}
-                              </span>
-                              {session.is_current && (
-                                <Badge variant="secondary" className="bg-green-100 text-green-800 dark:bg-green-900 dark:text-green-200">
-                                  Current Device
-                                </Badge>
-                              )}
+              ) : viewMode === 'list' ? (
+                // List View
+                activeSessions.length === 0 ? (
+                  <div className="text-center py-8 text-muted-foreground">
+                    No active sessions found
+                  </div>
+                ) : (
+                  <>
+                    <div className="space-y-4">
+                      {activeSessions.map((session) => (
+                        <div
+                          key={session.id}
+                          className="flex items-center justify-between p-4 border rounded-lg bg-card"
+                        >
+                          <div className="flex items-center space-x-4">
+                            <div className="p-2 bg-muted rounded-lg">
+                              {getDeviceIcon(session.user_agent)}
                             </div>
-                            <div className="flex items-center gap-4 text-sm text-muted-foreground">
-                              <div className="flex items-center gap-1">
-                                <MapPin className="h-3 w-3" />
-                                {session.ip_address}
-                              </div>
-                              <div className="flex items-center gap-1">
-                                <Clock className="h-3 w-3" />
-                                Last used: {formatDate(session.last_used_at)}
-                              </div>
-                            </div>
-                          </div>
-                        </div>
-                        {!session.is_current && (
-                          <AlertDialog>
-                            <AlertDialogTrigger asChild>
-                              <Button 
-                                variant="outline" 
-                                size="sm"
-                                disabled={actionLoading === session.id}
-                              >
-                                {actionLoading === session.id ? (
-                                  <Loader2 className="h-4 w-4 animate-spin" />
-                                ) : (
-                                  <LogOut className="h-4 w-4" />
+                            <div className="space-y-1">
+                              <div className="flex items-center gap-2">
+                                <span className="font-medium">
+                                  {formatUserAgent(session.user_agent)}
+                                </span>
+                                {session.is_current && (
+                                  <Badge variant="secondary" className="bg-green-100 text-green-800 dark:bg-green-900 dark:text-green-200">
+                                    Current Device
+                                  </Badge>
                                 )}
-                                {actionLoading === session.id ? 'Revoking...' : 'Revoke'}
-                              </Button>
-                            </AlertDialogTrigger>
-                            <AlertDialogContent>
-                              <AlertDialogHeader>
-                                <AlertDialogTitle>Revoke Session?</AlertDialogTitle>
-                                <AlertDialogDescription>
-                                  This will sign out the device "{formatUserAgent(session.user_agent)}" 
-                                  from IP {session.ip_address}. This action cannot be undone.
-                                </AlertDialogDescription>
-                              </AlertDialogHeader>
-                              <AlertDialogFooter>
-                                <AlertDialogCancel>Cancel</AlertDialogCancel>
-                                <AlertDialogAction 
-                                  onClick={() => handleRevokeSession(session.id)}
+                              </div>
+                              <div className="flex items-center gap-4 text-sm text-muted-foreground">
+                                <div className="flex items-center gap-1">
+                                  <MapPin className="h-3 w-3" />
+                                  {session.ip_address}
+                                </div>
+                                <div className="flex items-center gap-1">
+                                  <Clock className="h-3 w-3" />
+                                  Last used: {formatDate(session.last_used_at)}
+                                </div>
+                              </div>
+                            </div>
+                          </div>
+                          {!session.is_current && (
+                            <AlertDialog>
+                              <AlertDialogTrigger asChild>
+                                <Button 
+                                  variant="outline" 
+                                  size="sm"
                                   disabled={actionLoading === session.id}
                                 >
-                                  {actionLoading === session.id ? 'Revoking...' : 'Revoke Session'}
-                                </AlertDialogAction>
-                              </AlertDialogFooter>
-                            </AlertDialogContent>
-                          </AlertDialog>
-                        )}
+                                  {actionLoading === session.id ? (
+                                    <Loader2 className="h-4 w-4 animate-spin" />
+                                  ) : (
+                                    <LogOut className="h-4 w-4" />
+                                  )}
+                                  {actionLoading === session.id ? 'Revoking...' : 'Revoke'}
+                                </Button>
+                              </AlertDialogTrigger>
+                              <AlertDialogContent>
+                                <AlertDialogHeader>
+                                  <AlertDialogTitle>Revoke Session?</AlertDialogTitle>
+                                  <AlertDialogDescription>
+                                    This will sign out the device "{formatUserAgent(session.user_agent)}" 
+                                    from IP {session.ip_address}. This action cannot be undone.
+                                  </AlertDialogDescription>
+                                </AlertDialogHeader>
+                                <AlertDialogFooter>
+                                  <AlertDialogCancel>Cancel</AlertDialogCancel>
+                                  <AlertDialogAction 
+                                    onClick={() => handleRevokeSession(session.id)}
+                                    disabled={actionLoading === session.id}
+                                  >
+                                    {actionLoading === session.id ? 'Revoking...' : 'Revoke Session'}
+                                  </AlertDialogAction>
+                                </AlertDialogFooter>
+                              </AlertDialogContent>
+                            </AlertDialog>
+                          )}
+                        </div>
+                      ))}
+                    </div>
+                  </>
+                )
+              ) : (
+                // Grouped View
+                Object.keys(groupedActiveSessions).length === 0 ? (
+                  <div className="text-center py-8 text-muted-foreground">
+                    No active sessions found
+                  </div>
+                ) : (
+                  <div className="space-y-6">
+                    {Object.entries(groupedActiveSessions).map(([groupKey, sessions]) => (
+                      <div key={groupKey} className="space-y-3">
+                        <div className="flex items-center gap-2 pb-2 border-b">
+                          <div className="p-2 bg-muted rounded-lg">
+                            {viewMode === 'device' ? (
+                              getDeviceIcon(sessions[0]?.user_agent || '')
+                            ) : (
+                              <Globe className="h-4 w-4" />
+                            )}
+                          </div>
+                          <div>
+                            <h3 className="font-semibold text-lg">
+                              {viewMode === 'device' ? formatUserAgent(groupKey) : groupKey}
+                            </h3>
+                            <p className="text-sm text-muted-foreground">
+                              {sessions.length} session{sessions.length !== 1 ? 's' : ''}
+                            </p>
+                          </div>
+                        </div>
+                        <div className="space-y-3 ml-6">
+                          {sessions.map((session) => (
+                            <div
+                              key={session.id}
+                              className="flex items-center justify-between p-3 border rounded-lg bg-card/50"
+                            >
+                              <div className="space-y-1">
+                                <div className="flex items-center gap-2">
+                                  <span className="font-medium text-sm">
+                                    {viewMode === 'device' ? session.ip_address : formatUserAgent(session.user_agent)}
+                                  </span>
+                                  {session.is_current && (
+                                    <Badge variant="secondary" className="bg-green-100 text-green-800 dark:bg-green-900 dark:text-green-200">
+                                      Current Device
+                                    </Badge>
+                                  )}
+                                </div>
+                                <div className="flex items-center gap-4 text-xs text-muted-foreground">
+                                  <div className="flex items-center gap-1">
+                                    <Clock className="h-3 w-3" />
+                                    Last used: {formatDate(session.last_used_at)}
+                                  </div>
+                                </div>
+                              </div>
+                              {!session.is_current && (
+                                <AlertDialog>
+                                  <AlertDialogTrigger asChild>
+                                    <Button 
+                                      variant="outline" 
+                                      size="sm"
+                                      disabled={actionLoading === session.id}
+                                    >
+                                      {actionLoading === session.id ? (
+                                        <Loader2 className="h-4 w-4 animate-spin" />
+                                      ) : (
+                                        <LogOut className="h-4 w-4" />
+                                      )}
+                                      {actionLoading === session.id ? 'Revoking...' : 'Revoke'}
+                                    </Button>
+                                  </AlertDialogTrigger>
+                                  <AlertDialogContent>
+                                    <AlertDialogHeader>
+                                      <AlertDialogTitle>Revoke Session?</AlertDialogTitle>
+                                      <AlertDialogDescription>
+                                        This will sign out the device "{formatUserAgent(session.user_agent)}" 
+                                        from IP {session.ip_address}. This action cannot be undone.
+                                      </AlertDialogDescription>
+                                    </AlertDialogHeader>
+                                    <AlertDialogFooter>
+                                      <AlertDialogCancel>Cancel</AlertDialogCancel>
+                                      <AlertDialogAction 
+                                        onClick={() => handleRevokeSession(session.id)}
+                                        disabled={actionLoading === session.id}
+                                      >
+                                        {actionLoading === session.id ? 'Revoking...' : 'Revoke Session'}
+                                      </AlertDialogAction>
+                                    </AlertDialogFooter>
+                                  </AlertDialogContent>
+                                </AlertDialog>
+                              )}
+                            </div>
+                          ))}
+                        </div>
                       </div>
                     ))}
                   </div>
-                  
-                  {/* Pagination for Active Sessions */}
-                  {activeSessionsPagination.totalPages > 1 && (
-                    <div className="flex items-center justify-between mt-6 pt-4 border-t">
-                      <div className="text-sm text-muted-foreground">
-                        Showing {(activeSessionsPagination.page - 1) * activeSessionsPagination.pageSize + 1} to{' '}
-                        {Math.min(activeSessionsPagination.page * activeSessionsPagination.pageSize, activeSessionsPagination.totalCount)} of{' '}
-                        {activeSessionsPagination.totalCount} sessions
-                      </div>
-                      <div className="flex items-center space-x-2">
-                        <Button
-                          variant="outline"
-                          size="sm"
-                          onClick={() => handleActivePageChange(activeSessionsPagination.page - 1)}
-                          disabled={activeSessionsPagination.page <= 1}
-                        >
-                          <ChevronLeft className="h-4 w-4" />
-                          Previous
-                        </Button>
-                        <div className="flex items-center space-x-1">
-                          {Array.from({ length: activeSessionsPagination.totalPages }, (_, i) => i + 1)
-                            .filter(page => 
-                              page === 1 || 
-                              page === activeSessionsPagination.totalPages || 
-                              Math.abs(page - activeSessionsPagination.page) <= 1
-                            )
-                            .map((page, index, array) => (
-                              <div key={page} className="flex items-center">
-                                {index > 0 && array[index - 1] !== page - 1 && (
-                                  <span className="px-2 text-muted-foreground">
-                                    <MoreHorizontal className="h-4 w-4" />
-                                  </span>
-                                )}
-                                <Button
-                                  variant={page === activeSessionsPagination.page ? "default" : "outline"}
-                                  size="sm"
-                                  onClick={() => handleActivePageChange(page)}
-                                  className="min-w-[2.5rem]"
-                                >
-                                  {page}
-                                </Button>
-                              </div>
-                            ))}
-                        </div>
-                        <Button
-                          variant="outline"
-                          size="sm"
-                          onClick={() => handleActivePageChange(activeSessionsPagination.page + 1)}
-                          disabled={activeSessionsPagination.page >= activeSessionsPagination.totalPages}
-                        >
-                          Next
-                          <ChevronRight className="h-4 w-4" />
-                        </Button>
-                      </div>
+                )
+              )}              
+              {/* Pagination for Active Sessions */}
+              {activeSessionsPagination.totalPages > 1 && (
+                <div className="flex items-center justify-between mt-6 pt-4 border-t">
+                  <div className="text-sm text-muted-foreground">
+                    Showing {(activeSessionsPagination.page - 1) * activeSessionsPagination.pageSize + 1} to{' '}
+                    {Math.min(activeSessionsPagination.page * activeSessionsPagination.pageSize, activeSessionsPagination.totalCount)} of{' '}
+                    {activeSessionsPagination.totalCount} sessions
+                  </div>
+                  <div className="flex items-center space-x-2">
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      onClick={() => handleActivePageChange(activeSessionsPagination.page - 1)}
+                      disabled={activeSessionsPagination.page <= 1}
+                    >
+                      <ChevronLeft className="h-4 w-4" />
+                      Previous
+                    </Button>
+                    <div className="flex items-center space-x-1">
+                      {Array.from({ length: activeSessionsPagination.totalPages }, (_, i) => i + 1)
+                        .filter(page => 
+                          page === 1 || 
+                          page === activeSessionsPagination.totalPages || 
+                          Math.abs(page - activeSessionsPagination.page) <= 1
+                        )
+                        .map((page, index, array) => (
+                          <div key={page} className="flex items-center">
+                            {index > 0 && array[index - 1] !== page - 1 && (
+                              <span className="px-2 text-muted-foreground">
+                                <MoreHorizontal className="h-4 w-4" />
+                              </span>
+                            )}
+                            <Button
+                              variant={page === activeSessionsPagination.page ? "default" : "outline"}
+                              size="sm"
+                              onClick={() => handleActivePageChange(page)}
+                              className="min-w-[2.5rem]"
+                            >
+                              {page}
+                            </Button>
+                          </div>
+                        ))}
                     </div>
-                  )}
-                </>
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      onClick={() => handleActivePageChange(activeSessionsPagination.page + 1)}
+                      disabled={activeSessionsPagination.page >= activeSessionsPagination.totalPages}
+                    >
+                      Next
+                      <ChevronRight className="h-4 w-4" />
+                    </Button>
+                  </div>
+                </div>
               )}
             </CardContent>
           </Card>
         </TabsContent>
 
         <TabsContent value="revoked">
-          <Card>
-            <CardHeader>
+          <Card>            <CardHeader>
               <CardTitle className="flex items-center gap-2">
                 <Shield className="h-5 w-5" />
                 Revoked Sessions
@@ -510,6 +677,37 @@ export function SecuritySettings() {
               <CardDescription>
                 Sessions that have been logged out or revoked
               </CardDescription>
+              
+              {/* View Mode Selector */}
+              <div className="flex flex-wrap gap-2 mt-4">
+                <Button
+                  variant={viewMode === 'list' ? 'default' : 'outline'}
+                  size="sm"
+                  onClick={() => setViewMode('list')}
+                  className="flex items-center gap-2"
+                >
+                  <List className="h-4 w-4" />
+                  List View
+                </Button>
+                <Button
+                  variant={viewMode === 'device' ? 'default' : 'outline'}
+                  size="sm"
+                  onClick={() => setViewMode('device')}
+                  className="flex items-center gap-2"
+                >
+                  <Monitor className="h-4 w-4" />
+                  Group by Device
+                </Button>
+                <Button
+                  variant={viewMode === 'ip' ? 'default' : 'outline'}
+                  size="sm"
+                  onClick={() => setViewMode('ip')}
+                  className="flex items-center gap-2"
+                >
+                  <Globe className="h-4 w-4" />
+                  Group by IP
+                </Button>
+              </div>
             </CardHeader>
             <CardContent>
               {isLoading ? (
@@ -517,112 +715,230 @@ export function SecuritySettings() {
                   <Loader2 className="h-8 w-8 animate-spin" />
                   <span className="ml-2">Loading revoked sessions...</span>
                 </div>
-              ) : revokedSessions.length === 0 ? (
-                <div className="text-center py-8 text-muted-foreground">
-                  No revoked sessions found
-                </div>
+              ) : viewMode === 'list' ? (
+                revokedSessions.length === 0 ? (
+                  <div className="text-center py-8 text-muted-foreground">
+                    No revoked sessions found
+                  </div>
+                ) : (
+                  <>
+                    <div className="space-y-4">
+                      {revokedSessions.map((session) => (
+                        <div
+                          key={session.id}
+                          className="flex items-center justify-between p-4 border rounded-lg bg-card opacity-75"
+                        >
+                          <div className="flex items-center space-x-4">
+                            <div className="p-2 bg-muted rounded-lg">
+                              {getDeviceIcon(session.user_agent)}
+                            </div>
+                            <div className="space-y-1">
+                              <div className="flex items-center gap-2">
+                                <span className="font-medium">
+                                  {formatUserAgent(session.user_agent)}
+                                </span>
+                                <Badge variant="destructive">
+                                  Revoked
+                                </Badge>
+                              </div>
+                              <div className="flex items-center gap-4 text-sm text-muted-foreground">
+                                <div className="flex items-center gap-1">
+                                  <MapPin className="h-3 w-3" />
+                                  {session.ip_address}
+                                </div>
+                                <div className="flex items-center gap-1">
+                                  <Clock className="h-3 w-3" />
+                                  Created: {formatDate(session.created_at)}
+                                </div>
+                                <div className="flex items-center gap-1">
+                                  <Clock className="h-3 w-3" />
+                                  Revoked: {formatDate(session.revoked_at)}
+                                </div>
+                              </div>
+                            </div>
+                          </div>
+                        </div>
+                      ))}
+                    </div>
+                    
+                    {/* Pagination for Revoked Sessions */}
+                    {revokedSessionsPagination.totalPages > 1 && (
+                      <div className="flex items-center justify-between mt-6 pt-4 border-t">
+                        <div className="text-sm text-muted-foreground">
+                          Showing {(revokedSessionsPagination.page - 1) * revokedSessionsPagination.pageSize + 1} to{' '}
+                          {Math.min(revokedSessionsPagination.page * revokedSessionsPagination.pageSize, revokedSessionsPagination.totalCount)} of{' '}
+                          {revokedSessionsPagination.totalCount} sessions
+                        </div>
+                        <div className="flex items-center space-x-2">
+                          <Button
+                            variant="outline"
+                            size="sm"
+                            onClick={() => handleRevokedPageChange(revokedSessionsPagination.page - 1)}
+                            disabled={revokedSessionsPagination.page <= 1}
+                          >
+                            <ChevronLeft className="h-4 w-4" />
+                            Previous
+                          </Button>
+                          <div className="flex items-center space-x-1">
+                            {Array.from({ length: revokedSessionsPagination.totalPages }, (_, i) => i + 1)
+                              .filter(page => 
+                                page === 1 || 
+                                page === revokedSessionsPagination.totalPages || 
+                                Math.abs(page - revokedSessionsPagination.page) <= 1
+                              )
+                              .map((page, index, array) => (
+                                <div key={page} className="flex items-center">
+                                  {index > 0 && array[index - 1] !== page - 1 && (
+                                    <span className="px-2 text-muted-foreground">
+                                      <MoreHorizontal className="h-4 w-4" />
+                                    </span>
+                                  )}
+                                  <Button
+                                    variant={page === revokedSessionsPagination.page ? "default" : "outline"}
+                                    size="sm"
+                                    onClick={() => handleRevokedPageChange(page)}
+                                    className="min-w-[2.5rem]"
+                                  >
+                                    {page}
+                                  </Button>
+                                </div>
+                              ))}
+                          </div>
+                          <Button
+                            variant="outline"
+                            size="sm"
+                            onClick={() => handleRevokedPageChange(revokedSessionsPagination.page + 1)}
+                            disabled={revokedSessionsPagination.page >= revokedSessionsPagination.totalPages}
+                          >
+                            Next
+                            <ChevronRight className="h-4 w-4" />
+                          </Button>
+                        </div>
+                      </div>
+                    )}
+                  </>
+                )
               ) : (
-                <>
-                  <div className="space-y-4">
-                    {revokedSessions.map((session) => (
-                      <div
-                        key={session.id}
-                        className="flex items-center justify-between p-4 border rounded-lg bg-card opacity-75"
-                      >
-                        <div className="flex items-center space-x-4">
+                // Grouped View for Revoked Sessions
+                Object.keys(groupedRevokedSessions).length === 0 ? (
+                  <div className="text-center py-8 text-muted-foreground">
+                    No revoked sessions found
+                  </div>
+                ) : (
+                  <div className="space-y-6">
+                    {Object.entries(groupedRevokedSessions).map(([groupKey, sessions]) => (
+                      <div key={groupKey} className="space-y-3">
+                        <div className="flex items-center gap-2 pb-2 border-b">
                           <div className="p-2 bg-muted rounded-lg">
-                            {getDeviceIcon(session.user_agent)}
+                            {viewMode === 'device' ? (
+                              getDeviceIcon(sessions[0]?.user_agent || '')
+                            ) : (
+                              <Globe className="h-4 w-4" />
+                            )}
                           </div>
-                          <div className="space-y-1">
-                            <div className="flex items-center gap-2">
-                              <span className="font-medium">
-                                {formatUserAgent(session.user_agent)}
-                              </span>
-                              <Badge variant="destructive">
-                                Revoked
-                              </Badge>
-                            </div>
-                            <div className="flex items-center gap-4 text-sm text-muted-foreground">
-                              <div className="flex items-center gap-1">
-                                <MapPin className="h-3 w-3" />
-                                {session.ip_address}
-                              </div>
-                              <div className="flex items-center gap-1">
-                                <Clock className="h-3 w-3" />
-                                Created: {formatDate(session.created_at)}
-                              </div>
-                              <div className="flex items-center gap-1">
-                                <Clock className="h-3 w-3" />
-                                Revoked: {formatDate(session.revoked_at)}
-                              </div>
-                            </div>
+                          <div>
+                            <h3 className="font-semibold text-lg">
+                              {viewMode === 'device' ? formatUserAgent(groupKey) : groupKey}
+                            </h3>
+                            <p className="text-sm text-muted-foreground">
+                              {sessions.length} session{sessions.length !== 1 ? 's' : ''}
+                            </p>
                           </div>
+                        </div>
+                        <div className="space-y-3 ml-6">
+                          {sessions.map((session) => (
+                            <div
+                              key={session.id}
+                              className="flex items-center justify-between p-3 border rounded-lg bg-card/50 opacity-75"
+                            >
+                              <div className="space-y-1">
+                                <div className="flex items-center gap-2">
+                                  <span className="font-medium text-sm">
+                                    {viewMode === 'device' ? session.ip_address : formatUserAgent(session.user_agent)}
+                                  </span>
+                                  <Badge variant="destructive">
+                                    Revoked
+                                  </Badge>
+                                </div>
+                                <div className="flex items-center gap-4 text-xs text-muted-foreground">
+                                  <div className="flex items-center gap-1">
+                                    <Clock className="h-3 w-3" />
+                                    Created: {formatDate(session.created_at)}
+                                  </div>
+                                  <div className="flex items-center gap-1">
+                                    <Clock className="h-3 w-3" />
+                                    Revoked: {formatDate(session.revoked_at)}
+                                  </div>
+                                </div>
+                              </div>
+                            </div>
+                          ))}
                         </div>
                       </div>
                     ))}
                   </div>
-                  
-                  {/* Pagination for Revoked Sessions */}
-                  {revokedSessionsPagination.totalPages > 1 && (
-                    <div className="flex items-center justify-between mt-6 pt-4 border-t">
-                      <div className="text-sm text-muted-foreground">
-                        Showing {(revokedSessionsPagination.page - 1) * revokedSessionsPagination.pageSize + 1} to{' '}
-                        {Math.min(revokedSessionsPagination.page * revokedSessionsPagination.pageSize, revokedSessionsPagination.totalCount)} of{' '}
-                        {revokedSessionsPagination.totalCount} sessions
-                      </div>
-                      <div className="flex items-center space-x-2">
-                        <Button
-                          variant="outline"
-                          size="sm"
-                          onClick={() => handleRevokedPageChange(revokedSessionsPagination.page - 1)}
-                          disabled={revokedSessionsPagination.page <= 1}
-                        >
-                          <ChevronLeft className="h-4 w-4" />
-                          Previous
-                        </Button>
-                        <div className="flex items-center space-x-1">
-                          {Array.from({ length: revokedSessionsPagination.totalPages }, (_, i) => i + 1)
-                            .filter(page => 
-                              page === 1 || 
-                              page === revokedSessionsPagination.totalPages || 
-                              Math.abs(page - revokedSessionsPagination.page) <= 1
-                            )
-                            .map((page, index, array) => (
-                              <div key={page} className="flex items-center">
-                                {index > 0 && array[index - 1] !== page - 1 && (
-                                  <span className="px-2 text-muted-foreground">
-                                    <MoreHorizontal className="h-4 w-4" />
-                                  </span>
-                                )}
-                                <Button
-                                  variant={page === revokedSessionsPagination.page ? "default" : "outline"}
-                                  size="sm"
-                                  onClick={() => handleRevokedPageChange(page)}
-                                  className="min-w-[2.5rem]"
-                                >
-                                  {page}
-                                </Button>
-                              </div>
-                            ))}
-                        </div>
-                        <Button
-                          variant="outline"
-                          size="sm"
-                          onClick={() => handleRevokedPageChange(revokedSessionsPagination.page + 1)}
-                          disabled={revokedSessionsPagination.page >= revokedSessionsPagination.totalPages}
-                        >
-                          Next
-                          <ChevronRight className="h-4 w-4" />
-                        </Button>
-                      </div>
+                )
+              )}
+
+              {/* Pagination for Revoked Sessions */}
+              {revokedSessionsPagination.totalPages > 1 && (
+                <div className="flex items-center justify-between mt-6 pt-4 border-t">
+                  <div className="text-sm text-muted-foreground">
+                    Showing {(revokedSessionsPagination.page - 1) * revokedSessionsPagination.pageSize + 1} to{' '}
+                    {Math.min(revokedSessionsPagination.page * revokedSessionsPagination.pageSize, revokedSessionsPagination.totalCount)} of{' '}
+                    {revokedSessionsPagination.totalCount} sessions
+                  </div>
+                  <div className="flex items-center space-x-2">
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      onClick={() => handleRevokedPageChange(revokedSessionsPagination.page - 1)}
+                      disabled={revokedSessionsPagination.page <= 1}
+                    >
+                      <ChevronLeft className="h-4 w-4" />
+                      Previous
+                    </Button>
+                    <div className="flex items-center space-x-1">
+                      {Array.from({ length: revokedSessionsPagination.totalPages }, (_, i) => i + 1)
+                        .filter(page => 
+                          page === 1 || 
+                          page === revokedSessionsPagination.totalPages || 
+                          Math.abs(page - revokedSessionsPagination.page) <= 1
+                        )
+                        .map((page, index, array) => (
+                          <div key={page} className="flex items-center">
+                            {index > 0 && array[index - 1] !== page - 1 && (
+                              <span className="px-2 text-muted-foreground">
+                                <MoreHorizontal className="h-4 w-4" />
+                              </span>
+                            )}
+                            <Button
+                              variant={page === revokedSessionsPagination.page ? "default" : "outline"}
+                              size="sm"
+                              onClick={() => handleRevokedPageChange(page)}
+                              className="min-w-[2.5rem]"
+                            >
+                              {page}
+                            </Button>
+                          </div>
+                        ))}
                     </div>
-                  )}
-                </>
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      onClick={() => handleRevokedPageChange(revokedSessionsPagination.page + 1)}
+                      disabled={revokedSessionsPagination.page >= revokedSessionsPagination.totalPages}
+                    >
+                      Next
+                      <ChevronRight className="h-4 w-4" />
+                    </Button>
+                  </div>
+                </div>
               )}
             </CardContent>
           </Card>
         </TabsContent>
-      </Tabs>    </div>
+      </Tabs>
+    </div>
   )
 }
-
