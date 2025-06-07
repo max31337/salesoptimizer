@@ -17,6 +17,7 @@ from domain.organization.exceptions.auth_exceptions import (
 )
 from infrastructure.services.password_service import PasswordService
 from infrastructure.services.jwt_service import JWTService
+from infrastructure.utils.device_parser import generate_device_info_string
 
 if TYPE_CHECKING:
     from domain.organization.entities.invitation import Invitation
@@ -489,10 +490,13 @@ class AuthService:
             email=str(user.email)
         )
         
+        # Generate user-friendly device info
+        # Generate user-friendly device info
+        device_info = self._generate_device_info_string(user_agent)
         # Use the async method for refresh token creation with device info
         refresh_token = await self._jwt_service.create_refresh_token_with_storage(
             user_id=str(user.id.value),
-            device_info=f"Login from {user_agent[:100]}",  # Truncate user agent
+            device_info=device_info,
             ip_address=ip_address,
             user_agent=user_agent
         )
@@ -518,3 +522,97 @@ class AuthService:
     async def get_user_by_username(self, username: str) -> Optional[User]:
         """Get user by username."""
         return await self._user_repository.get_by_username(username)
+
+    def _generate_device_info_string(self, user_agent: str) -> str:
+        """Generate a user-friendly device info string from user agent."""
+        return generate_device_info_string(user_agent)
+    
+    async def get_user_active_sessions_grouped(
+        self, 
+        user_id: str, 
+        group_by: str,
+        page: int = 1, 
+        page_size: int = 10
+    ) -> Dict[str, Any]:
+        """Get active sessions for a user grouped by device or IP."""
+        try:
+            from uuid import UUID
+            user_uuid = UUID(user_id)
+            if self._jwt_service.refresh_token_repository:
+                if group_by == "device":
+                    result = await self._jwt_service.refresh_token_repository.get_user_active_sessions_grouped_by_device(
+                        user_uuid, page, page_size
+                    )
+                elif group_by == "ip":
+                    result = await self._jwt_service.refresh_token_repository.get_user_active_sessions_grouped_by_ip(
+                        user_uuid, page, page_size
+                    )
+                else:
+                    # Fall back to regular method
+                    result = await self._jwt_service.refresh_token_repository.get_user_active_sessions(
+                        user_uuid, page, page_size
+                    )
+                return result
+            
+            return {
+                "grouped_sessions": {},
+                "total_sessions": 0,
+                "page": page,
+                "page_size": page_size,
+                "total_pages": 0
+            }
+            
+        except Exception as e:
+            self._logger.error(f"Failed to get grouped active sessions: {e}")
+            return {
+                "grouped_sessions": {},
+                "total_sessions": 0,
+                "page": page,
+                "page_size": page_size,
+                "total_pages": 0
+            }
+
+    async def get_user_revoked_sessions_grouped(
+        self, 
+        user_id: str, 
+        group_by: str,
+        page: int = 1, 
+        page_size: int = 10
+    ) -> Dict[str, Any]:
+        """Get revoked sessions for a user grouped by device or IP."""
+        try:
+            from uuid import UUID
+            user_uuid = UUID(user_id)
+            if self._jwt_service.refresh_token_repository:
+                if group_by == "device":
+                    result = await self._jwt_service.refresh_token_repository.get_user_revoked_sessions_grouped_by_device(
+                        user_uuid, page, page_size
+                    )
+                elif group_by == "ip":
+                    result = await self._jwt_service.refresh_token_repository.get_user_revoked_sessions_grouped_by_ip(
+                        user_uuid, page, page_size
+                    )
+                else:
+                    # Fall back to regular method
+                    result = await self._jwt_service.refresh_token_repository.get_user_revoked_sessions(
+                        user_uuid, page, page_size
+                    )
+                return result
+            
+            return {
+                "grouped_sessions": {},
+                "total_sessions": 0,
+                "page": page,
+                "page_size": page_size,
+                "total_pages": 0
+            }
+            
+        except Exception as e:
+            self._logger.error(f"Failed to get grouped revoked sessions: {e}")
+            return {
+                "grouped_sessions": {},
+                "total_sessions": 0,
+                "page": page,
+                "page_size": page_size,
+                "total_pages": 0
+            }

@@ -4,11 +4,12 @@ from typing import Dict, Any, Optional, Union
 import uuid
 import logging
 from infrastructure.config.settings import settings
+from domain.shared.services.token_service import TokenService
 
 logger = logging.getLogger(__name__)
 
 
-class JWTService:
+class JWTService(TokenService):
     def __init__(
         self,
         secret_key: str = settings.JWT_SECRET_KEY,
@@ -170,4 +171,63 @@ class JWTService:
             payload = jwt.decode(token, options={"verify_signature": False})
             return payload.get("type") == expected_type
         except Exception:
+            return False
+    
+    async def save_refresh_token_to_storage(
+        self,
+        user_id: str,
+        token: str,
+        jti: str,
+        expires_at: datetime,
+        device_info: Optional[str] = None,
+        ip_address: Optional[str] = None,
+        user_agent: Optional[str] = None
+    ) -> str:
+        """Save refresh token to storage."""
+        if self.refresh_token_repository:
+            try:
+                refresh_token_id = await self.refresh_token_repository.save_refresh_token(
+                    user_id=uuid.UUID(user_id),
+                    token=token,
+                    jti=jti,
+                    expires_at=expires_at,
+                    device_info=device_info,
+                    ip_address=ip_address,
+                    user_agent=user_agent
+                )
+                logger.info(f"Refresh token stored in database for user {user_id}")
+                return str(refresh_token_id)
+            except Exception as e:
+                logger.error(f"Failed to store refresh token in database: {e}")
+                raise
+        else:
+            logger.warning("Refresh token repository not available")
+            raise RuntimeError("Refresh token repository not configured")
+    
+    async def revoke_refresh_token_by_jti(self, jti: str) -> bool:
+        """Revoke refresh token by JWT ID."""
+        if self.refresh_token_repository:
+            try:
+                result = await self.refresh_token_repository.revoke_refresh_token_by_jti(jti)
+                logger.info(f"Refresh token with JTI {jti} revoked: {result}")
+                return result
+            except Exception as e:
+                logger.error(f"Failed to revoke refresh token by JTI {jti}: {e}")
+                return False
+        else:
+            logger.warning("Refresh token repository not available for revocation")
+            return False
+    
+    async def revoke_access_token(self, jti: str) -> bool:
+        """Revoke access token by adding to blacklist."""
+        if self.token_blacklist_service:
+            try:
+                await self.token_blacklist_service.revoke_token_by_jti(jti)
+                logger.info(f"Access token with JTI {jti} added to blacklist")
+                return True
+            except Exception as e:
+                logger.error(f"Failed to revoke access token by JTI {jti}: {e}")
+                return False
+        else:
+            logger.warning("Token blacklist service not available for access token revocation")
             return False

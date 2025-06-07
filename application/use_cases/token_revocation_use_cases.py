@@ -160,3 +160,67 @@ class TokenRevocationUseCases:
             user_id = user.id.value if user.id else "unknown"
             logger.error(f"Failed to revoke session {session_id} for user {user_id}: {e}")
             return False
+    
+    async def get_user_active_sessions_grouped(
+        self, 
+        user: User, 
+        group_by: str,
+        page: int = 1, 
+        page_size: int = 10
+    ) -> Dict[str, Any]:
+        """Get active sessions for a user with pagination and grouping."""
+        try:
+            if not user.id:
+                raise ValueError("User ID is required")
+            
+            user_id = str(user.id.value)
+            result = await self._auth_service.get_user_active_sessions_grouped(
+                user_id, group_by, page, page_size
+            )
+            
+            session_count = result.get('total_sessions', len(result.get('sessions', [])))
+            logger.info(f"Retrieved {session_count} active sessions for user {user_id} (page {page}, grouped by {group_by})")
+            return result
+            
+        except Exception as e:
+            user_id = user.id.value if user.id else "unknown"
+            logger.error(f"Failed to get grouped active sessions for user {user_id}: {e}")
+            return {
+                "grouped_sessions": {},
+                "total_sessions": 0,
+                "page": page,
+                "page_size": page_size,
+                "total_pages": 0
+            }
+
+    async def get_user_revoked_sessions_grouped(
+        self, 
+        user: User, 
+        group_by: str,
+        page: int = 1, 
+        page_size: int = 10
+    ) -> Dict[str, Any]:
+        """Get revoked sessions for a user with pagination and grouping."""
+        try:
+            if not user.id:
+                raise ValueError("User ID is required")
+            
+            user_id = str(user.id.value)
+            result = await self._auth_service.get_user_revoked_sessions_grouped(
+                user_id, group_by, page, page_size
+            )
+            
+            session_count = result.get('total_sessions', len(result.get('sessions', [])))
+            logger.info(f"Retrieved {session_count} revoked sessions for user {user_id} (page {page}, grouped by {group_by})")
+            return result
+            
+        except Exception as e:
+            user_id = user.id.value if user.id else "unknown"
+            logger.error(f"Failed to get grouped revoked sessions for user {user_id}: {e}")
+            return {
+                "grouped_sessions": {},
+                "total_sessions": 0,
+                "page": page,
+                "page_size": page_size,
+                "total_pages": 0
+            }
