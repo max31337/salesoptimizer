@@ -81,16 +81,16 @@ export function SecuritySettingsWithGrouping() {
   })
   
   const { logout } = useAuth()
-
   useEffect(() => {
     loadSessions()
   }, [activeTab, viewMode])
 
   const loadSessions = async () => {
+    // Always reset to page 1 when viewMode changes to avoid pagination issues
     if (activeTab === "active") {
-      await loadActiveSessions(activeSessionsPagination.page)
+      await loadActiveSessions(1)
     } else {
-      await loadRevokedSessions(revokedSessionsPagination.page)
+      await loadRevokedSessions(1)
     }
   }
 
