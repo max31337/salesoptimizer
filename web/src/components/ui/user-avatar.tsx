@@ -2,9 +2,11 @@
 
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar"
 import { cn } from "@/lib/utils"
+import { ProfilePictureCacheManager } from "@/utils/profile-picture-cache"
 
 interface UserAvatarProps {
   user: {
+    id?: string
     profile_picture_url?: string | null
     first_name?: string | null
     last_name?: string | null
@@ -12,9 +14,10 @@ interface UserAvatarProps {
   } | null
   className?: string
   fallbackClassName?: string
+  forceRefresh?: boolean // For when we know the picture was just updated
 }
 
-export function UserAvatar({ user, className, fallbackClassName }: UserAvatarProps) {
+export function UserAvatar({ user, className, fallbackClassName, forceRefresh = false }: UserAvatarProps) {
   const getUserInitials = (user: any) => {
     if (user?.first_name && user?.last_name) {
       return `${user.first_name[0]}${user.last_name[0]}`.toUpperCase()
@@ -26,17 +29,15 @@ export function UserAvatar({ user, className, fallbackClassName }: UserAvatarPro
   }
 
   const getProfilePictureUrl = (profilePictureUrl?: string | null) => {
-    if (!profilePictureUrl) {
+    if (!profilePictureUrl || !user?.id) {
       return undefined
     }
     
-    // If it's a full URL, return as is
-    if (profilePictureUrl.startsWith('http')) {
-      return `${profilePictureUrl}?t=${Date.now()}`
-    }
-    
-    // If it's a relative path, prepend API URL and add cache busting
-    return `${process.env.NEXT_PUBLIC_API_URL}${profilePictureUrl}?t=${Date.now()}`
+    return ProfilePictureCacheManager.getCachedProfilePictureUrl(
+      user.id,
+      profilePictureUrl,
+      forceRefresh
+    )
   }
 
   const profilePictureUrl = getProfilePictureUrl(user?.profile_picture_url)

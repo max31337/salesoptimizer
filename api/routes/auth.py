@@ -74,7 +74,6 @@ async def login(
             domain=settings.cookie_domain,  
             path="/"
         )
-        
         return LoginResponse(
             access_token="",  # Don't return tokens in response body
             refresh_token="",
@@ -83,7 +82,8 @@ async def login(
             tenant_id=user.tenant_id,
             role=user.role.value,
             email=str(user.email),
-            full_name=user.full_name
+            full_name=user.full_name,
+            bio=user.bio
         )
     
     except (InvalidCredentialsError, UserNotFoundError):

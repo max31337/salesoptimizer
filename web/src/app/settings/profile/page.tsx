@@ -11,6 +11,7 @@ import { Alert, AlertDescription } from "@/components/ui/alert"
 import { ProfileUpdateModal } from "@/components/modals/profile-update-modal"
 import { UserAvatar } from "@/components/ui/user-avatar"
 import { profileService, type ProfileUpdateRequest } from "@/features/profile/services/profile-service"
+import { ProfilePictureCacheManager } from "@/utils/profile-picture-cache"
 import { User, Mail, Phone, Building, Upload, Trash2, Loader2, AlertTriangle } from "lucide-react"
 
 export default function ProfileSettingsPage() {
@@ -146,11 +147,15 @@ export default function ProfileSettingsPage() {
     }
 
     setIsUploadingPhoto(true)
-    setError('')
-
+    setError('')    
     try {
       await profileService.uploadProfilePicture(file)
       setSuccess('Profile picture uploaded successfully')
+      
+      // Invalidate profile picture cache
+      if (user?.id) {
+        ProfilePictureCacheManager.invalidateCache(user.id)
+      }
       
       // Refresh user data to get new profile picture URL
       await refreshUser()
@@ -165,7 +170,6 @@ export default function ProfileSettingsPage() {
       }
     }
   }
-
   const handlePhotoDelete = async () => {
     setIsDeletingPhoto(true)
     setError('')
@@ -174,6 +178,11 @@ export default function ProfileSettingsPage() {
       await profileService.deleteProfilePicture()
       setSuccess('Profile picture removed successfully')
       
+      // Invalidate profile picture cache
+      if (user?.id) {
+        ProfilePictureCacheManager.invalidateCache(user.id)
+      }
+      
       // Refresh user data
       await refreshUser()
     } catch (err: any) {
@@ -181,7 +190,8 @@ export default function ProfileSettingsPage() {
       setError(err.message || 'Failed to remove photo')
     } finally {
       setIsDeletingPhoto(false)
-    }  }
+    }
+  }
   
   return (
     <div className="space-y-6">
