@@ -80,7 +80,7 @@ export default function SuperAdminDashboard() {
                     </div>
                   </DropdownMenuLabel>                  <DropdownMenuSeparator />
                   <DropdownMenuItem className="cursor-pointer" asChild>
-                    <Link href="/settings/profile">
+                    <Link href="/profile">
                       <UserIcon className="mr-2 h-4 w-4" />
                       <span>Profile</span>
                     </Link>

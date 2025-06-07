@@ -1,6 +1,7 @@
 from fastapi import APIRouter, Depends, HTTPException, UploadFile, File, Request
 from fastapi.responses import JSONResponse
 from uuid import UUID
+from typing import Dict, Any
 
 from api.dependencies.auth import get_current_user, get_current_user_from_cookie
 from application.use_cases.profile_update_use_cases import ProfileUpdateUseCase
@@ -161,3 +162,28 @@ async def remove_profile_picture(
         raise HTTPException(status_code=400, detail=str(e))
     except Exception as e:
         raise HTTPException(status_code=500, detail="Internal server error")
+
+
+@router.get("/organization")
+async def get_organization_info(
+    current_user: User = Depends(get_current_user),
+    profile_use_case: ProfileUpdateUseCase = Depends(get_profile_update_use_case)
+):
+    """Get current user's organization information."""
+    try:
+        if not current_user.tenant_id:
+            return JSONResponse(content={"organization": None, "message": "User not associated with any organization"})
+        # For now, return basic tenant information based on tenant_id
+        # In a full implementation, you'd use a tenant service to get detailed info
+        organization_info: Dict[str, Any] = {
+            "id": str(current_user.tenant_id),
+            "name": "Your Organization",  # This would come from tenant service
+            "slug": "your-org",  # This would come from tenant service
+            "subscription_tier": "basic",  # This would come from tenant service
+            "is_active": True,
+            "created_at": "2024-01-01T00:00:00Z"  # This would come from tenant service
+        }
+        
+        return JSONResponse(content={"organization": organization_info})
+    except Exception:
+        raise HTTPException(status_code=500, detail="Failed to fetch organization information")

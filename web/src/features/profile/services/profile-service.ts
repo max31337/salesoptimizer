@@ -38,6 +38,20 @@ export interface UploadProfilePictureResponse {
   message: string
 }
 
+export interface Organization {
+  id: string
+  name: string
+  slug: string
+  subscription_tier: string
+  is_active: boolean
+  created_at: string
+}
+
+export interface OrganizationResponse {
+  organization: Organization | null
+  message?: string
+}
+
 class ProfileService {
   /**
    * Get current user's profile
@@ -96,6 +110,13 @@ class ProfileService {
    */
   async deleteProfilePicture(): Promise<{ message: string }> {
     return apiClient.delete<{ message: string }>('/profile/me/profile-picture')
+  }
+
+  /**
+   * Get organization information for current user
+   */
+  async getOrganization(): Promise<OrganizationResponse> {
+    return apiClient.get<OrganizationResponse>('/profile/organization')
   }
 
   /**

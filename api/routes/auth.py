@@ -83,6 +83,7 @@ async def login(
             role=user.role.value,
             email=str(user.email),
             full_name=user.full_name,
+            profile_picture_url=user.profile_picture_url,
             bio=user.bio
         )
     

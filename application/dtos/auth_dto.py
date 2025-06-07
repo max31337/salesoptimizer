@@ -49,6 +49,11 @@ class LoginResponse(BaseModel):
     role: str
     email: str
     full_name: str
+    profile_picture_url: Optional[str] = None
     bio: Optional[str] = None
     status: str = "active"
     message: Optional[str] = None
+
+    class Config:
+        from_attributes = True
+
