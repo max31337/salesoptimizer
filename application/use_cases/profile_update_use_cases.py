@@ -65,12 +65,12 @@ class ProfileUpdateUseCase:
         
         if user.id is None:
             raise ValueError("User ID cannot be None")
-        
-        # Validate the update
+          # Validate the update
         validation = self.profile_service.validate_profile_update(
             user=user,
             first_name=request.first_name,
             last_name=request.last_name,
+            email=request.email,
             phone=request.phone,
             bio=request.bio,
             profile_picture_url=request.profile_picture_url
@@ -80,7 +80,7 @@ class ProfileUpdateUseCase:
             raise ValueError(f"Validation failed: {', '.join(validation['errors'])}")
         
         # Determine update strategy
-        strategy = self.profile_service.determine_update_strategy(user=user, email=None)
+        strategy = self.profile_service.determine_update_strategy(user=user, email=request.email)
         
         if strategy == "direct":
             # Update directly
@@ -92,6 +92,9 @@ class ProfileUpdateUseCase:
                 profile_picture_url=request.profile_picture_url
             )
             
+            # Update email if provided and user has permission
+            if request.email is not None and self.profile_service.can_update_email_directly(user):
+                user.email = Email(request.email)
             await self.user_repository.update(user)
             
             return await self.get_user_profile(user_id)
@@ -99,6 +102,8 @@ class ProfileUpdateUseCase:
         else:  # requires_approval
             # Create pending update record
             changes: Dict[str, Any] = {}
+            if request.email is not None:
+                changes["email"] = request.email
             if request.first_name is not None:
                 changes["first_name"] = request.first_name
             if request.last_name is not None:

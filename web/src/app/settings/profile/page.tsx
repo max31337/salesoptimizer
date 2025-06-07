@@ -15,28 +15,32 @@ import { User, Mail, Phone, Building, Upload, Trash2, Loader2, AlertTriangle } f
 export default function ProfileSettingsPage() {
   const { user, refreshUser } = useAuth()
   const fileInputRef = useRef<HTMLInputElement>(null)
-  
-  // Form state
+    // Form state
   const [formData, setFormData] = useState({
+    email: user?.email || '',
     first_name: user?.first_name || '',
     last_name: user?.last_name || '',
     phone: user?.phone || ''
   })
-  
-  // UI state
+    // UI state
   const [isSubmitting, setIsSubmitting] = useState(false)
   const [isUploadingPhoto, setIsUploadingPhoto] = useState(false)
   const [isDeletingPhoto, setIsDeletingPhoto] = useState(false)
   const [error, setError] = useState('')
-  const [success, setSuccess] = useState('')  // Modal state
+  const [success, setSuccess] = useState('')
+
+  // Admin check
+  const isAdmin = user?.role === 'super_admin' || user?.role === 'org_admin'
+
+  // Modal state
   const [modalOpen, setModalOpen] = useState(false)
   const [modalType, setModalType] = useState<'success' | 'pending' | 'error'>('success')
   const [modalMessage, setModalMessage] = useState('')
-
   // Update form data when user data changes
   useEffect(() => {
     if (user) {
       setFormData({
+        email: user.email || '',
         first_name: user.first_name || '',
         last_name: user.last_name || '',
         phone: user.phone || ''
@@ -50,7 +54,6 @@ export default function ProfileSettingsPage() {
     if (error) setError('')
     if (success) setSuccess('')
   }
-
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
     setIsSubmitting(true)
@@ -60,6 +63,12 @@ export default function ProfileSettingsPage() {
     try {
       // Only send fields that have changed
       const changedFields: ProfileUpdateRequest = {}
+      
+      // Check email change (only for admins)
+      if (isAdmin && formData.email !== (user?.email || '')) {
+        changedFields.email = formData.email
+      }
+      
       if (formData.first_name !== (user?.first_name || '')) {
         changedFields.first_name = formData.first_name
       }
@@ -154,10 +163,8 @@ export default function ProfileSettingsPage() {
       setError(err.message || 'Failed to remove photo')
     } finally {
       setIsDeletingPhoto(false)
-    }
-  }
-
-  const isAdmin = user?.role === 'super_admin' || user?.role === 'org_admin'
+    }  }
+  
   return (
     <div className="space-y-6">
       <div>
@@ -279,9 +286,7 @@ export default function ProfileSettingsPage() {
                   placeholder="Enter your last name"
                 />
               </div>
-            </div>
-
-            <div className="space-y-2">
+            </div>            <div className="space-y-2">
               <Label htmlFor="email" className="flex items-center gap-2">
                 <Mail className="h-4 w-4" />
                 Email Address
@@ -289,12 +294,16 @@ export default function ProfileSettingsPage() {
               <Input
                 id="email"
                 type="email"
-                value={user?.email || ''}
+                value={isAdmin ? formData.email : (user?.email || '')}
+                onChange={(e) => handleInputChange('email', e.target.value)}
                 placeholder="Enter your email"
-                disabled
+                disabled={!isAdmin}
               />
               <p className="text-xs text-muted-foreground">
-                Email cannot be changed. Contact support if you need to update it.
+                {isAdmin 
+                  ? "As an admin, you can update your email address directly."
+                  : "Email cannot be changed. Contact support if you need to update it."
+                }
               </p>
             </div>
 
