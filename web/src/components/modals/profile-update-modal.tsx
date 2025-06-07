@@ -2,7 +2,6 @@
 
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from "@/components/ui/dialog"
 import { Button } from "@/components/ui/button"
-import { Alert, AlertDescription } from "@/components/ui/alert"
 import { CheckCircle, Clock, Info } from "lucide-react"
 
 interface ProfileUpdateModalProps {
@@ -39,7 +38,6 @@ export function ProfileUpdateModal({
         return <Info className="h-6 w-6" />
     }
   }
-
   const getTitle = () => {
     switch (type) {
       case 'success':
@@ -52,16 +50,6 @@ export function ProfileUpdateModal({
         return 'Profile Update'
     }
   }
-
-  const getVariant = () => {
-    switch (type) {
-      case 'error':
-        return 'destructive' as const
-      default:
-        return 'default' as const
-    }
-  }
-
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent className="sm:max-w-md">
@@ -80,14 +68,14 @@ export function ProfileUpdateModal({
             {type === 'error' && (
               "There was an error updating your profile. Please try again."
             )}
-          </DialogDescription>        </DialogHeader>
+          </DialogDescription>
+        </DialogHeader>
         
-        <Alert variant={getVariant()}>
-          {getIcon()}
-          <AlertDescription>
+        <div className="py-4">
+          <p className="text-sm text-muted-foreground">
             {message}
-          </AlertDescription>
-        </Alert>
+          </p>
+        </div>
 
         <div className="flex justify-end gap-2">
           <Button onClick={handleContinue}>

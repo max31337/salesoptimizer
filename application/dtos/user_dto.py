@@ -9,6 +9,7 @@ class UserResponse(BaseModel):
     role: str
     full_name: str
     tenant_id: Optional[str] = None
+    phone: Optional[str] = None
     is_active: bool = True
     profile_picture_url: Optional[str] = None
     

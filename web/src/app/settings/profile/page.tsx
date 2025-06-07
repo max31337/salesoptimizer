@@ -1,6 +1,6 @@
 "use client"
 
-import { useState, useRef } from "react"
+import { useState, useRef, useEffect } from "react"
 import { useAuth } from "@/features/auth/hooks/useAuth"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
@@ -28,11 +28,21 @@ export default function ProfileSettingsPage() {
   const [isUploadingPhoto, setIsUploadingPhoto] = useState(false)
   const [isDeletingPhoto, setIsDeletingPhoto] = useState(false)
   const [error, setError] = useState('')
-  const [success, setSuccess] = useState('')
-    // Modal state
+  const [success, setSuccess] = useState('')  // Modal state
   const [modalOpen, setModalOpen] = useState(false)
   const [modalType, setModalType] = useState<'success' | 'pending' | 'error'>('success')
   const [modalMessage, setModalMessage] = useState('')
+
+  // Update form data when user data changes
+  useEffect(() => {
+    if (user) {
+      setFormData({
+        first_name: user.first_name || '',
+        last_name: user.last_name || '',
+        phone: user.phone || ''
+      })
+    }
+  }, [user])
 
   const handleInputChange = (field: keyof ProfileUpdateRequest, value: string) => {
     setFormData(prev => ({ ...prev, [field]: value }))
