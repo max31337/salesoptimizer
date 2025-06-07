@@ -16,6 +16,8 @@ if TYPE_CHECKING:
     from infrastructure.db.models.team_model import TeamModel
     from infrastructure.db.models.invitation_model import InvitationModel
     from infrastructure.db.models.refresh_token_model import RefreshTokenModel
+    from infrastructure.db.models.profile_update_request_model import ProfileUpdateRequestModel
+    from infrastructure.db.models.profile_update_request_model import ProfileUpdateRequestModel
 
 
 class GUID(TypeDecorator[uuid.UUID]):
@@ -72,6 +74,8 @@ class UserModel(Base):
     first_name: Mapped[str] = mapped_column(String(100), nullable=False)
     last_name: Mapped[str] = mapped_column(String(100), nullable=False)
     phone: Mapped[str] = mapped_column(String(20), nullable=True)
+    profile_picture_url: Mapped[str] = mapped_column(String(500), nullable=True)
+    bio: Mapped[str] = mapped_column(String(1000), nullable=True)
     password_hash: Mapped[str] = mapped_column(String(255), nullable=True)
     role: Mapped[str] = mapped_column(String(50), nullable=False, default="sales_rep")
     status: Mapped[str] = mapped_column(String(20), nullable=False, default="pending")
@@ -124,6 +128,14 @@ class UserModel(Base):
     refresh_tokens: Mapped[list["RefreshTokenModel"]] = relationship(
         "RefreshTokenModel",
         foreign_keys="RefreshTokenModel.user_id",
+        back_populates="user",
+        cascade="all, delete-orphan"
+    )
+
+    # Profile update requests relationship
+    profile_update_requests: Mapped[list["ProfileUpdateRequestModel"]] = relationship(
+        "ProfileUpdateRequestModel",
+        foreign_keys="ProfileUpdateRequestModel.user_id",
         back_populates="user",
         cascade="all, delete-orphan"
     )

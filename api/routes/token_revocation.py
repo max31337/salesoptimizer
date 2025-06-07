@@ -9,29 +9,6 @@ from api.dependencies.auth import get_current_user_from_cookie
 
 router = APIRouter(prefix="/auth", tags=["token-revocation"])
 
-
-def _group_sessions_by_device(sessions: List[Dict[str, Any]]) -> Dict[str, List[Dict[str, Any]]]:
-    """Group sessions by device info."""
-    grouped: Dict[str, List[Dict[str, Any]]] = {}
-    for session in sessions:
-        device_key = session.get("device_info", "Unknown Device")
-        if device_key not in grouped:
-            grouped[device_key] = []
-        grouped[device_key].append(session)
-    return grouped
-
-
-def _group_sessions_by_ip(sessions: List[Dict[str, Any]]) -> Dict[str, List[Dict[str, Any]]]:
-    """Group sessions by IP address."""
-    grouped: Dict[str, List[Dict[str, Any]]] = {}
-    for session in sessions:
-        ip_key = session.get("ip_address", "Unknown IP")
-        if ip_key not in grouped:
-            grouped[ip_key] = []
-        grouped[ip_key].append(session)
-    return grouped
-
-
 class LogoutAllDevicesRequest(BaseModel):
     """Request to logout from all devices."""
     confirm: bool = True

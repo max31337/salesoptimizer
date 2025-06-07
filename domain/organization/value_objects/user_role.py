@@ -4,12 +4,13 @@ from enum import Enum
 
 
 class Permission(Enum):
-    """System permissions."""
-    # User Management
+    """System permissions."""    # User Management
     CREATE_USER = "create_user"
     READ_USER = "read_user"
     UPDATE_USER = "update_user"
     DELETE_USER = "delete_user"
+    UPDATE_PROFILE = "update_profile"
+    APPROVE_PROFILE_CHANGES = "approve_profile_changes"
     
     # Invitation Management
     CREATE_INVITATION = "create_invitation"
@@ -133,8 +134,7 @@ class UserRole:
     
     def _get_role_permissions(self) -> dict[str, Set[Permission]]:
         """Define permissions for each role."""
-        return {
-            self.SUPER_ADMIN: {
+        return {            self.SUPER_ADMIN: {
                 # All permissions including tenant management
                 Permission.MANAGE_SYSTEM,
                 Permission.VIEW_AUDIT_LOGS,
@@ -143,6 +143,7 @@ class UserRole:
                 Permission.MANAGE_ORGANIZATION,
                 Permission.CREATE_USER, Permission.READ_USER, 
                 Permission.UPDATE_USER, Permission.DELETE_USER,
+                Permission.UPDATE_PROFILE, Permission.APPROVE_PROFILE_CHANGES,
                 Permission.CREATE_INVITATION, Permission.VIEW_INVITATION, Permission.MANAGE_INVITATION,
                 Permission.CREATE_TEAM, Permission.MANAGE_TEAM,
                 Permission.VIEW_TEAM_PERFORMANCE,

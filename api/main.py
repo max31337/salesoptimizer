@@ -8,7 +8,7 @@ from contextlib import asynccontextmanager
 from infrastructure.db.models import register_models
 
 #Route registration imports
-from api.routes import auth, invitations, token_revocation
+from api.routes import auth, invitations, token_revocation, profile
 
 @asynccontextmanager
 async def lifespan(app: FastAPI):
@@ -59,6 +59,10 @@ app.add_middleware(
     expose_headers=["Set-Cookie"]  # Allow frontend to see Set-Cookie headers
 )
 
+@app.get("/")
+async def root() -> dict[str, str]:
+    return {"message": "Welcome to the SalesOptimizer API"}
+
 # Health check endpoint
 @app.get("/health")
 async def health_check() -> dict[str, str | bool]:
@@ -69,7 +73,9 @@ async def health_check() -> dict[str, str | bool]:
         "cookie_secure": settings.cookie_secure
     }
 
+
 # Include routers
 app.include_router(auth.router, prefix="/api/v1")
 app.include_router(invitations.router, prefix="/api/v1")
 app.include_router(token_revocation.router, prefix="/api/v1")
+app.include_router(profile.router, prefix="/api/v1")

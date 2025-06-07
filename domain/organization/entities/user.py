@@ -17,12 +17,14 @@ class User:
     username: Optional[str]
     first_name: str
     last_name: str
-    password_hash: Optional[str]
+    password_hash: Optional[str]    
     role: UserRole
     status: UserStatus
     tenant_id: Optional[UUID] = None
     team_id: Optional[UUID] = None
     phone: Optional[str] = None
+    profile_picture_url: Optional[str] = None
+    bio: Optional[str] = None
     is_email_verified: bool = False
     last_login: Optional[datetime] = None
     invitation_token: Optional[str] = None
@@ -87,3 +89,33 @@ class User:
     def can_manage_invitations(self) -> bool:
         """Check if user can manage invitations."""
         return self.role.can_manage_invitations()
+    
+    def can_update_profile_directly(self) -> bool:
+        """Check if user can update their profile without approval."""
+        # Sales managers and above can update their profile directly
+        return self.role.hierarchy_level >= UserRole.sales_manager().hierarchy_level
+    
+    def update_profile(self, first_name: Optional[str] = None, last_name: Optional[str] = None, 
+                      phone: Optional[str] = None, bio: Optional[str] = None, 
+                      profile_picture_url: Optional[str] = None) -> None:
+        """Update user profile information."""
+        if first_name is not None:
+            if not first_name or not first_name.strip():
+                raise ValueError("First name cannot be empty")
+            self.first_name = first_name.strip()
+        
+        if last_name is not None:
+            if not last_name or not last_name.strip():
+                raise ValueError("Last name cannot be empty")
+            self.last_name = last_name.strip()
+        
+        if phone is not None:
+            self.phone = phone.strip() if phone else None
+        
+        if bio is not None:
+            self.bio = bio.strip() if bio else None
+        
+        if profile_picture_url is not None:
+            self.profile_picture_url = profile_picture_url.strip() if profile_picture_url else None
+        
+        self.updated_at = datetime.now(timezone.utc)

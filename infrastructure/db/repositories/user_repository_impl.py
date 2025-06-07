@@ -78,11 +78,15 @@ class UserRepositoryImpl(UserRepository):
         model.role = user.role.value
         model.status = user.status.value
         if user.tenant_id is not None:
-            model.tenant_id = user.tenant_id
+            model.tenant_id = user.tenant_id        
         if user.team_id is not None:
             model.team_id = user.team_id
         if user.phone is not None:
             model.phone = user.phone
+        if user.profile_picture_url is not None:
+            model.profile_picture_url = user.profile_picture_url
+        if user.bio is not None:
+            model.bio = user.bio
         model.is_email_verified = user.is_email_verified
         if user.oauth_provider is not None:
             model.oauth_provider = user.oauth_provider
