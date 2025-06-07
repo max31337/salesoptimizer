@@ -7,6 +7,7 @@ export interface User {
   status: 'active' | 'inactive' | 'pending'
   is_email_verified: boolean
   tenant_id?: string
+  profile_picture_url?: string
   created_at: string
   updated_at: string
 }

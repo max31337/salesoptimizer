@@ -7,6 +7,7 @@ import { Badge } from "@/components/ui/badge"
 import { InviteOrgAdminModal } from "@/components/admin/invite-org-admin-modal"
 import { useAuth } from "@/features/auth/hooks/useAuth"
 import { ThemeToggle } from "@/components/ui/theme-toggle"
+import { UserAvatar } from "@/components/ui/user-avatar"
 import { Building, Users, Activity, UserPlus, Settings, FileText, LogOut, User as UserIcon } from "lucide-react"
 import {
   DropdownMenu,
@@ -16,14 +17,12 @@ import {
   DropdownMenuSeparator,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu"
-import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar"
 import Link from "next/link"
 
 export default function SuperAdminDashboard() {
   const [isInviteModalOpen, setIsInviteModalOpen] = useState(false)
   const [isLoggingOut, setIsLoggingOut] = useState(false)
   const { user, logout } = useAuth()
-
   const handleLogout = async () => {
     if (isLoggingOut) return
     
@@ -35,16 +34,6 @@ export default function SuperAdminDashboard() {
     } finally {
       setIsLoggingOut(false)
     }
-  }
-
-  const getUserInitials = (user: any) => {
-    if (user?.first_name && user?.last_name) {
-      return `${user.first_name[0]}${user.last_name[0]}`.toUpperCase()
-    }
-    if (user?.email) {
-      return user.email.substring(0, 2).toUpperCase()
-    }
-    return 'SA'
   }
 
   return (
@@ -68,15 +57,13 @@ export default function SuperAdminDashboard() {
               <ThemeToggle />
               
               {/* User Profile Dropdown */}
-              <DropdownMenu>
-                <DropdownMenuTrigger asChild>
+              <DropdownMenu>                <DropdownMenuTrigger asChild>
                   <Button variant="ghost" className="relative h-10 w-10 rounded-full">
-                    <Avatar className="h-10 w-10">
-                      <AvatarImage src="" alt={user?.email || 'User'} />
-                      <AvatarFallback className="bg-purple-100 dark:bg-purple-900/50 text-purple-800 dark:text-purple-300">
-                        {getUserInitials(user)}
-                      </AvatarFallback>
-                    </Avatar>
+                    <UserAvatar 
+                      user={user} 
+                      className="h-10 w-10" 
+                      fallbackClassName="bg-purple-100 dark:bg-purple-900/50 text-purple-800 dark:text-purple-300"
+                    />
                   </Button>
                 </DropdownMenuTrigger>
                 <DropdownMenuContent className="w-56" align="end" forceMount>
@@ -91,10 +78,12 @@ export default function SuperAdminDashboard() {
                         {user?.email}
                       </p>
                     </div>
-                  </DropdownMenuLabel>
-                  <DropdownMenuSeparator />                  <DropdownMenuItem className="cursor-pointer">
-                    <UserIcon className="mr-2 h-4 w-4" />
-                    <span>Profile</span>
+                  </DropdownMenuLabel>                  <DropdownMenuSeparator />
+                  <DropdownMenuItem className="cursor-pointer" asChild>
+                    <Link href="/settings/profile">
+                      <UserIcon className="mr-2 h-4 w-4" />
+                      <span>Profile</span>
+                    </Link>
                   </DropdownMenuItem>
                   <DropdownMenuItem className="cursor-pointer" asChild>
                     <Link href="/settings">

@@ -151,9 +151,7 @@ async def get_profile_update_use_case(
     profile_update_request_repository = ProfileUpdateRequestRepositoryImpl(session)
     
     # Domain services
-    profile_service = ProfileUpdateService()
-    
-    # Use case
+    profile_service = ProfileUpdateService()    # Use case
     return ProfileUpdateUseCase(
         user_repository=user_repository,
         profile_service=profile_service,

@@ -10,6 +10,7 @@ class UserResponse(BaseModel):
     full_name: str
     tenant_id: Optional[str] = None
     is_active: bool = True
+    profile_picture_url: Optional[str] = None
     
     class Config:
         from_attributes = True

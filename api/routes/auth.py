@@ -130,7 +130,8 @@ async def get_current_user_info(
         role=current_user.role.value,
         full_name=current_user.full_name,
         tenant_id=str(current_user.tenant_id) if current_user.tenant_id else "",
-        is_active=current_user.is_active()
+        is_active=current_user.is_active(),
+        profile_picture_url=current_user.profile_picture_url
     )
 
 

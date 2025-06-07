@@ -1,8 +1,8 @@
-from fastapi import APIRouter, Depends, HTTPException, UploadFile, File
+from fastapi import APIRouter, Depends, HTTPException, UploadFile, File, Request
 from fastapi.responses import JSONResponse
 from uuid import UUID
 
-from api.dependencies.auth import get_current_user
+from api.dependencies.auth import get_current_user, get_current_user_from_cookie
 from application.use_cases.profile_update_use_cases import ProfileUpdateUseCase
 from application.dtos.user_dto import (
     UpdateProfileRequest,
@@ -13,7 +13,7 @@ from application.dtos.user_dto import (
 from domain.organization.entities.user import User
 from infrastructure.dependencies.service_container import get_profile_update_use_case
 
-router = APIRouter(prefix="/api/profile", tags=["profile"])
+router = APIRouter(prefix="/profile", tags=["profile"])
 
 
 @router.get("/me", response_model=UserProfileResponse)
@@ -55,7 +55,7 @@ async def get_user_profile(
 @router.put("/me")
 async def update_my_profile(
     request: UpdateProfileRequest,
-    current_user: User = Depends(get_current_user),
+    current_user: User = Depends(get_current_user_from_cookie),
     profile_use_case: ProfileUpdateUseCase = Depends(get_profile_update_use_case)
 ):
     """Update current user's profile."""
@@ -107,8 +107,9 @@ async def update_user_profile_by_admin(
 
 @router.post("/me/profile-picture")
 async def upload_profile_picture(
+    request: Request,
     file: UploadFile = File(...),
-    current_user: User = Depends(get_current_user),
+    current_user: User = Depends(get_current_user_from_cookie),
     profile_use_case: ProfileUpdateUseCase = Depends(get_profile_update_use_case)
 ):
     """Upload profile picture."""
@@ -144,7 +145,8 @@ async def upload_profile_picture(
 
 @router.delete("/me/profile-picture")
 async def remove_profile_picture(
-    current_user: User = Depends(get_current_user),
+    request: Request,
+    current_user: User = Depends(get_current_user_from_cookie),
     profile_use_case: ProfileUpdateUseCase = Depends(get_profile_update_use_case)
 ):
     """Remove profile picture."""
@@ -152,11 +154,9 @@ async def remove_profile_picture(
         if current_user.id is None:
             raise HTTPException(status_code=400, detail="User ID is required")
         
-        # Update profile to remove picture
-        request = UpdateProfileRequest(profile_picture_url=None)
-        await profile_use_case.update_own_profile(current_user.id.value, request)
+        result = await profile_use_case.delete_profile_picture(current_user.id.value)
         
-        return JSONResponse(content={"message": "Profile picture removed successfully"})
+        return JSONResponse(content=result)
     except ValueError as e:
         raise HTTPException(status_code=400, detail=str(e))
     except Exception as e:

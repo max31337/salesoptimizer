@@ -1,5 +1,8 @@
 from fastapi import FastAPI 
+from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
+from fastapi.staticfiles import StaticFiles
+from pathlib import Path
 from infrastructure.db.database import test_connection
 from infrastructure.config.settings import settings
 from contextlib import asynccontextmanager
@@ -41,7 +44,7 @@ app = FastAPI(
     debug=settings.is_development
 )
 
-# Environment-aware CORS middleware
+# Environment-aware CORS middleware - MUST come before static files
 app.add_middleware(
     CORSMiddleware,
     allow_origins=settings.CORS_ORIGINS,  # Use settings CORS origins
@@ -58,6 +61,11 @@ app.add_middleware(
     ],
     expose_headers=["Set-Cookie"]  # Allow frontend to see Set-Cookie headers
 )
+
+# Mount static files for uploads AFTER CORS middleware
+uploads_path = Path(__file__).parent.parent / "uploads"
+uploads_path.mkdir(parents=True, exist_ok=True)
+app.mount("/uploads", StaticFiles(directory=str(uploads_path)), name="uploads")
 
 @app.get("/")
 async def root() -> dict[str, str]:

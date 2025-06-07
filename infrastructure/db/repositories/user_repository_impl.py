@@ -106,10 +106,10 @@ class UserRepositoryImpl(UserRepository):
         model = result.scalar_one_or_none()
         
         if model:
-            await self._session.delete(model)
-            return True
+                await self._session.delete(model)
+                return True
         return False
-
+    
     def _model_to_entity(self, model: UserModel) -> User:
         """Convert database model to domain entity."""
         return User(
@@ -124,15 +124,15 @@ class UserRepositoryImpl(UserRepository):
             tenant_id=model.tenant_id,
             team_id=model.team_id,
             phone=model.phone,
+            profile_picture_url=model.profile_picture_url,
+            bio=model.bio,
             is_email_verified=model.is_email_verified,
             invitation_token=model.invitation_token,
             invitation_expires_at=model.invitation_expires_at,
-            created_at=model.created_at,
-            updated_at=model.updated_at,
             _oauth_provider=model.oauth_provider,
             _oauth_provider_id=model.oauth_provider_id
         )
-
+    
     def _entity_to_model(self, user: User) -> UserModel:
         """Convert domain entity to database model."""
         return UserModel(
@@ -147,6 +147,8 @@ class UserRepositoryImpl(UserRepository):
             tenant_id=user.tenant_id,
             team_id=user.team_id,
             phone=user.phone,
+            profile_picture_url=user.profile_picture_url,
+            bio=user.bio,
             is_email_verified=user.is_email_verified,
             last_login=user.last_login,
             invitation_token=user.invitation_token,

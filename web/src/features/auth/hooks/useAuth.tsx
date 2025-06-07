@@ -12,6 +12,8 @@ interface User {
   last_name?: string
   tenant_id?: string
   full_name?: string
+  phone?: string
+  profile_picture_url?: string
 }
 
 interface AuthContextType {
@@ -21,6 +23,7 @@ interface AuthContextType {
   logout: () => Promise<void>
   isAuthenticated: boolean
   checkAuth: () => Promise<void>
+  refreshUser: () => Promise<void>
   showSessionExpiredModal: boolean
   dismissSessionExpiredModal: () => void
 }
@@ -66,13 +69,16 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
     console.log('✅ Auth indicators found, verifying with server...')
     setIsLoading(true)
-    try {
-      const userData = await apiClient.get<{
+    try {      const userData = await apiClient.get<{
         user_id: string
         email: string
         role: string
         full_name: string
         tenant_id?: string
+        first_name?: string
+        last_name?: string
+        phone?: string
+        profile_picture_url?: string
       }>('/auth/me')
       
       const user: User = {
@@ -80,9 +86,11 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         email: userData.email,
         role: userData.role,
         full_name: userData.full_name,
-        first_name: userData.full_name.split(' ')[0] || '',
-        last_name: userData.full_name.split(' ').slice(1).join(' ') || '',
-        tenant_id: userData.tenant_id
+        first_name: userData.first_name || userData.full_name.split(' ')[0] || '',
+        last_name: userData.last_name || userData.full_name.split(' ').slice(1).join(' ') || '',
+        tenant_id: userData.tenant_id,
+        phone: userData.phone,
+        profile_picture_url: userData.profile_picture_url
       }
       
       console.log('✅ Auth check successful, user:', user.email, 'role:', user.role)
@@ -126,8 +134,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
   const login = async (credentials: { emailOrUsername: string; password: string }) => {
     setIsLoading(true)
-    try {
-      const formData = new URLSearchParams({
+    try {      const formData = new URLSearchParams({
         username: credentials.emailOrUsername,
         password: credentials.password,
       })
@@ -138,6 +145,10 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         role: string
         full_name: string
         tenant_id?: string
+        first_name?: string
+        last_name?: string
+        phone?: string
+        profile_picture_url?: string
       }>('/auth/login', formData)
       
       const user: User = {
@@ -145,9 +156,11 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         email: data.email,
         role: data.role,
         full_name: data.full_name,
-        first_name: data.full_name.split(' ')[0] || '',
-        last_name: data.full_name.split(' ').slice(1).join(' ') || '',
-        tenant_id: data.tenant_id
+        first_name: data.first_name || data.full_name.split(' ')[0] || '',
+        last_name: data.last_name || data.full_name.split(' ').slice(1).join(' ') || '',
+        tenant_id: data.tenant_id,
+        phone: data.phone,
+        profile_picture_url: data.profile_picture_url
       }
       
       setUser(user)
@@ -176,11 +189,42 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       router.push('/')
     }
   }
-
   const dismissSessionExpiredModal = () => {
     setShowSessionExpiredModal(false)
   }
 
+  const refreshUser = async () => {
+    try {
+      const userData = await apiClient.get<{
+        user_id: string
+        email: string
+        role: string
+        full_name: string
+        tenant_id?: string
+        first_name?: string
+        last_name?: string
+        phone?: string
+        profile_picture_url?: string
+      }>('/auth/me')
+      
+      const user: User = {
+        id: userData.user_id,
+        email: userData.email,
+        role: userData.role,
+        full_name: userData.full_name,
+        first_name: userData.first_name || userData.full_name.split(' ')[0] || '',
+        last_name: userData.last_name || userData.full_name.split(' ').slice(1).join(' ') || '',
+        tenant_id: userData.tenant_id,
+        phone: userData.phone,
+        profile_picture_url: userData.profile_picture_url
+      }
+      
+      setUser(user)
+    } catch (error) {
+      console.error('Failed to refresh user data:', error)
+      throw error
+    }
+  }
   const value: AuthContextType = {
     user,
     isLoading,
@@ -188,6 +232,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     logout,
     isAuthenticated: !!user,
     checkAuth,
+    refreshUser,
     showSessionExpiredModal,
     dismissSessionExpiredModal
   }

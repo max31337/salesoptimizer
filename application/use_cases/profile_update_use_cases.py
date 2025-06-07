@@ -1,3 +1,4 @@
+from pathlib import Path
 from typing import Optional, Dict, Any, Union, List
 from uuid import UUID
 
@@ -311,11 +312,10 @@ class ProfileUpdateUseCase:
                     "user_email": user.email.value,
                     "requested_changes": request.requested_changes,
                     "requested_at": request.created_at,
-                    "requested_by_id": str(request.requested_by_id.value)
-                })
+                    "requested_by_id": str(request.requested_by_id.value)                })
         
-        return result
-
+        return result    
+    
     async def upload_profile_picture(
         self,
         user_id: UUID,
@@ -337,21 +337,95 @@ class ProfileUpdateUseCase:
         if len(file_data) > max_size:
             raise ValueError("File size too large. Maximum allowed size is 5MB.")
         
-        # For now, we'll just simulate storing the file and return a URL
-        # In a real implementation, you would:
-        # 1. Upload to cloud storage (AWS S3, Google Cloud Storage, etc.)
-        # 2. Generate a unique filename
-        # 3. Return the public URL
+        # Create uploads directory if it doesn't exist
         
-        # Simulate a profile picture URL
-        profile_picture_url = f"/uploads/profile_pictures/{user_id}_{filename}"
+        # Get the project root directory
+        project_root = Path(__file__).parent.parent.parent
+        uploads_dir = project_root / "uploads" / "profile_pictures"
+        uploads_dir.mkdir(parents=True, exist_ok=True)
         
-        # Update user profile with the new picture URL
-        request = UpdateProfileRequest(profile_picture_url=profile_picture_url)
-        result = await self.update_own_profile(user_id, request)
+        # Generate unique filename
+        import uuid
+        file_extension = Path(filename).suffix.lower()
+        if not file_extension:
+            # Default to jpg if no extension
+            file_extension = '.jpg'
         
-        return {
-            "message": "Profile picture uploaded successfully",
-            "profile_picture_url": profile_picture_url,
-            "requires_approval": isinstance(result, ProfileUpdatePendingResponse)
-        }
+        unique_filename = f"{user_id}_{uuid.uuid4().hex[:8]}{file_extension}"
+        file_path = uploads_dir / unique_filename
+          # Save the file
+        with open(file_path, 'wb') as f:
+            f.write(file_data)
+        
+        # Create the URL path (relative to the API server)
+        profile_picture_url = f"/uploads/profile_pictures/{unique_filename}"
+        
+        # Check if user can update profile directly
+        if self.profile_service.can_update_profile_directly(user):
+            # Update directly for super admin and org admin
+            user.update_profile(profile_picture_url=profile_picture_url)
+            await self.user_repository.update(user)
+            
+            return {
+                "message": "Profile picture uploaded successfully",
+                "profile_picture_url": profile_picture_url,
+                "requires_approval": False
+            }
+        else:
+            # Go through approval workflow for other users
+            request = UpdateProfileRequest(profile_picture_url=profile_picture_url)
+            result = await self.update_own_profile(user_id, request)
+            
+            return {                "message": "Profile picture uploaded successfully",
+                "profile_picture_url": profile_picture_url,
+                "requires_approval": isinstance(result, ProfileUpdatePendingResponse)
+            }
+
+    async def delete_profile_picture(
+        self,
+        user_id: UUID
+    ) -> Dict[str, Any]:
+        """Delete user's profile picture."""
+        
+        user = await self.user_repository.get_by_id(UserId(user_id))
+        if not user:
+            raise ValueError("User not found")
+        
+        if user.id is None:
+            raise ValueError("User ID cannot be None")
+        
+        # Get the current profile picture URL
+        current_picture_url = user.profile_picture_url
+        
+        # Check if user can update profile directly
+        if self.profile_service.can_update_profile_directly(user):
+            # Update directly for super admin and org admin
+            user.update_profile(profile_picture_url=None)
+            await self.user_repository.update(user)
+            
+            # If there was a picture, try to delete the file
+            if current_picture_url and current_picture_url.startswith("/uploads/profile_pictures/"):
+                try:
+                    from pathlib import Path
+                    project_root = Path(__file__).parent.parent.parent
+                    file_path = project_root / current_picture_url.lstrip("/")
+                    
+                    if file_path.exists():
+                        file_path.unlink()  # Delete the file
+                except Exception as e:
+                    # Log the error but don't fail the operation
+                    print(f"Failed to delete profile picture file: {e}")
+            
+            return {
+                "message": "Profile picture removed successfully",
+                "requires_approval": False
+            }
+        else:
+            # Go through approval workflow for other users
+            request = UpdateProfileRequest(profile_picture_url=None)
+            result = await self.update_own_profile(user_id, request)
+            
+            return {
+                "message": "Profile picture removal submitted for approval",
+                "requires_approval": isinstance(result, ProfileUpdatePendingResponse)
+            }
