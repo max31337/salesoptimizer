@@ -29,6 +29,21 @@ export default function ProfileSettingsPage() {
   const [error, setError] = useState('')
   const [success, setSuccess] = useState('')
 
+  const getRoleDisplayName = (role: string) => {
+    switch (role) {
+      case 'super_admin':
+        return 'System Administrator'
+      case 'org_admin':
+        return 'Organization Administrator'
+      case 'manager':
+        return 'Manager'
+      case 'member':
+        return 'Member'
+      default:
+        return role
+    }
+  }
+
   // Admin check
   const isAdmin = user?.role === 'super_admin' || user?.role === 'org_admin'
 
@@ -325,14 +340,17 @@ export default function ProfileSettingsPage() {
               <Label htmlFor="role" className="flex items-center gap-2">
                 <Building className="h-4 w-4" />
                 Role
-              </Label>
-              <Input
+              </Label>              <Input
                 id="role"
-                value={user?.role || ''}
+                value={getRoleDisplayName(user?.role || '')}
                 disabled
-              />
-              <p className="text-xs text-muted-foreground">
-                Role is assigned by your organization administrator.
+              />              <p className="text-xs text-muted-foreground">
+                {user?.role === 'super_admin' 
+                  ? "System-wide admin role cannot be changed."
+                  : user?.role === 'org_admin'
+                  ? "System Admin can only update your Organization role."
+                  : "Role is assigned by your organization administrator."
+                }
               </p>
             </div>
 

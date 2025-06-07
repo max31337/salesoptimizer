@@ -3,6 +3,7 @@
 import { createContext, useContext, useState, useEffect, ReactNode } from 'react'
 import { useRouter } from 'next/navigation'
 import { apiClient } from '@/lib/api'
+import { getNameComponents } from '@/utils/nameParser'
 
 interface User {
   id: string
@@ -78,16 +79,21 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         first_name?: string
         last_name?: string
         phone?: string
-        profile_picture_url?: string
-      }>('/auth/me')
+        profile_picture_url?: string      }>('/auth/me')
       
+      const nameComponents = getNameComponents({
+        first_name: userData.first_name,
+        last_name: userData.last_name,
+        full_name: userData.full_name
+      })
+
       const user: User = {
         id: userData.user_id,
         email: userData.email,
         role: userData.role,
         full_name: userData.full_name,
-        first_name: userData.first_name || userData.full_name.split(' ')[0] || '',
-        last_name: userData.last_name || userData.full_name.split(' ').slice(1).join(' ') || '',
+        first_name: nameComponents.first_name,
+        last_name: nameComponents.last_name,
         tenant_id: userData.tenant_id,
         phone: userData.phone,
         profile_picture_url: userData.profile_picture_url
@@ -150,14 +156,19 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         phone?: string
         profile_picture_url?: string
       }>('/auth/login', formData)
-      
+        const nameComponents = getNameComponents({
+        first_name: data.first_name,
+        last_name: data.last_name,
+        full_name: data.full_name
+      })
+
       const user: User = {
         id: data.user_id,
         email: data.email,
         role: data.role,
         full_name: data.full_name,
-        first_name: data.first_name || data.full_name.split(' ')[0] || '',
-        last_name: data.last_name || data.full_name.split(' ').slice(1).join(' ') || '',
+        first_name: nameComponents.first_name,
+        last_name: nameComponents.last_name,
         tenant_id: data.tenant_id,
         phone: data.phone,
         profile_picture_url: data.profile_picture_url
@@ -204,16 +215,21 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         first_name?: string
         last_name?: string
         phone?: string
-        profile_picture_url?: string
-      }>('/auth/me')
+        profile_picture_url?: string      }>('/auth/me')
       
+      const nameComponents = getNameComponents({
+        first_name: userData.first_name,
+        last_name: userData.last_name,
+        full_name: userData.full_name
+      })
+
       const user: User = {
         id: userData.user_id,
         email: userData.email,
         role: userData.role,
         full_name: userData.full_name,
-        first_name: userData.first_name || userData.full_name.split(' ')[0] || '',
-        last_name: userData.last_name || userData.full_name.split(' ').slice(1).join(' ') || '',
+        first_name: nameComponents.first_name,
+        last_name: nameComponents.last_name,
         tenant_id: userData.tenant_id,
         phone: userData.phone,
         profile_picture_url: userData.profile_picture_url
