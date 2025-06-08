@@ -5,6 +5,7 @@ from domain.organization.services.auth_service import AuthService
 from infrastructure.services.oauth_service import OAuthService
 from application.commands.auth_command import LoginCommand
 from application.commands.oauth_command import OAuthLoginCommand, OAuthAuthorizationCommand
+from application.dtos.auth_dto import ChangePasswordRequest
 
 
 class AuthUseCases:
@@ -87,3 +88,11 @@ class AuthUseCases:
     async def get_user_by_email(self, email: str) -> Optional[User]:
         """Get user by email."""
         return await self._auth_service.get_user_by_email(email)
+    
+    async def change_password(self, user_id: str, request: ChangePasswordRequest) -> User:
+        """Change user password after verifying current password."""
+        return await self._auth_service.change_password(
+            user_id,
+            request.current_password,
+            request.new_password
+        )

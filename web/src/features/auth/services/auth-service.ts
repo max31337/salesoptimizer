@@ -19,6 +19,15 @@ interface LoginResponse {
   refresh_token: string
 }
 
+interface ChangePasswordRequest {
+  current_password: string
+  new_password: string
+}
+
+interface ChangePasswordResponse {
+  message: string
+}
+
 class AuthService {
   async login(credentials: LoginCredentials): Promise<LoginResponse> {
     const formData = new URLSearchParams()
@@ -39,6 +48,11 @@ class AuthService {
   async refreshToken() {
     return await apiClient.post('/auth/refresh', {})
   }
+
+  async changePassword(data: ChangePasswordRequest): Promise<ChangePasswordResponse> {
+    return await apiClient.post<ChangePasswordResponse>('/auth/change-password', data)
+  }
 }
 
 export const authService = new AuthService()
+export type { ChangePasswordRequest, ChangePasswordResponse }

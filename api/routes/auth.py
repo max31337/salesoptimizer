@@ -4,7 +4,7 @@ from fastapi.security import OAuth2PasswordRequestForm
 from fastapi.responses import RedirectResponse
 
 from application.services.application_service import ApplicationService
-from application.dtos.auth_dto import LoginResponse, OAuthAuthorizationResponse
+from application.dtos.auth_dto import LoginResponse, OAuthAuthorizationResponse, ChangePasswordRequest
 from application.dtos.user_dto import UserResponse
 from application.commands.auth_command import LoginCommand
 from application.commands.oauth_command import OAuthLoginCommand, OAuthAuthorizationCommand
@@ -134,8 +134,47 @@ async def get_current_user_info(
         is_active=current_user.is_active(),
         profile_picture_url=current_user.profile_picture_url,
         phone=current_user.phone,
-        bio=current_user.bio
-    )
+        bio=current_user.bio    )
+
+
+@router.post("/change-password")
+async def change_password(
+    request: ChangePasswordRequest,
+    current_user: Annotated[User, Depends(get_current_user_from_cookie)],
+    app_service: Annotated[ApplicationService, Depends(get_application_service)]
+) -> Dict[str, str]:
+    """Change user password."""
+    try:
+        if not current_user.id:
+            raise HTTPException(
+                status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+                detail="User ID is missing"
+            )
+        
+        await app_service.auth_use_cases.change_password(
+            str(current_user.id.value),
+            request
+        )
+        
+        return {"message": "Password changed successfully"}
+    
+    except InvalidCredentialsError:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="Current password is incorrect"
+        )
+    
+    except ValueError as e:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail=str(e)
+        )
+    
+    except Exception as e:
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail="Failed to change password"
+        )
 
 
 @router.post("/refresh")

@@ -12,7 +12,7 @@ import { ProfileUpdateModal } from "@/components/modals/profile-update-modal"
 import { UserAvatar } from "@/components/ui/user-avatar"
 import { profileService, type ProfileUpdateRequest } from "@/features/profile/services/profile-service"
 import { ProfilePictureCacheManager } from "@/utils/profile-picture-cache"
-import { User, Mail, Phone, Building, Upload, Trash2, Loader2, AlertTriangle } from "lucide-react"
+import { User, Mail, Phone, Building, Upload, Trash2, Loader2, AlertTriangle, Lock } from "lucide-react"
 
 export default function ProfileSettingsPage() {
   const { user, refreshUser } = useAuth()
@@ -26,10 +26,20 @@ export default function ProfileSettingsPage() {
   })
     // UI state
   const [isSubmitting, setIsSubmitting] = useState(false)
-  const [isUploadingPhoto, setIsUploadingPhoto] = useState(false)
+  const [isUploadingPhoto, setIsUploadingPhoto] = useState(false)  
   const [isDeletingPhoto, setIsDeletingPhoto] = useState(false)
   const [error, setError] = useState('')
   const [success, setSuccess] = useState('')
+
+  // Password change state
+  const [passwordData, setPasswordData] = useState({
+    currentPassword: '',
+    newPassword: '',
+    confirmPassword: ''
+  })
+  const [isChangingPassword, setIsChangingPassword] = useState(false)
+  const [passwordError, setPasswordError] = useState('')
+  const [passwordSuccess, setPasswordSuccess] = useState('')
 
   const getRoleDisplayName = (role: string) => {
     switch (role) {
@@ -37,10 +47,10 @@ export default function ProfileSettingsPage() {
         return 'System Administrator'
       case 'org_admin':
         return 'Organization Administrator'
-      case 'manager':
-        return 'Manager'
-      case 'member':
-        return 'Member'
+      case 'sales_manager':
+        return 'Sales Manager'
+      case 'sales_rep':
+        return 'Sales Representative'
       default:
         return role
     }
@@ -169,7 +179,8 @@ export default function ProfileSettingsPage() {
         fileInputRef.current.value = ''
       }
     }
-  }
+  }  
+  
   const handlePhotoDelete = async () => {
     setIsDeletingPhoto(true)
     setError('')
@@ -190,6 +201,57 @@ export default function ProfileSettingsPage() {
       setError(err.message || 'Failed to remove photo')
     } finally {
       setIsDeletingPhoto(false)
+    }
+  }
+
+  const handlePasswordChange = async (e: React.FormEvent) => {
+    e.preventDefault()
+    setPasswordError('')
+    setPasswordSuccess('')
+
+    // Validate passwords
+    if (!passwordData.currentPassword || !passwordData.newPassword || !passwordData.confirmPassword) {
+      setPasswordError('All fields are required')
+      return
+    }
+
+    if (passwordData.newPassword !== passwordData.confirmPassword) {
+      setPasswordError('New passwords do not match')
+      return
+    }
+
+    if (passwordData.newPassword.length < 8) {
+      setPasswordError('New password must be at least 8 characters long')
+      return
+    }
+
+    if (passwordData.newPassword === passwordData.currentPassword) {
+      setPasswordError('New password must be different from current password')
+      return
+    }
+
+    setIsChangingPassword(true)
+
+    try {
+      const { authService } = await import('@/features/auth/services/auth-service')
+      await authService.changePassword({
+        current_password: passwordData.currentPassword,
+        new_password: passwordData.newPassword
+      })
+
+      setPasswordSuccess('Password changed successfully')
+      
+      // Clear form
+      setPasswordData({
+        currentPassword: '',
+        newPassword: '',
+        confirmPassword: ''
+      })
+    } catch (err: any) {
+      console.error('Password change failed:', err)
+      setPasswordError(err.message || 'Failed to change password')
+    } finally {
+      setIsChangingPassword(false)
     }
   }
   
@@ -278,9 +340,92 @@ export default function ProfileSettingsPage() {
                 )}
               </Button>
             )}
-          </div>
+          </div>        </CardContent>
+      </Card>
+
+      {/* Password Change */}
+      <Card>
+        <CardHeader>
+          <CardTitle className="flex items-center gap-2">
+            <Lock className="h-5 w-5" />
+            Change Password
+          </CardTitle>
+          <CardDescription>
+            Update your account password for security
+          </CardDescription>
+        </CardHeader>
+        <CardContent>
+          {/* Password-specific Error/Success Messages */}
+          {passwordError && (
+            <Alert variant="destructive" className="mb-4">
+              <AlertTriangle className="h-4 w-4" />
+              <AlertDescription>{passwordError}</AlertDescription>
+            </Alert>
+          )}
+
+          {passwordSuccess && (
+            <Alert className="mb-4">
+              <AlertDescription>{passwordSuccess}</AlertDescription>
+            </Alert>
+          )}
+
+          <form onSubmit={handlePasswordChange} className="space-y-4">
+            <div className="space-y-2">
+              <Label htmlFor="currentPassword">Current Password</Label>
+              <Input
+                id="currentPassword"
+                type="password"
+                value={passwordData.currentPassword}
+                onChange={(e) => setPasswordData(prev => ({ ...prev, currentPassword: e.target.value }))}
+                placeholder="Enter your current password"
+                disabled={isChangingPassword}
+              />
+            </div>
+
+            <div className="space-y-2">
+              <Label htmlFor="newPassword">New Password</Label>
+              <Input
+                id="newPassword"
+                type="password"
+                value={passwordData.newPassword}
+                onChange={(e) => setPasswordData(prev => ({ ...prev, newPassword: e.target.value }))}
+                placeholder="Enter your new password"
+                disabled={isChangingPassword}
+              />
+              <p className="text-xs text-muted-foreground">
+                Password must be at least 8 characters long
+              </p>
+            </div>
+
+            <div className="space-y-2">
+              <Label htmlFor="confirmPassword">Confirm New Password</Label>
+              <Input
+                id="confirmPassword"
+                type="password"
+                value={passwordData.confirmPassword}
+                onChange={(e) => setPasswordData(prev => ({ ...prev, confirmPassword: e.target.value }))}
+                placeholder="Confirm your new password"
+                disabled={isChangingPassword}
+              />
+            </div>
+
+            <div className="flex justify-end">
+              <Button type="submit" disabled={isChangingPassword}>
+                {isChangingPassword ? (
+                  <>
+                    <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+                    Changing Password...
+                  </>
+                ) : (
+                  'Change Password'
+                )}
+              </Button>
+            </div>
+          </form>
         </CardContent>
-      </Card>      {/* Personal Information */}
+      </Card>
+
+      {/* Personal Information */}
       <Card>
         <CardHeader>
           <CardTitle>Personal Information</CardTitle>

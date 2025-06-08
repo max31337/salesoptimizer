@@ -592,8 +592,7 @@ class AuthService:
                     result = await self._jwt_service.refresh_token_repository.get_user_revoked_sessions_grouped_by_ip(
                         user_uuid, page, page_size
                     )
-                else:
-                    # Fall back to regular method
+                else:                    # Fall back to regular method
                     result = await self._jwt_service.refresh_token_repository.get_user_revoked_sessions(
                         user_uuid, page, page_size
                     )
@@ -616,3 +615,37 @@ class AuthService:
                 "page_size": page_size,
                 "total_pages": 0
             }
+    
+    async def change_password(self, user_id: str, current_password: str, new_password: str) -> User:
+        """Change user password after verifying current password."""
+        # Get user by ID
+        user = await self.get_user_by_id(user_id)
+        if not user:
+            raise UserNotFoundError()
+        
+        # Check if user is active
+        if not user.is_active():
+            raise InactiveUserError()
+          # Verify current password if user has one (not OAuth users)
+        if user.password_hash:
+            if not self._password_service.verify_password(current_password, user.password_hash):
+                raise InvalidCredentialsError()
+        
+        # Validate new password format
+        try:
+            Password(new_password)
+        except ValueError as e:
+            raise ValueError(f"Invalid new password: {str(e)}")
+        
+        # Hash new password
+        new_password_hash = self._password_service.hash_password(new_password)
+        
+        # Update user password
+        user.password_hash = new_password_hash
+        
+        # Save user
+        updated_user = await self._user_repository.update(user)
+        
+        self._logger.info(f"Password changed successfully for user {user_id}")
+        
+        return updated_user
