@@ -1,5 +1,6 @@
-from typing import Optional
+from typing import Optional, List
 from datetime import datetime
+from uuid import UUID
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy import select, func
 
@@ -55,10 +56,24 @@ class UserRepositoryImpl(UserRepository):
         model = result.scalar_one_or_none()
         
         return self._model_to_entity(model) if model else None
-
+    
     async def count_superadmins(self) -> int:
         """Count the number of superadmin users."""
-        stmt = select(func.count(UserModel.id)).where(UserModel.role == UserRole.SUPER_ADMIN)
+        stmt = select(func.count(UserModel.id)).where(UserModel.role == 'super_admin')
+        result = await self._session.execute(stmt)
+        return result.scalar() or 0
+
+    async def get_team_members(self, team_id: UUID) -> List[User]:
+        """Get all users who are members of a specific team."""
+        stmt = select(UserModel).where(UserModel.team_id == team_id)
+        result = await self._session.execute(stmt)
+        models = result.scalars().all()
+        
+        return [self._model_to_entity(model) for model in models]
+    
+    async def count_team_members(self, team_id: UUID) -> int:
+        """Count the number of members in a specific team."""
+        stmt = select(func.count(UserModel.id)).where(UserModel.team_id == team_id)
         result = await self._session.execute(stmt)
         return result.scalar() or 0
 

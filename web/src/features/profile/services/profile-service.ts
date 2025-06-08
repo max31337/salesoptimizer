@@ -1,5 +1,14 @@
 import { apiClient } from '@/lib/api'
 
+export interface TeamInfo {
+  id: string
+  name: string
+  description?: string
+  member_count: number
+  manager_name?: string
+  is_active: boolean
+}
+
 export interface UserProfile {
   id: string
   email: string
@@ -13,6 +22,7 @@ export interface UserProfile {
   is_active: boolean
   created_at: string
   updated_at: string
+  team_info?: TeamInfo  // Add team information
 }
 
 export interface ProfileUpdateRequest {

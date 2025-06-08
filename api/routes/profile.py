@@ -12,7 +12,8 @@ from application.dtos.user_dto import (
     UserProfileResponse,
     UserProfilePublicResponse,
     UserProfileAdminResponse,
-    ProfileUpdatePendingResponse
+    ProfileUpdatePendingResponse,
+    TeamInfoResponse
 )
 from application.dtos.organization_dto import (
     OrganizationResponse, 
@@ -22,7 +23,8 @@ from application.dtos.organization_dto import (
 )
 from domain.organization.entities.user import User
 from domain.organization.services.tenant_service import TenantService
-from infrastructure.dependencies.service_container import get_profile_update_use_case, get_tenant_service
+from domain.organization.services.team_service import TeamService
+from infrastructure.dependencies.service_container import get_profile_update_use_case, get_tenant_service, get_team_service
 
 router = APIRouter(prefix="/profile", tags=["profile"])
 
@@ -30,7 +32,8 @@ router = APIRouter(prefix="/profile", tags=["profile"])
 @router.get("/me", response_model=Union[UserProfileAdminResponse, UserProfilePublicResponse])
 async def get_my_profile(
     current_user: User = Depends(get_current_user_from_cookie),
-    profile_use_case: ProfileUpdateUseCase = Depends(get_profile_update_use_case)
+    profile_use_case: ProfileUpdateUseCase = Depends(get_profile_update_use_case),
+    team_service: TeamService = Depends(get_team_service)
 ):
     """Get current user's profile with role-based information disclosure."""
     try:
@@ -38,20 +41,49 @@ async def get_my_profile(
             raise HTTPException(status_code=400, detail="User ID is required")
         
         profile_data = await profile_use_case.get_user_profile(current_user.id.value)
-          # Return different response models based on user role
+          # Get team information if user has a team
+        team_info = None
+        if current_user.team_id:
+            try:
+                team_data = await team_service.get_team_by_id(current_user.team_id)
+                if team_data:
+                    # Get member count for the team
+                    member_count = await team_service.get_team_member_count(current_user.team_id)
+                    
+                    # Get manager name if exists
+                    manager_name = None
+                    if team_data.get("manager_id"):
+                        manager_model = await team_service.get_user_by_id(team_data["manager_id"])
+                        if manager_model:
+                            manager_name = getattr(manager_model, 'full_name', None) or manager_model.username
+                    
+                    team_info = TeamInfoResponse(
+                        id=team_data["id"],
+                        name=team_data["name"],
+                        description=team_data.get("description"),
+                        member_count=member_count,
+                        manager_name=manager_name,
+                        is_active=team_data["is_active"]
+                    )
+            except Exception as e:
+                # Log error but don't fail the entire request
+                print(f"Error fetching team info: {e}")
+        
+        # Return different response models based on user role
         if current_user.role.value in ['super_admin', 'org_admin']:
             # Admins get full profile with UUIDs and technical details
             return UserProfileAdminResponse(
                 **profile_data.model_dump(),
                 tenant_id=str(current_user.tenant_id) if current_user.tenant_id else None,
-                team_id=str(current_user.team_id) if current_user.team_id else None
+                team_id=str(current_user.team_id) if current_user.team_id else None,
+                team_info=team_info
             )
         else:
             # Regular users get public profile without UUIDs
             profile_dict = profile_data.model_dump()
             # Remove user_id for regular users
             profile_dict.pop('user_id', None)
-            return UserProfilePublicResponse(**profile_dict)
+            return UserProfilePublicResponse(**profile_dict, team_info=team_info)
             
     except ValueError as e:
         raise HTTPException(status_code=404, detail=str(e))

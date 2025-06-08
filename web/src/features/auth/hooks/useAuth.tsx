@@ -16,6 +16,14 @@ interface User {
   phone?: string
   bio?: string
   profile_picture_url?: string
+  team_info?: {
+    id: string
+    name: string
+    description?: string
+    member_count: number
+    manager_name?: string
+    is_active: boolean
+  }
 }
 
 interface AuthContextType {
@@ -80,12 +88,22 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         last_name?: string
         phone?: string
         bio?: string
-        profile_picture_url?: string      }>('/auth/me')
+        profile_picture_url?: string
+        team_info?: {
+          id: string
+          name: string
+          description?: string
+          member_count: number
+          manager_name?: string
+          is_active: boolean
+        }
+      }>('/profile/me')
       
       const nameComponents = getNameComponents({
         first_name: userData.first_name,
         last_name: userData.last_name,
-        full_name: userData.full_name      })
+        full_name: userData.full_name
+      })
 
       const user: User = {
         id: userData.user_id,
@@ -97,7 +115,8 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         tenant_id: userData.tenant_id,
         phone: userData.phone,
         bio: userData.bio,
-        profile_picture_url: userData.profile_picture_url
+        profile_picture_url: userData.profile_picture_url,
+        team_info: userData.team_info
       }
       
       console.log('✅ Auth check successful, user:', user.email, 'role:', user.role)
@@ -205,9 +224,9 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const dismissSessionExpiredModal = () => {
     setShowSessionExpiredModal(false)
   }
-
   const refreshUser = async () => {
-    try {      const userData = await apiClient.get<{
+    try {
+      const userData = await apiClient.get<{
         user_id: string
         email: string
         role: string
@@ -218,8 +237,17 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         phone?: string
         bio?: string
         profile_picture_url?: string
-      }>('/auth/me')
-        const nameComponents = getNameComponents({
+        team_info?: {
+          id: string
+          name: string
+          description?: string
+          member_count: number
+          manager_name?: string
+          is_active: boolean
+        }
+      }>('/profile/me')
+      
+      const nameComponents = getNameComponents({
         first_name: userData.first_name,
         last_name: userData.last_name,
         full_name: userData.full_name
@@ -235,7 +263,8 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         tenant_id: userData.tenant_id,
         phone: userData.phone,
         bio: userData.bio,
-        profile_picture_url: userData.profile_picture_url
+        profile_picture_url: userData.profile_picture_url,
+        team_info: userData.team_info
       }
       
       setUser(user)

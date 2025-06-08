@@ -9,6 +9,7 @@ from infrastructure.db.database import get_async_session
 from infrastructure.db.repositories.user_repository_impl import UserRepositoryImpl
 from infrastructure.db.repositories.invitation_repository_impl import InvitationRepositoryImpl
 from infrastructure.db.repositories.tenant_repository_impl import TenantRepositoryImpl
+from infrastructure.db.repositories.team_repository_impl import TeamRepositoryImpl
 from infrastructure.db.repositories.refresh_token_repository_impl import RefreshTokenRepositoryImpl
 from infrastructure.db.repositories.profile_update_request_repository_impl import ProfileUpdateRequestRepositoryImpl
 from infrastructure.email.smtp_email_service import SMTPEmailService
@@ -22,6 +23,7 @@ from infrastructure.config.redis_config import redis_config
 from domain.organization.services.auth_service import AuthService
 from domain.organization.services.invitation_service import InvitationService
 from domain.organization.services.tenant_service import TenantService
+from domain.organization.services.team_service import TeamService
 from domain.organization.services.profile_update_service import ProfileUpdateService
 
 # Application layer
@@ -165,3 +167,12 @@ async def get_tenant_service(
     """Get tenant service with dependencies."""
     tenant_repository = TenantRepositoryImpl(session)
     return TenantService(tenant_repository)
+
+
+async def get_team_service(
+    session: AsyncSession = Depends(get_async_session)
+) -> TeamService:
+    """Get team service with dependencies."""
+    team_repository = TeamRepositoryImpl(session)
+    user_repository = UserRepositoryImpl(session)
+    return TeamService(team_repository, user_repository)

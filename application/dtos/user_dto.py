@@ -2,6 +2,15 @@ from pydantic import BaseModel
 from typing import Optional, Dict, Any
 from datetime import datetime
 
+class TeamInfoResponse(BaseModel):
+    """Team information for user profile."""
+    id: str
+    name: str
+    description: Optional[str] = None
+    member_count: int
+    manager_name: Optional[str] = None
+    is_active: bool
+
 class UserResponse(BaseModel):
     """User response DTO."""
     user_id: str
@@ -38,6 +47,12 @@ class UserProfileResponse(BaseModel):
     class Config:
         from_attributes = True
 
+class UserProfileAdminResponse(UserProfileResponse):
+    """User profile response DTO for admins (includes all technical details)."""
+    tenant_id: Optional[str] = None
+    team_id: Optional[str] = None
+    team_info: Optional[TeamInfoResponse] = None
+
 class UserProfilePublicResponse(BaseModel):
     """User profile response DTO for regular users (no UUIDs exposed)."""
     email: str
@@ -54,14 +69,10 @@ class UserProfilePublicResponse(BaseModel):
     last_login: Optional[datetime] = None
     created_at: datetime
     updated_at: datetime
+    team_info: Optional[TeamInfoResponse] = None
     
     class Config:
         from_attributes = True
-
-class UserProfileAdminResponse(UserProfileResponse):
-    """User profile response DTO for admins (includes all technical details)."""
-    tenant_id: Optional[str] = None
-    team_id: Optional[str] = None
 
 class UpdateProfileRequest(BaseModel):
     """Update profile request DTO."""

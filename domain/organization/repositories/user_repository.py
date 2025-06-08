@@ -1,5 +1,6 @@
 from abc import ABC, abstractmethod
-from typing import Optional
+from typing import Optional, List
+from uuid import UUID
 
 from domain.organization.entities.user import User
 from domain.organization.value_objects.email import Email
@@ -42,4 +43,14 @@ class UserRepository(ABC):
     @abstractmethod
     async def count_superadmins(self) -> int:
         """Count the number of superadmin users."""
+        pass
+    
+    @abstractmethod
+    async def get_team_members(self, team_id: UUID) -> List[User]:
+        """Get all users who are members of a specific team."""
+        pass
+    
+    @abstractmethod
+    async def count_team_members(self, team_id: UUID) -> int:
+        """Count the number of members in a specific team."""
         pass

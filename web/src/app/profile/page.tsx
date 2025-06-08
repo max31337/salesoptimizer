@@ -15,11 +15,11 @@ import {
   Building, 
   Calendar, 
   Settings,
-  ArrowLeft,
-  Users,
+  ArrowLeft,  Users,
   Shield,
   AlertTriangle,
-  Loader2
+  Loader2,
+  UserCheck
 } from "lucide-react"
 import Link from "next/link"
 import { format } from "date-fns"
@@ -214,9 +214,7 @@ export default function ProfilePage() {
                   )}
                 </div>
               </CardContent>
-            </Card>
-
-            {/* Organization Information */}
+            </Card>            {/* Organization Information */}
             <Card>
               <CardContent className="p-6">
                 <h3 className="text-lg font-semibold text-foreground mb-4 flex items-center gap-2">
@@ -264,7 +262,64 @@ export default function ProfilePage() {
                   <p className="text-muted-foreground">No organization information available</p>
                 )}
               </CardContent>
-            </Card>
+            </Card>            {/* Team Information */}
+            {user?.team_info && (
+              <Card>
+                <CardContent className="p-6">
+                  <h3 className="text-lg font-semibold text-foreground mb-4 flex items-center gap-2">
+                    <UserCheck className="h-5 w-5" />
+                    Team
+                  </h3>
+                  <div className="space-y-4">
+                    <div className="flex items-center gap-3">
+                      <Users className="h-4 w-4 text-muted-foreground" />
+                      <div>
+                        <p className="text-sm text-muted-foreground">Team Name</p>
+                        <p className="text-foreground font-medium">{user.team_info.name}</p>
+                      </div>
+                    </div>
+                    
+                    {user.team_info.description && (
+                      <div className="flex items-center gap-3">
+                        <div className="h-4 w-4" /> {/* Spacer */}
+                        <div>
+                          <p className="text-sm text-muted-foreground">Description</p>
+                          <p className="text-foreground">{user.team_info.description}</p>
+                        </div>
+                      </div>
+                    )}
+                    
+                    <div className="flex items-center gap-3">
+                      <UserCheck className="h-4 w-4 text-muted-foreground" />
+                      <div>
+                        <p className="text-sm text-muted-foreground">Team Size</p>
+                        <p className="text-foreground">{user.team_info.member_count} member{user.team_info.member_count !== 1 ? 's' : ''}</p>
+                      </div>
+                    </div>
+
+                    {user.team_info.manager_name && (
+                      <div className="flex items-center gap-3">
+                        <Shield className="h-4 w-4 text-muted-foreground" />
+                        <div>
+                          <p className="text-sm text-muted-foreground">Team Manager</p>
+                          <p className="text-foreground">{user.team_info.manager_name}</p>
+                        </div>
+                      </div>
+                    )}
+
+                    <div className="flex items-center gap-3">
+                      <div className="h-4 w-4" /> {/* Spacer */}
+                      <div>
+                        <p className="text-sm text-muted-foreground">Status</p>
+                        <Badge variant={user.team_info.is_active ? "default" : "secondary"}>
+                          {user.team_info.is_active ? "Active" : "Inactive"}
+                        </Badge>
+                      </div>
+                    </div>
+                  </div>
+                </CardContent>
+              </Card>
+            )}
 
             {/* Account Details */}
             <Card className="md:col-span-2">

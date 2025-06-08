@@ -5,6 +5,7 @@ from fastapi.staticfiles import StaticFiles
 from pathlib import Path
 from infrastructure.db.database import test_connection
 from infrastructure.config.settings import settings
+from infrastructure.services.startup_service import ensure_platform_initialized
 from contextlib import asynccontextmanager
 
 # Import all models via the registry
@@ -30,6 +31,20 @@ async def lifespan(app: FastAPI):
         print("✅ Database connection successful")
     else:
         print("❌ Database connection failed")
+    
+    # Initialize platform (superadmin, system org, platform team)
+    try:
+        print("\n🔧 Initializing platform components...")
+        platform_result = ensure_platform_initialized()
+        
+        if platform_result.get("success"):
+            print("✅ Platform initialization completed")
+        else:
+            print(f"⚠️  Platform initialization had issues: {platform_result.get('error', 'Unknown error')}")
+            # Don't fail startup, just log the issue
+    except Exception as e:
+        print(f"⚠️  Platform initialization error: {str(e)}")
+        # Don't fail startup, just log the error
     
     yield
     
