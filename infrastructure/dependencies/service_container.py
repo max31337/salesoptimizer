@@ -25,6 +25,7 @@ from domain.organization.services.invitation_service import InvitationService
 from domain.organization.services.tenant_service import TenantService
 from domain.organization.services.team_service import TeamService
 from domain.organization.services.profile_update_service import ProfileUpdateService
+from domain.organization.services.activity_log_service import ActivityLogService
 
 # Application layer
 from application.services.application_service import ApplicationService
@@ -121,15 +122,20 @@ async def get_application_service(
         tenant_repository=tenant_repository,
         email_service=email_service
     )
-    
-    # Token revocation use cases
+      # Token revocation use cases
     token_revocation_use_cases = TokenRevocationUseCases(
         auth_service,
         token_blacklist_service
     )
     
+    # Activity log service
+    from infrastructure.db.repositories.activity_log_repository_impl import ActivityLogRepositoryImpl
+    from domain.organization.services.activity_log_service import ActivityLogService
+    activity_log_repository = ActivityLogRepositoryImpl(session)
+    activity_log_service = ActivityLogService(activity_log_repository)
+    
     # Application use cases
-    auth_use_cases = AuthUseCases(auth_service, oauth_service)
+    auth_use_cases = AuthUseCases(auth_service, oauth_service, activity_log_service)
     invitation_use_cases = InvitationUseCases(invitation_service, auth_service)
       # Application service (orchestrates everything)
     return ApplicationService(
@@ -176,3 +182,14 @@ async def get_team_service(
     team_repository = TeamRepositoryImpl(session)
     user_repository = UserRepositoryImpl(session)
     return TeamService(team_repository, user_repository)
+
+
+async def get_activity_log_service(
+    session: AsyncSession = Depends(get_async_session)
+) -> ActivityLogService:
+    """Get activity log service with dependencies."""
+    from infrastructure.db.repositories.activity_log_repository_impl import ActivityLogRepositoryImpl
+    from domain.organization.services.activity_log_service import ActivityLogService
+    
+    activity_log_repository = ActivityLogRepositoryImpl(session)
+    return ActivityLogService(activity_log_repository)

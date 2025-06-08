@@ -12,6 +12,7 @@ if TYPE_CHECKING:
     from infrastructure.db.models.user_model import UserModel
     from infrastructure.db.models.team_model import TeamModel
     from infrastructure.db.models.invitation_model import InvitationModel
+    from infrastructure.db.models.activity_log_model import ActivityLogModel
 
 
 class TenantModel(Base):
@@ -45,10 +46,16 @@ class TenantModel(Base):
         foreign_keys="InvitationModel.tenant_id",
         back_populates="tenant"
     )
-
+    
     owner: Mapped["UserModel"] = relationship(
         "UserModel",
         primaryjoin="foreign(TenantModel.owner_id) == UserModel.id", 
         back_populates="owned_tenants",
         post_update=True
+    )
+
+    activity_logs: Mapped[list["ActivityLogModel"]] = relationship(
+        "ActivityLogModel", 
+        foreign_keys="ActivityLogModel.tenant_id",
+        back_populates="tenant"
     )

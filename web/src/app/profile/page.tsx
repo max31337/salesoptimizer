@@ -15,11 +15,16 @@ import {
   Building, 
   Calendar, 
   Settings,
-  ArrowLeft,  Users,
+  ArrowLeft,  
+  Users,
   Shield,
-  AlertTriangle,
+  AlertTriangle,  
   Loader2,
-  UserCheck
+  UserCheck,
+  Clock,
+  CheckCircle,
+  Lock,
+  Key
 } from "lucide-react"
 import Link from "next/link"
 import { format } from "date-fns"
@@ -263,13 +268,13 @@ export default function ProfilePage() {
                 )}
               </CardContent>
             </Card>            {/* Team Information */}
-            {user?.team_info && (
-              <Card>
-                <CardContent className="p-6">
-                  <h3 className="text-lg font-semibold text-foreground mb-4 flex items-center gap-2">
-                    <UserCheck className="h-5 w-5" />
-                    Team
-                  </h3>
+            <Card>
+              <CardContent className="p-6">
+                <h3 className="text-lg font-semibold text-foreground mb-4 flex items-center gap-2">
+                  <UserCheck className="h-5 w-5" />
+                  Team
+                </h3>
+                {user?.team_info ? (
                   <div className="space-y-4">
                     <div className="flex items-center gap-3">
                       <Users className="h-4 w-4 text-muted-foreground" />
@@ -317,9 +322,121 @@ export default function ProfilePage() {
                       </div>
                     </div>
                   </div>
-                </CardContent>
-              </Card>
-            )}
+                ) : (
+                  <p className="text-muted-foreground">No team assigned</p>
+                )}
+              </CardContent>
+            </Card>            {/* Account Activity */}
+            <Card>
+              <CardContent className="p-6">
+                <h3 className="text-lg font-semibold text-foreground mb-4 flex items-center gap-2">
+                  <Clock className="h-5 w-5" />
+                  Account Activity
+                </h3>
+                <div className="space-y-4">
+                  {user.last_login ? (
+                    <div className="flex items-center gap-3">
+                      <Clock className="h-4 w-4 text-muted-foreground" />
+                      <div>
+                        <p className="text-sm text-muted-foreground">Last Login</p>
+                        <p className="text-foreground">
+                          {new Date(user.last_login).toLocaleDateString('en-US', {
+                            year: 'numeric',
+                            month: 'short',
+                            day: 'numeric',
+                            hour: '2-digit',
+                            minute: '2-digit'
+                          })}
+                        </p>
+                      </div>
+                    </div>
+                  ) : (
+                    <div className="flex items-center gap-3">
+                      <Clock className="h-4 w-4 text-muted-foreground" />
+                      <div>
+                        <p className="text-sm text-muted-foreground">Last Login</p>
+                        <p className="text-foreground">Never logged in</p>
+                      </div>
+                    </div>
+                  )}
+                  
+                  <div className="flex items-center gap-3">
+                    <CheckCircle className="h-4 w-4 text-muted-foreground" />
+                    <div>
+                      <p className="text-sm text-muted-foreground">Account Status</p>
+                      <Badge variant={user.status === 'active' ? "default" : "secondary"}>
+                        {user.status ? (user.status === 'active' ? 'Active' : user.status.charAt(0).toUpperCase() + user.status.slice(1)) : 'Unknown'}
+                      </Badge>
+                    </div>
+                  </div>
+
+                  <div className="flex items-center gap-3">
+                    <Calendar className="h-4 w-4 text-muted-foreground" />
+                    <div>
+                      <p className="text-sm text-muted-foreground">Member Since</p>
+                      <p className="text-foreground">
+                        {user.created_at ? new Date(user.created_at).toLocaleDateString('en-US', {
+                          year: 'numeric',
+                          month: 'long',
+                          day: 'numeric'
+                        }) : 'Unknown'}
+                      </p>
+                    </div>
+                  </div>
+                </div>
+              </CardContent>
+            </Card>
+
+            {/* Security & Privacy */}
+            <Card>
+              <CardContent className="p-6">
+                <h3 className="text-lg font-semibold text-foreground mb-4 flex items-center gap-2">
+                  <Lock className="h-5 w-5" />
+                  Security & Privacy
+                </h3>
+                <div className="space-y-4">
+                  <div className="flex items-center gap-3">
+                    <Mail className="h-4 w-4 text-muted-foreground" />
+                    <div>
+                      <p className="text-sm text-muted-foreground">Email Verification</p>
+                      <Badge variant={user.is_email_verified ? "default" : "destructive"}>
+                        {user.is_email_verified ? 'Verified' : 'Unverified'}
+                      </Badge>
+                    </div>
+                  </div>
+
+                  <div className="flex items-center gap-3">
+                    <Key className="h-4 w-4 text-muted-foreground" />
+                    <div>
+                      <p className="text-sm text-muted-foreground">Two-Factor Authentication</p>
+                      <Badge variant="secondary">
+                        Not Enabled
+                      </Badge>
+                    </div>
+                  </div>
+
+                  <div className="flex items-center gap-3">
+                    <Shield className="h-4 w-4 text-muted-foreground" />
+                    <div>
+                      <p className="text-sm text-muted-foreground">Password Security</p>
+                      <Badge variant="outline">
+                        Strong
+                      </Badge>
+                    </div>
+                  </div>
+
+                  <div className="flex items-center gap-3">
+                    <Lock className="h-4 w-4 text-muted-foreground" />
+                    <div>
+                      <p className="text-sm text-muted-foreground">Privacy Level</p>
+                      <Badge variant="outline">
+                        Standard
+                      </Badge>
+                    </div>
+                  </div>
+                </div>
+              </CardContent>
+            </Card>
 
             {/* Account Details */}
             <Card className="md:col-span-2">

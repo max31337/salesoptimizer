@@ -16,6 +16,11 @@ interface User {
   phone?: string
   bio?: string
   profile_picture_url?: string
+  status?: string
+  is_email_verified?: boolean
+  last_login?: string
+  created_at?: string
+  updated_at?: string
   team_info?: {
     id: string
     name: string
@@ -77,12 +82,16 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       return
     }    console.log('✅ Auth indicators found, verifying with server...')
     setIsLoading(true)
-    try {
-      const userData = await apiClient.get<{
+    try {      const userData = await apiClient.get<{
         user_id: string
         email: string
         role: string
         full_name: string
+        status?: string
+        is_email_verified?: boolean
+        last_login?: string
+        created_at?: string
+        updated_at?: string
         tenant_id?: string
         first_name?: string
         last_name?: string
@@ -98,8 +107,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
           is_active: boolean
         }
       }>('/profile/me')
-      
-      const nameComponents = getNameComponents({
+        const nameComponents = getNameComponents({
         first_name: userData.first_name,
         last_name: userData.last_name,
         full_name: userData.full_name
@@ -116,6 +124,11 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         phone: userData.phone,
         bio: userData.bio,
         profile_picture_url: userData.profile_picture_url,
+        status: userData.status,
+        is_email_verified: userData.is_email_verified,
+        last_login: userData.last_login,
+        created_at: userData.created_at,
+        updated_at: userData.updated_at,
         team_info: userData.team_info
       }
       
@@ -219,11 +232,12 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       localStorage.removeItem('salesoptimizer_was_logged_in')
       setIsLoading(false)
       router.push('/')
-    }
-  }
+    }  }
+  
   const dismissSessionExpiredModal = () => {
     setShowSessionExpiredModal(false)
   }
+  
   const refreshUser = async () => {
     try {
       const userData = await apiClient.get<{
@@ -231,6 +245,11 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         email: string
         role: string
         full_name: string
+        status?: string
+        is_email_verified?: boolean
+        last_login?: string
+        created_at?: string
+        updated_at?: string
         tenant_id?: string
         first_name?: string
         last_name?: string
@@ -264,6 +283,11 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         phone: userData.phone,
         bio: userData.bio,
         profile_picture_url: userData.profile_picture_url,
+        status: userData.status,
+        is_email_verified: userData.is_email_verified,
+        last_login: userData.last_login,
+        created_at: userData.created_at,
+        updated_at: userData.updated_at,
         team_info: userData.team_info
       }
       

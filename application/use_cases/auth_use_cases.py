@@ -2,6 +2,7 @@ from typing import Tuple, Optional
 
 from domain.organization.entities.user import User
 from domain.organization.services.auth_service import AuthService
+from domain.organization.services.activity_log_service import ActivityLogService
 from infrastructure.services.oauth_service import OAuthService
 from application.commands.auth_command import LoginCommand
 from application.commands.oauth_command import OAuthLoginCommand, OAuthAuthorizationCommand
@@ -14,10 +15,12 @@ class AuthUseCases:
     def __init__(
         self, 
         auth_service: AuthService,
-        oauth_service: OAuthService
+        oauth_service: OAuthService,
+        activity_log_service: Optional[ActivityLogService] = None
     ) -> None:
         self._auth_service = auth_service
         self._oauth_service = oauth_service
+        self._activity_log_service = activity_log_service
     
     async def login(self, command: LoginCommand) -> Tuple[User, str, str]:
         """Login user and return user with tokens."""
@@ -41,6 +44,19 @@ class AuthUseCases:
             command.email_or_username,
             command.password
         )
+        
+        # Log the login activity
+        if self._activity_log_service and user.id:
+            try:
+                await self._activity_log_service.record_user_login(
+                    user_id=user.id,
+                    tenant_id=user.tenant_id,
+                    ip_address=ip_address,
+                    user_agent=user_agent
+                )
+            except Exception as e:
+                # Don't fail login if activity logging fails
+                print(f"Failed to log login activity: {e}")
         
         access_token, refresh_token = await self._auth_service.create_tokens_with_device_info(
             user, user_agent, ip_address
