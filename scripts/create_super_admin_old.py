@@ -1,31 +1,61 @@
-#!/usr/bin/env python3
-"""
-Create Super Admin Script - Creates a superadmin user and assigns to system organization.
-This script ensures the system organization exists and assigns the superadmin to it.
-"""
 import uuid
 import sys
 from pathlib import Path
 from datetime import datetime, timezone
+from typing import Any
 
 project_root = Path(__file__).parent.parent
 sys.path.insert(0, str(project_root))
 
 from sqlalchemy import create_engine
-from sqlalchemy.orm import sessionmaker
+from sqlalchemy.orm import sessionmaker, Session
 
 from infrastructure.db.database import get_database_url
 from infrastructure.db.models.user_model import UserModel
 from infrastructure.db.models.tenant_model import TenantModel
 from infrastructure.services.password_service import PasswordService
 from domain.organization.entities.user import UserRole, UserStatus
-from scripts.system_organization_manager import SystemOrganizationManager
 
+def get_or_create_system_organization(session: Session) -> Any:
+    """Get existing system organization or create it."""
+    system_org_name = "SalesOptimizer Platform"
+    
+    # Check if system organization already exists
+    existing_org = session.query(TenantModel).filter(
+        TenantModel.name == system_org_name
+    ).first()
+    
+    if existing_org:
+        print(f"📋 Using existing system organization: {system_org_name}")
+        return existing_org.id
+    
+    # Create system organization
+    system_org = TenantModel(
+        id=uuid.uuid4(),
+        name=system_org_name,
+        slug="salesoptimizer-platform",
+        subscription_tier="system",
+        is_active=True,
+        owner_id=None,
+        settings={
+            "is_system_organization": True,
+            "description": "SalesOptimizer Platform system organization for superadmins",
+            "created_by": "superadmin_creation"
+        },
+        created_at=datetime.now(timezone.utc),
+        updated_at=datetime.now(timezone.utc)
+    )
+    
+    session.add(system_org)
+    session.flush()  # Get the ID without committing
+    
+    print(f"✅ Created system organization: {system_org_name}")
+    return system_org.id
 
 def create_super_admin():
     """Create the initial Super Admin user and assign to system organization."""
     
-    # Database setup
+    # Database setup with psycopg2
     engine = create_engine(get_database_url())
     SessionLocal = sessionmaker(bind=engine)
     
@@ -38,31 +68,10 @@ def create_super_admin():
         existing_admin = session.query(UserModel).filter(UserModel.email == email).first()
         if existing_admin:
             print(f"Super Admin with email {email} already exists!")
-            
-            # Check if they're assigned to system organization
-            manager = SystemOrganizationManager(session)
-            system_org = manager.get_or_create_system_organization()
-            
-            if existing_admin.tenant_id != system_org.id:
-                print("📋 Existing superadmin is not assigned to system organization. Fixing...")
-                
-                # Assign to system org
-                manager.assign_superadmin_to_system_org(existing_admin, system_org)
-                session.commit()
-                
-                print(f"✅ Assigned existing superadmin to system organization: {system_org.name}")
-                print(f"🆔 Organization ID: {system_org.id}")
-            else:
-                # Check if assigned to system org
-                org = session.query(TenantModel).filter(TenantModel.id == existing_admin.tenant_id).first()
-                org_name = org.name if org else "Unknown Organization"
-                print(f"✅ Superadmin is already assigned to organization: {org_name}")
-            
-            return existing_admin.id
+            return
         
-        # Create system organization manager
-        manager = SystemOrganizationManager(session)
-        system_org = manager.get_or_create_system_organization()
+        # Get or create system organization
+        system_org_id = get_or_create_system_organization(session)
         
         # Create password hash
         password_service = PasswordService()
@@ -71,7 +80,7 @@ def create_super_admin():
         # Create Super Admin user with system organization
         super_admin = UserModel(
             id=uuid.uuid4(),
-            tenant_id=system_org.id,  # Assign to system organization
+            tenant_id=system_org_id,  # Assign to system organization
             team_id=None,
             email=email,
             username="superadmin",
@@ -94,15 +103,8 @@ def create_super_admin():
         print(f"📧 Email: {email}")
         print(f"🔑 Password: {password}")
         print(f"🆔 ID: {super_admin.id}")
-        print(f"🏢 Organization: {system_org.name} ({system_org.id})")
+        print(f"🏢 Organization: SalesOptimizer Platform ({system_org_id})")
         print(f"🔒 Role: Super Admin (can access all organizations)")
-        print(f"📊 Subscription Tier: {system_org.subscription_tier}")
-        
-        return super_admin.id
-
 
 if __name__ == "__main__":
-    print("🚀 Creating SalesOptimizer Super Admin...")
-    print("=" * 50)
     create_super_admin()
-    print("✨ Done!")

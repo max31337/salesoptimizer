@@ -17,7 +17,6 @@ if TYPE_CHECKING:
     from infrastructure.db.models.invitation_model import InvitationModel
     from infrastructure.db.models.refresh_token_model import RefreshTokenModel
     from infrastructure.db.models.profile_update_request_model import ProfileUpdateRequestModel
-    from infrastructure.db.models.profile_update_request_model import ProfileUpdateRequestModel
 
 
 class GUID(TypeDecorator[uuid.UUID]):
@@ -130,9 +129,7 @@ class UserModel(Base):
         foreign_keys="RefreshTokenModel.user_id",
         back_populates="user",
         cascade="all, delete-orphan"
-    )
-
-    # Profile update requests relationship
+    )    # Profile update requests relationship
     profile_update_requests: Mapped[list["ProfileUpdateRequestModel"]] = relationship(
         "ProfileUpdateRequestModel",
         foreign_keys="ProfileUpdateRequestModel.user_id",

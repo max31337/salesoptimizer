@@ -19,7 +19,8 @@ interface SubscriptionTier {
 const subscriptionTiers: SubscriptionTier[] = [
   { value: "basic", label: "Basic" },
   { value: "pro", label: "Pro" },
-  { value: "enterprise", label: "Enterprise" }
+  { value: "enterprise", label: "Enterprise" },
+  { value: "system", label: "System (Platform)" }
 ]
 
 interface InviteOrgAdminModalProps {

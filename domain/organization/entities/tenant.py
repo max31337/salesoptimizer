@@ -38,8 +38,8 @@ class Tenant:
         owner_id: Optional[UserId] = None,
     ) -> "Tenant":
         """Create a new tenant."""
-        if subscription_tier not in ["basic", "pro", "enterprise"]:
-            raise ValueError("Invalid subscription tier. Must be: basic, pro, or enterprise")
+        if subscription_tier not in ["basic", "pro", "enterprise", "system"]:
+            raise ValueError("Invalid subscription tier. Must be: basic, pro, enterprise, or system")
 
         # Generate slug if not provided
         if slug is None:
@@ -114,7 +114,7 @@ class Tenant:
 
     def update_subscription_tier(self, tier: str) -> None:
         """Update subscription tier."""
-        valid_tiers = ["basic", "professional", "enterprise"]
+        valid_tiers = ["basic", "pro", "enterprise", "system"]
         if tier not in valid_tiers:
             raise ValueError(f"Invalid subscription tier: {tier}. Must be one of {valid_tiers}")
 

@@ -24,6 +24,11 @@ class TenantRepository(ABC):
         pass
     
     @abstractmethod
+    async def get_by_name(self, name: str) -> Optional[Tenant]:
+        """Get tenant by name."""
+        pass
+    
+    @abstractmethod
     async def update(self, tenant: Tenant) -> Tenant:
         """Update tenant."""
         pass
