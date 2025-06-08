@@ -1,8 +1,8 @@
 """initial migration
 
-Revision ID: c0c3f55f76d8
+Revision ID: 86071c358ba2
 Revises: 
-Create Date: 2025-06-06 02:05:39.301271
+Create Date: 2025-06-08 15:08:51.512533
 
 """
 from typing import Sequence, Union
@@ -12,7 +12,7 @@ import sqlalchemy as sa
 from infrastructure.db.models.user_model import GUID
 
 # revision identifiers, used by Alembic.
-revision: str = 'c0c3f55f76d8'
+revision: str = '86071c358ba2'
 down_revision: Union[str, None] = None
 branch_labels: Union[str, Sequence[str], None] = None
 depends_on: Union[str, Sequence[str], None] = None
@@ -56,6 +56,8 @@ def upgrade() -> None:
     sa.Column('first_name', sa.String(length=100), nullable=False),
     sa.Column('last_name', sa.String(length=100), nullable=False),
     sa.Column('phone', sa.String(length=20), nullable=True),
+    sa.Column('profile_picture_url', sa.String(length=500), nullable=True),
+    sa.Column('bio', sa.String(length=1000), nullable=True),
     sa.Column('password_hash', sa.String(length=255), nullable=True),
     sa.Column('role', sa.String(length=50), nullable=False),
     sa.Column('status', sa.String(length=20), nullable=False),
@@ -97,6 +99,25 @@ def upgrade() -> None:
         batch_op.create_index(batch_op.f('ix_invitations_email'), ['email'], unique=False)
         batch_op.create_index(batch_op.f('ix_invitations_token'), ['token'], unique=True)
 
+    op.create_table('profile_update_requests',
+    sa.Column('id', GUID(), nullable=False),
+    sa.Column('user_id', GUID(), nullable=False),
+    sa.Column('requested_by_id', GUID(), nullable=False),
+    sa.Column('requested_changes', sa.JSON(), nullable=False),
+    sa.Column('status', sa.String(length=20), nullable=False),
+    sa.Column('reason', sa.Text(), nullable=True),
+    sa.Column('approved_by_id', GUID(), nullable=True),
+    sa.Column('approved_at', sa.DateTime(timezone=True), nullable=True),
+    sa.Column('created_at', sa.DateTime(timezone=True), nullable=False),
+    sa.Column('updated_at', sa.DateTime(timezone=True), nullable=True),
+    sa.ForeignKeyConstraint(['approved_by_id'], ['users.id'], ),
+    sa.ForeignKeyConstraint(['requested_by_id'], ['users.id'], ),
+    sa.ForeignKeyConstraint(['user_id'], ['users.id'], ),
+    sa.PrimaryKeyConstraint('id')
+    )
+    with op.batch_alter_table('profile_update_requests', schema=None) as batch_op:
+        batch_op.create_index(batch_op.f('ix_profile_update_requests_user_id'), ['user_id'], unique=False)
+
     op.create_table('refresh_tokens',
     sa.Column('id', GUID(), nullable=False),
     sa.Column('user_id', GUID(), nullable=False),
@@ -128,6 +149,10 @@ def downgrade() -> None:
         batch_op.drop_index(batch_op.f('ix_refresh_tokens_jti'))
 
     op.drop_table('refresh_tokens')
+    with op.batch_alter_table('profile_update_requests', schema=None) as batch_op:
+        batch_op.drop_index(batch_op.f('ix_profile_update_requests_user_id'))
+
+    op.drop_table('profile_update_requests')
     with op.batch_alter_table('invitations', schema=None) as batch_op:
         batch_op.drop_index(batch_op.f('ix_invitations_token'))
         batch_op.drop_index(batch_op.f('ix_invitations_email'))

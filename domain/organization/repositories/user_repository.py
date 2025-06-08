@@ -38,3 +38,8 @@ class UserRepository(ABC):
     async def exists_by_email(self, email: Email) -> bool:
         """Check if user exists by email."""
         pass
+    
+    @abstractmethod
+    async def count_superadmins(self) -> int:
+        """Count the number of superadmin users."""
+        pass

@@ -85,7 +85,12 @@ class UserModel(Base):
     created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=lambda: datetime.now(timezone.utc))
     updated_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), nullable=True, onupdate=lambda: datetime.now(timezone.utc))
     oauth_provider: Mapped[str] = mapped_column(String(50), nullable=True)
-    oauth_provider_id: Mapped[str] = mapped_column(String(255), nullable=True)
+    oauth_provider_id: Mapped[str] = mapped_column(String(255), nullable=True)    
+    
+    __table_args__ = (
+        # Database-level constraints are handled by migration
+        # See: infrastructure/db/alembic/versions/add_superadmin_constraint.py
+    )
 
     # Relationships using string references (no imports needed)
     tenant: Mapped["TenantModel"] = relationship(
