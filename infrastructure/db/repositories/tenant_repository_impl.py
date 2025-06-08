@@ -1,5 +1,4 @@
 from typing import Optional, List
-from uuid import UUID
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy import select
 from sqlalchemy.orm import selectinload
@@ -8,6 +7,7 @@ from domain.organization.entities.tenant import Tenant
 from domain.organization.repositories.tenant_repository import TenantRepository
 from domain.organization.value_objects.user_id import UserId
 from domain.organization.value_objects.tenant_name import TenantName
+from domain.organization.value_objects.tenant_id import TenantId
 from infrastructure.db.models.tenant_model import TenantModel
 
 
@@ -35,7 +35,7 @@ class TenantRepositoryImpl(TenantRepository):
         
         return self._model_to_entity(model)
     
-    async def get_by_id(self, tenant_id: UUID) -> Optional[Tenant]:
+    async def get_by_id(self, tenant_id: TenantId) -> Optional[Tenant]:
         """Get tenant by ID."""
         result = await self._session.execute(
             select(TenantModel)
@@ -44,7 +44,7 @@ class TenantRepositoryImpl(TenantRepository):
                 selectinload(TenantModel.teams),
                 selectinload(TenantModel.invitations)
             )
-            .where(TenantModel.id == tenant_id)
+            .where(TenantModel.id == tenant_id.value)
         )
         model = result.scalar_one_or_none()
         
@@ -65,11 +65,11 @@ class TenantRepositoryImpl(TenantRepository):
         
         return self._model_to_entity(model) if model else None
     
-    async def get_by_name(self, name: TenantName) -> Optional[Tenant]:
+    async def get_by_name(self, name: str) -> Optional[Tenant]:
         """Get tenant by name."""
         result = await self._session.execute(
             select(TenantModel)
-            .where(TenantModel.name == name.value)
+            .where(TenantModel.name == name)
         )
         model = result.scalar_one_or_none()
         
@@ -99,7 +99,7 @@ class TenantRepositoryImpl(TenantRepository):
     
     async def update(self, tenant: Tenant) -> Tenant:
         """Update existing tenant."""
-        if tenant.id is None:
+        if tenant.id is None: # type: ignore
             raise ValueError("Cannot update tenant without an ID")
         
         result = await self._session.execute(
@@ -121,10 +121,10 @@ class TenantRepositoryImpl(TenantRepository):
         
         return self._model_to_entity(model)
     
-    async def delete(self, tenant_id: UUID) -> bool:
+    async def delete(self, tenant_id: TenantId) -> bool:
         """Delete tenant."""
         result = await self._session.execute(
-            select(TenantModel).where(TenantModel.id == tenant_id)
+            select(TenantModel).where(TenantModel.id == tenant_id.value)
         )
         model = result.scalar_one_or_none()
         
@@ -142,17 +142,17 @@ class TenantRepositoryImpl(TenantRepository):
         )
         return result.scalar_one_or_none() is not None
     
-    async def exists_by_name(self, name: TenantName) -> bool:
-        """Check if tenant exists by name."""
+    async def exists_by_name(self, name: str) -> bool:
+        """Check if tenant exists by name."""        
         result = await self._session.execute(
-            select(TenantModel.id).where(TenantModel.name == name.value)
+            select(TenantModel.id).where(TenantModel.name == name)
         )
         return result.scalar_one_or_none() is not None
     
     def _model_to_entity(self, model: TenantModel) -> Tenant:
         """Convert database model to domain entity."""
         return Tenant(
-            id=UserId(model.id), # type: ignore
+            id=TenantId(model.id), # type: ignore
             name=TenantName(str(model.name)),
             slug=getattr(model, 'slug', ''),
             subscription_tier=getattr(model, 'subscription_tier', ''),

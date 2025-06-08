@@ -157,3 +157,11 @@ async def get_profile_update_use_case(
         profile_service=profile_service,
         profile_update_request_repository=profile_update_request_repository
     )
+
+
+async def get_tenant_service(
+    session: AsyncSession = Depends(get_async_session)
+) -> TenantService:
+    """Get tenant service with dependencies."""
+    tenant_repository = TenantRepositoryImpl(session)
+    return TenantService(tenant_repository)

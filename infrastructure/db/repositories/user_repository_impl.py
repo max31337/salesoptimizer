@@ -58,7 +58,7 @@ class UserRepositoryImpl(UserRepository):
 
     async def count_superadmins(self) -> int:
         """Count the number of superadmin users."""
-        stmt = select(func.count(UserModel.id)).where(UserModel.role == UserRole.SUPER_ADMIN.value)
+        stmt = select(func.count(UserModel.id)).where(UserModel.role == UserRole.SUPER_ADMIN)
         result = await self._session.execute(stmt)
         return result.scalar() or 0
 

@@ -5,13 +5,14 @@ import re
 
 from domain.organization.value_objects.user_id import UserId
 from domain.organization.value_objects.tenant_name import TenantName
+from domain.organization.value_objects.tenant_id import TenantId
 
 
 @dataclass
 class Tenant:
     """Tenant aggregate root representing an organization."""
 
-    id: UserId
+    id: TenantId
     name: TenantName
     slug: str
     subscription_tier: str
@@ -39,16 +40,14 @@ class Tenant:
     ) -> "Tenant":
         """Create a new tenant."""
         if subscription_tier not in ["basic", "pro", "enterprise", "system"]:
-            raise ValueError("Invalid subscription tier. Must be: basic, pro, enterprise, or system")
-
-        # Generate slug if not provided
+            raise ValueError("Invalid subscription tier. Must be: basic, pro, enterprise, or system")        # Generate slug if not provided
         if slug is None:
             slug = cls._generate_slug_from_name(name.value)
         else:
             slug = cls._validate_and_normalize_slug(slug)
 
         return cls(
-            id=UserId.generate(),
+            id=TenantId.generate(),
             name=name,
             slug=slug,
             subscription_tier=subscription_tier,
