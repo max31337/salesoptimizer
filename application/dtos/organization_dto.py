@@ -4,7 +4,7 @@ from datetime import datetime
 
 
 class OrganizationResponse(BaseModel):
-    """Response for organization/tenant information."""
+    """Response for organization/tenant information (includes UUIDs for admins)."""
     
     id: str
     name: str
@@ -20,10 +20,33 @@ class OrganizationResponse(BaseModel):
         from_attributes = True
 
 
+class OrganizationPublicResponse(BaseModel):
+    """Public response for organization/tenant information (no UUIDs for regular users)."""
+    
+    name: str
+    subscription_tier: str
+    is_active: bool
+    created_at: datetime
+    updated_at: Optional[datetime] = None
+
+    class Config:
+        from_attributes = True
+
+
 class OrganizationInfoResponse(BaseModel):
-    """Response wrapper for organization information endpoint."""
+    """Response wrapper for organization information endpoint (for admins)."""
     
     organization: Optional[OrganizationResponse] = None
+    message: Optional[str] = None
+
+    class Config:
+        from_attributes = True
+
+
+class OrganizationInfoPublicResponse(BaseModel):
+    """Public response wrapper for organization information endpoint (for regular users)."""
+    
+    organization: Optional[OrganizationPublicResponse] = None
     message: Optional[str] = None
 
     class Config:

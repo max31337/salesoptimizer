@@ -38,6 +38,31 @@ class UserProfileResponse(BaseModel):
     class Config:
         from_attributes = True
 
+class UserProfilePublicResponse(BaseModel):
+    """User profile response DTO for regular users (no UUIDs exposed)."""
+    email: str
+    username: Optional[str] = None
+    first_name: str
+    last_name: str
+    full_name: str
+    phone: Optional[str] = None
+    profile_picture_url: Optional[str] = None
+    bio: Optional[str] = None
+    role: str
+    status: str
+    is_email_verified: bool = False
+    last_login: Optional[datetime] = None
+    created_at: datetime
+    updated_at: datetime
+    
+    class Config:
+        from_attributes = True
+
+class UserProfileAdminResponse(UserProfileResponse):
+    """User profile response DTO for admins (includes all technical details)."""
+    tenant_id: Optional[str] = None
+    team_id: Optional[str] = None
+
 class UpdateProfileRequest(BaseModel):
     """Update profile request DTO."""
     email: Optional[str] = None

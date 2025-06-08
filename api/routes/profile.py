@@ -2,6 +2,7 @@ from fastapi import APIRouter, Depends, HTTPException, UploadFile, File, Request
 from fastapi.responses import JSONResponse
 from uuid import UUID
 from datetime import datetime
+from typing import Union
 
 from api.dependencies.auth import get_current_user_from_cookie
 from application.use_cases.profile_update_use_cases import ProfileUpdateUseCase
@@ -9,9 +10,16 @@ from application.dtos.user_dto import (
     UpdateProfileRequest,
     UpdateProfileByAdminRequest,
     UserProfileResponse,
+    UserProfilePublicResponse,
+    UserProfileAdminResponse,
     ProfileUpdatePendingResponse
 )
-from application.dtos.organization_dto import OrganizationResponse, OrganizationInfoResponse
+from application.dtos.organization_dto import (
+    OrganizationResponse, 
+    OrganizationInfoResponse,
+    OrganizationPublicResponse,
+    OrganizationInfoPublicResponse
+)
 from domain.organization.entities.user import User
 from domain.organization.services.tenant_service import TenantService
 from infrastructure.dependencies.service_container import get_profile_update_use_case, get_tenant_service
@@ -19,57 +27,99 @@ from infrastructure.dependencies.service_container import get_profile_update_use
 router = APIRouter(prefix="/profile", tags=["profile"])
 
 
-@router.get("/me", response_model=UserProfileResponse)
+@router.get("/me", response_model=Union[UserProfileAdminResponse, UserProfilePublicResponse])
 async def get_my_profile(
     current_user: User = Depends(get_current_user_from_cookie),
     profile_use_case: ProfileUpdateUseCase = Depends(get_profile_update_use_case)
 ):
-    """Get current user's profile."""
+    """Get current user's profile with role-based information disclosure."""
     try:
         if current_user.id is None:
             raise HTTPException(status_code=400, detail="User ID is required")
-        return await profile_use_case.get_user_profile(current_user.id.value)
+        
+        profile_data = await profile_use_case.get_user_profile(current_user.id.value)
+          # Return different response models based on user role
+        if current_user.role.value in ['super_admin', 'org_admin']:
+            # Admins get full profile with UUIDs and technical details
+            return UserProfileAdminResponse(
+                **profile_data.model_dump(),
+                tenant_id=str(current_user.tenant_id) if current_user.tenant_id else None,
+                team_id=str(current_user.team_id) if current_user.team_id else None
+            )
+        else:
+            # Regular users get public profile without UUIDs
+            profile_dict = profile_data.model_dump()
+            # Remove user_id for regular users
+            profile_dict.pop('user_id', None)
+            return UserProfilePublicResponse(**profile_dict)
+            
     except ValueError as e:
         raise HTTPException(status_code=404, detail=str(e))
     except Exception as e:
         raise HTTPException(status_code=500, detail="Internal server error")
 
 
-@router.get("/organization", response_model=OrganizationInfoResponse)
+@router.get("/organization", response_model=Union[OrganizationInfoResponse, OrganizationInfoPublicResponse])
 async def get_organization_info(
     current_user: User = Depends(get_current_user_from_cookie),
     tenant_service: TenantService = Depends(get_tenant_service)
 ):
-    """Get current user's organization information."""
+    """Get current user's organization information with role-based display."""
     try:
         if not current_user.tenant_id:
-            return OrganizationInfoResponse(
-                organization=None, 
-                message="User not associated with any organization"
-            )
+            # Return appropriate response based on user role
+            if current_user.role.value in ['super_admin', 'org_admin']:
+                return OrganizationInfoResponse(
+                    organization=None, 
+                    message="User not associated with any organization"
+                )
+            else:
+                return OrganizationInfoPublicResponse(
+                    organization=None, 
+                    message="User not associated with any organization"
+                )
         
         # Get tenant from service using proper DDD architecture
         tenant = await tenant_service.get_tenant_by_id(current_user.tenant_id)
         
         if not tenant:
-            return OrganizationInfoResponse(
-                organization=None, 
-                message="Organization not found"
-            )
-        # Convert tenant entity to response DTO
-        organization_response = OrganizationResponse(
-            id=str(tenant.id.value),
-            name=tenant.name.value,
-            slug=tenant.slug,
-            subscription_tier=tenant.subscription_tier,
-            is_active=tenant.is_active,
-            owner_id=str(tenant.owner_id.value) if tenant.owner_id else None,
-            settings=tenant.settings,
-            created_at=tenant.created_at or datetime.now(),
-            updated_at=tenant.updated_at or datetime.now()
-        )
+            # Return appropriate response based on user role
+            if current_user.role.value in ['super_admin', 'org_admin']:
+                return OrganizationInfoResponse(
+                    organization=None, 
+                    message="Organization not found"
+                )
+            else:
+                return OrganizationInfoPublicResponse(
+                    organization=None, 
+                    message="Organization not found"
+                )
         
-        return OrganizationInfoResponse(organization=organization_response)
+        # Return different response models based on user role
+        if current_user.role.value in ['super_admin', 'org_admin']:
+            # Admins get full organization details with UUIDs
+            organization_response = OrganizationResponse(
+                id=str(tenant.id.value),
+                name=tenant.name.value,
+                slug=tenant.slug,
+                subscription_tier=tenant.subscription_tier,
+                is_active=tenant.is_active,
+                owner_id=str(tenant.owner_id.value) if tenant.owner_id else None,
+                settings=tenant.settings,
+                created_at=tenant.created_at or datetime.now(),
+                updated_at=tenant.updated_at or datetime.now()
+            )
+            return OrganizationInfoResponse(organization=organization_response)
+        else:
+            # Regular users get public organization details without UUIDs
+            organization_response = OrganizationPublicResponse(
+                name=tenant.name.value,
+                subscription_tier=tenant.subscription_tier,
+                is_active=tenant.is_active,
+                created_at=tenant.created_at or datetime.now(),
+                updated_at=tenant.updated_at or datetime.now()
+            )
+            return OrganizationInfoPublicResponse(organization=organization_response)
         
     except ValueError as e:
         raise HTTPException(status_code=404, detail=str(e))
