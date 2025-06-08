@@ -113,6 +113,8 @@ class UserRepositoryImpl(UserRepository):
             model.oauth_provider = user.oauth_provider
         if user.oauth_provider_id is not None:
             model.oauth_provider_id = user.oauth_provider_id
+        if user.last_login is not None:
+            model.last_login = user.last_login
         model.updated_at = datetime.now()
         
         await self._session.flush()
@@ -148,8 +150,11 @@ class UserRepositoryImpl(UserRepository):
             profile_picture_url=model.profile_picture_url,
             bio=model.bio,
             is_email_verified=model.is_email_verified,
+            last_login=model.last_login,
             invitation_token=model.invitation_token,
             invitation_expires_at=model.invitation_expires_at,
+            created_at=model.created_at,
+            updated_at=model.updated_at,
             _oauth_provider=model.oauth_provider,
             _oauth_provider_id=model.oauth_provider_id
         )

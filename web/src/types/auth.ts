@@ -1,15 +1,28 @@
 export interface User {
   id: string
   email: string
-  username: string
-  full_name: string
+  username?: string
+  first_name?: string
+  last_name?: string
+  full_name?: string
+  phone?: string
+  bio?: string
   role: 'super_admin' | 'org_admin' | 'sales_manager' | 'sales_rep'
   status: 'active' | 'inactive' | 'pending'
   is_email_verified: boolean
   tenant_id?: string
   profile_picture_url?: string
+  last_login?: string
   created_at: string
   updated_at: string
+  team_info?: {
+    id: string
+    name: string
+    description?: string
+    member_count: number
+    manager_name?: string
+    is_active: boolean
+  }
 }
 
 export interface LoginRequest {

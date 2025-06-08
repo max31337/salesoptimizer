@@ -21,7 +21,7 @@ class ActivityLogModel(Base):
     activity_metadata: Mapped[Dict[str, Any]] = mapped_column(Text, nullable=True)  # JSON string for additional data
     ip_address: Mapped[str] = mapped_column(String(45), nullable=True)  # IPv4 or IPv6
     user_agent: Mapped[str] = mapped_column(Text, nullable=True)
-    created_at: Mapped[datetime] = mapped_column(DateTime, default=lambda: datetime.now(timezone.utc), nullable=False)
+    created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=lambda: datetime.now(timezone.utc), nullable=False)
 
     # Relationships
     user: Mapped["UserModel"] = relationship("UserModel", back_populates="activity_logs")
