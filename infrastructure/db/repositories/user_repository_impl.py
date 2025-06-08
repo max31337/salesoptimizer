@@ -1,7 +1,7 @@
 from typing import Optional
 from datetime import datetime
 from sqlalchemy.ext.asyncio import AsyncSession
-from sqlalchemy import select
+from sqlalchemy import select, func
 
 from domain.organization.entities.user import User, UserRole, UserStatus
 from domain.organization.value_objects.email import Email
@@ -55,6 +55,12 @@ class UserRepositoryImpl(UserRepository):
         model = result.scalar_one_or_none()
         
         return self._model_to_entity(model) if model else None
+
+    async def count_superadmins(self) -> int:
+        """Count the number of superadmin users."""
+        stmt = select(func.count(UserModel.id)).where(UserModel.role == UserRole.SUPER_ADMIN.value)
+        result = await self._session.execute(stmt)
+        return result.scalar() or 0
 
     async def update(self, user: User) -> User:
         """Update existing user."""
