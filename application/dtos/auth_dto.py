@@ -71,7 +71,8 @@ class LoginResponse(BaseModel):
     tenant_id: Optional[UUID] = None
     role: str
     email: str
-    full_name: str
+    first_name: str
+    last_name: str
     profile_picture_url: Optional[str] = None
     bio: Optional[str] = None
     status: str = "active"

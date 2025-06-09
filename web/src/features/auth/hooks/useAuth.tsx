@@ -3,7 +3,7 @@
 import { createContext, useContext, useState, useEffect, ReactNode } from 'react'
 import { useRouter } from 'next/navigation'
 import { apiClient } from '@/lib/api'
-import { getNameComponents } from '@/utils/nameParser'
+import { getNameComponents, createFullName } from '@/utils/nameParser'
 
 interface User {
   id: string
@@ -12,7 +12,6 @@ interface User {
   first_name?: string
   last_name?: string
   tenant_id?: string
-  full_name?: string
   phone?: string
   bio?: string
   profile_picture_url?: string
@@ -86,7 +85,6 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         user_id: string
         email: string
         role: string
-        full_name: string
         status?: string
         is_email_verified?: boolean
         last_login?: string
@@ -109,15 +107,13 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       }>('/profile/me')
         const nameComponents = getNameComponents({
         first_name: userData.first_name,
-        last_name: userData.last_name,
-        full_name: userData.full_name
+        last_name: userData.last_name
       })
 
       const user: User = {
         id: userData.user_id,
         email: userData.email,
         role: userData.role,
-        full_name: userData.full_name,
         first_name: nameComponents.first_name,
         last_name: nameComponents.last_name,
         tenant_id: userData.tenant_id,
@@ -176,13 +172,11 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     try {      const formData = new URLSearchParams({
         username: credentials.emailOrUsername,
         password: credentials.password,
-      })
-
+      })      
       const data = await apiClient.postForm<{
         user_id: string
         email: string
         role: string
-        full_name: string
         tenant_id?: string
         first_name?: string
         last_name?: string
@@ -191,15 +185,13 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         profile_picture_url?: string      }>('/auth/login', formData)
         const nameComponents = getNameComponents({
         first_name: data.first_name,
-        last_name: data.last_name,
-        full_name: data.full_name
+        last_name: data.last_name
       })
 
       const user: User = {
         id: data.user_id,
         email: data.email,
         role: data.role,
-        full_name: data.full_name,
         first_name: nameComponents.first_name,
         last_name: nameComponents.last_name,
         tenant_id: data.tenant_id,
@@ -239,12 +231,10 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   }
   
   const refreshUser = async () => {
-    try {
-      const userData = await apiClient.get<{
+    try {      const userData = await apiClient.get<{
         user_id: string
         email: string
         role: string
-        full_name: string
         status?: string
         is_email_verified?: boolean
         last_login?: string
@@ -265,18 +255,15 @@ export function AuthProvider({ children }: { children: ReactNode }) {
           is_active: boolean
         }
       }>('/profile/me')
-      
-      const nameComponents = getNameComponents({
+        const nameComponents = getNameComponents({
         first_name: userData.first_name,
-        last_name: userData.last_name,
-        full_name: userData.full_name
+        last_name: userData.last_name
       })
 
       const user: User = {
         id: userData.user_id,
         email: userData.email,
         role: userData.role,
-        full_name: userData.full_name,
         first_name: nameComponents.first_name,
         last_name: nameComponents.last_name,
         tenant_id: userData.tenant_id,

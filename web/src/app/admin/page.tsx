@@ -18,6 +18,7 @@ import {
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu"
 import Link from "next/link"
+import { createFullName } from "@/utils/nameParser"
 
 export default function SuperAdminDashboard() {
   const [isInviteModalOpen, setIsInviteModalOpen] = useState(false)
@@ -68,10 +69,9 @@ export default function SuperAdminDashboard() {
                 </DropdownMenuTrigger>
                 <DropdownMenuContent className="w-56" align="end" forceMount>
                   <DropdownMenuLabel className="font-normal">
-                    <div className="flex flex-col space-y-1">
-                      <p className="text-sm font-medium leading-none">
+                    <div className="flex flex-col space-y-1">                      <p className="text-sm font-medium leading-none">
                         {user?.first_name && user?.last_name 
-                          ? `${user.first_name} ${user.last_name}` 
+                          ? createFullName(user.first_name, user.last_name)
                           : user?.email}
                       </p>
                       <p className="text-xs leading-none text-muted-foreground">

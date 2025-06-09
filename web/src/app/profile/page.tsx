@@ -28,6 +28,7 @@ import {
 } from "lucide-react"
 import Link from "next/link"
 import { format } from "date-fns"
+import { createFullName } from "@/utils/nameParser"
 
 export default function ProfilePage() {
   const { user, isLoading: authLoading } = useAuth()
@@ -157,11 +158,10 @@ export default function ProfilePage() {
 
               {/* User Info */}
               <div className="mt-8 ml-40">
-                <div className="space-y-4">
-                  <div>
+                <div className="space-y-4">                  <div>
                     <h2 className="text-3xl font-bold text-foreground">
                       {user.first_name && user.last_name 
-                        ? `${user.first_name} ${user.last_name}` 
+                        ? createFullName(user.first_name, user.last_name)
                         : user.email}
                     </h2>
                     <p className="text-lg text-muted-foreground">

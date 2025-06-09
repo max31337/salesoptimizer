@@ -1,10 +1,40 @@
 /**
  * Utility functions for parsing full names into first and last names
+ * and creating full names from first and last names
  */
 
 export interface ParsedName {
   first_name: string;
   last_name: string;
+}
+
+/**
+ * Create a full name from first and last names
+ * 
+ * Examples:
+ * - ("John", "Doe") -> "John Doe"
+ * - ("Mark Anthony", "Navarro") -> "Mark Anthony Navarro"
+ * - ("Madonna", "") -> "Madonna"
+ * - ("", "Doe") -> "Doe"
+ * - ("", "") -> ""
+ */
+export function createFullName(firstName: string, lastName: string): string {
+  const trimmedFirst = (firstName || '').trim();
+  const trimmedLast = (lastName || '').trim();
+  
+  if (!trimmedFirst && !trimmedLast) {
+    return '';
+  }
+  
+  if (!trimmedFirst) {
+    return trimmedLast;
+  }
+  
+  if (!trimmedLast) {
+    return trimmedFirst;
+  }
+  
+  return `${trimmedFirst} ${trimmedLast}`;
 }
 
 /**
@@ -42,44 +72,13 @@ export function parseFullName(fullName: string): ParsedName {
 }
 
 /**
- * Get name components with fallback logic
- * If first_name and last_name are provided, use them directly
- * Otherwise, parse the full_name
+ * Get name components from first_name and last_name
+ * Returns the names directly or empty strings if not provided
  */
 export function getNameComponents(data: {
   first_name?: string;
   last_name?: string;
-  full_name?: string;
 }): ParsedName {
-  // If we have both first and last names, use them directly
-  if (data.first_name && data.last_name) {
-    return { first_name: data.first_name, last_name: data.last_name };
-  }
-
-  // If we only have first name, try to get last name from full name
-  if (data.first_name && !data.last_name && data.full_name) {
-    const parsed = parseFullName(data.full_name);
-    // If the parsed first name matches what we have, use the parsed last name
-    if (parsed.first_name === data.first_name || data.full_name.startsWith(data.first_name)) {
-      return { first_name: data.first_name, last_name: parsed.last_name };
-    }
-  }
-
-  // If we only have last name, try to get first name from full name
-  if (!data.first_name && data.last_name && data.full_name) {
-    const parsed = parseFullName(data.full_name);
-    // If the parsed last name matches what we have, use the parsed first name
-    if (parsed.last_name === data.last_name || data.full_name.endsWith(data.last_name)) {
-      return { first_name: parsed.first_name, last_name: data.last_name };
-    }
-  }
-
-  // Fall back to parsing the full name
-  if (data.full_name) {
-    return parseFullName(data.full_name);
-  }
-
-  // Use whatever we have, or empty strings
   return {
     first_name: data.first_name || '',
     last_name: data.last_name || ''

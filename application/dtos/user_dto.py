@@ -16,7 +16,8 @@ class UserResponse(BaseModel):
     user_id: str
     email: str
     role: str
-    full_name: str
+    first_name: str
+    last_name: str
     tenant_id: Optional[str] = None
     phone: Optional[str] = None
     bio: Optional[str] = None
@@ -33,7 +34,6 @@ class UserProfileResponse(BaseModel):
     username: Optional[str] = None
     first_name: str
     last_name: str
-    full_name: str
     phone: Optional[str] = None
     profile_picture_url: Optional[str] = None
     bio: Optional[str] = None
@@ -59,7 +59,6 @@ class UserProfilePublicResponse(BaseModel):
     username: Optional[str] = None
     first_name: str
     last_name: str
-    full_name: str
     phone: Optional[str] = None
     profile_picture_url: Optional[str] = None
     bio: Optional[str] = None

@@ -64,7 +64,6 @@ async def login(
             domain=settings.cookie_domain,  
             path="/"     
         )
-        
         response.set_cookie(
             key="refresh_token",
             value=refresh_token,
@@ -74,6 +73,7 @@ async def login(
             domain=settings.cookie_domain,  
             path="/"
         )
+        
         return LoginResponse(
             access_token="",  # Don't return tokens in response body
             refresh_token="",
@@ -82,7 +82,8 @@ async def login(
             tenant_id=user.tenant_id,
             role=user.role.value,
             email=str(user.email),
-            full_name=user.full_name,
+            first_name=user.first_name,
+            last_name=user.last_name,
             profile_picture_url=user.profile_picture_url,
             bio=user.bio
         )
@@ -124,17 +125,19 @@ async def logout(response: Response):
 async def get_current_user_info(
     current_user: Annotated[User, Depends(get_current_user_from_cookie)]
 ) -> UserResponse:
-    """Get current authenticated user information."""      
+    """Get current authenticated user information."""    
     return UserResponse(
         user_id=str(current_user.id.value) if current_user.id else "",
         email=str(current_user.email),
         role=current_user.role.value,
-        full_name=current_user.full_name,
+        first_name=current_user.first_name,
+        last_name=current_user.last_name,
         tenant_id=str(current_user.tenant_id) if current_user.tenant_id else "",
         is_active=current_user.is_active(),
         profile_picture_url=current_user.profile_picture_url,
         phone=current_user.phone,
-        bio=current_user.bio    )
+        bio=current_user.bio
+    )
 
 
 @router.post("/change-password")
@@ -205,8 +208,7 @@ async def refresh_token(
             domain=settings.cookie_domain,  
             path="/"
         )
-        
-        # Set new refresh token cookie (rotation)
+          # Set new refresh token cookie (rotation)
         response.set_cookie(
             key="refresh_token",
             value=new_refresh_token,
@@ -224,7 +226,8 @@ async def refresh_token(
                 "user_id": user.id.value if user.id else "",
                 "email": str(user.email),
                 "role": user.role.value,
-                "full_name": user.full_name,
+                "first_name": user.first_name,
+                "last_name": user.last_name,
                 "tenant_id": user.tenant_id
             }
         }

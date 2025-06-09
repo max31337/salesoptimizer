@@ -375,25 +375,21 @@ class AuthService:
         user_info: Dict[str, Any], 
         email: Email
     ) -> User:
-        """Create a new user from OAuth information."""
-        # Extract name information
+        """Create a new user from OAuth information."""        # Extract name information
         if provider == "google":
             first_name = user_info.get('given_name', '')
             last_name = user_info.get('family_name', '')
-            full_name = user_info.get('name', f"{first_name} {last_name}".strip())
         elif provider == "github":
-            full_name = user_info.get('name', '')
+            name = user_info.get('name', '')
             username = user_info.get('login', '')
-            first_name = full_name.split()[0] if full_name else username
-            last_name = ' '.join(full_name.split()[1:]) if len(full_name.split()) > 1 else ''
+            first_name = name.split()[0] if name else username
+            last_name = ' '.join(name.split()[1:]) if len(name.split()) > 1 else ''
         elif provider == "microsoft":
             first_name = user_info.get('given_name', '')
             last_name = user_info.get('family_name', '')
-            full_name = user_info.get('name', f"{first_name} {last_name}".strip())
         else:
-            first_name = ''
+            first_name = email.value.split('@')[0]
             last_name = ''
-            full_name = email.value.split('@')[0]
         
         # Generate username from email if not provided
         username = email.value.split('@')[0] + f"_{provider}_{str(uuid4())[:8]}"
