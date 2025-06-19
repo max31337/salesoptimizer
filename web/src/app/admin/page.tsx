@@ -7,7 +7,6 @@ import { Badge } from "@/components/ui/badge"
 import { InviteOrgAdminModal } from "@/components/admin/invite-org-admin-modal"
 import { useAuth } from "@/features/auth/hooks/useAuth"
 import { useClientWebSocketSLA } from "@/features/sla/hooks/useClientWebSocketSLA"
-import { useSLAData } from "@/features/sla/hooks/useSLAData"
 import { ThemeToggle } from "@/components/ui/theme-toggle"
 import { UserAvatar } from "@/components/ui/user-avatar"
 import { Building, Users, Activity, UserPlus, Settings, FileText, LogOut, User as UserIcon, Monitor, AlertTriangle, Loader2 } from "lucide-react"
@@ -26,49 +25,30 @@ export default function SuperAdminDashboard() {
   const [isInviteModalOpen, setIsInviteModalOpen] = useState(false)
   const [isLoggingOut, setIsLoggingOut] = useState(false)
   const { user, logout } = useAuth()
-    const { 
-    systemHealth: wsSystemHealth, 
-    alerts: wsAlerts, 
+  
+  // Use WebSocket SLA data with immediate fallback to REST API
+  const { 
+    systemHealth, 
+    alerts, 
     isLoading: slaLoading, 
     isConnected: wsConnected,
     lastUpdated 
   } = useClientWebSocketSLA()
   
-  // Fallback to REST API if WebSocket data is not available
-  const { 
-    systemHealth: fallbackSystemHealth, 
-    alerts: fallbackAlerts,
-    isLoading: fallbackLoading
-  } = useSLAData(!wsConnected || (!wsSystemHealth && !slaLoading), 0)
-  
-  // Use WebSocket data if available, otherwise fall back to REST API data
-  const systemHealth = wsSystemHealth || fallbackSystemHealth
-  const alerts = wsAlerts.length > 0 ? wsAlerts : fallbackAlerts
   // Calculate real-time alert counts from the alerts array
   const activeAlertsCount = alerts.length
-  const unacknowledgedAlertsCount = alerts.filter(alert => !alert.acknowledged).length
-    // Debug logging
-  console.log('🐛 Super Admin Dashboard - WebSocket Data:', {
-    wsSystemHealth: wsSystemHealth ? {
-      overall_status: wsSystemHealth.overall_status,
-      uptime_status: wsSystemHealth.uptime_status,
-      uptime_percentage: wsSystemHealth.uptime_percentage,
-      health_percentage: wsSystemHealth.health_percentage
-    } : null,
-    fallbackSystemHealth: fallbackSystemHealth ? {
-      overall_status: fallbackSystemHealth.overall_status,
-      uptime_status: fallbackSystemHealth.uptime_status
-    } : null,
-    finalSystemHealth: systemHealth ? {
+  const unacknowledgedAlertsCount = alerts.filter(alert => !alert.acknowledged).length  
+  // Debug logging
+  console.log('🐛 Super Admin Dashboard - Data:', {
+    systemHealth: systemHealth ? {
       overall_status: systemHealth.overall_status,
       uptime_status: systemHealth.uptime_status,
-      uptime_percentage: systemHealth.uptime_percentage
+      uptime_percentage: systemHealth.uptime_percentage,
+      health_percentage: systemHealth.health_percentage
     } : null,
-    wsAlerts: wsAlerts.length,
-    fallbackAlerts: fallbackAlerts.length,
-    finalAlerts: alerts.length,
+    alerts: alerts.length,
     isConnected: wsConnected,
-    isLoading: slaLoading || fallbackLoading,
+    isLoading: slaLoading,
     lastUpdated
   })
   

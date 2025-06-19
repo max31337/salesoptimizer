@@ -22,8 +22,7 @@ interface WebSocketSLAData extends WebSocketSLAState {
   disconnect: () => void
 }
 
-export function useWebSocketSLA(autoConnect: boolean = true): WebSocketSLAData {
-  const [data, setData] = useState<WebSocketSLAState>({
+export function useWebSocketSLA(autoConnect: boolean = true): WebSocketSLAData {  const [data, setData] = useState<WebSocketSLAState>({
     systemHealth: null,
     alerts: [],
     connectionInfo: null,
@@ -79,9 +78,9 @@ export function useWebSocketSLA(autoConnect: boolean = true): WebSocketSLAData {
       lastUpdated: new Date()
     }))
   }, [])
-
   // Handle connection status changes
-  const handleConnectionStatus = useCallback((connected: boolean) => {    setData(prev => ({
+  const handleConnectionStatus = useCallback((connected: boolean) => {
+    setData(prev => ({
       ...prev,
       isConnected: connected,
       error: connected ? null : 'WebSocket disconnected'
@@ -94,16 +93,12 @@ export function useWebSocketSLA(autoConnect: boolean = true): WebSocketSLAData {
         retryTimeout.current = null
       }
       
-      // Request immediate update when connected (with small delay to ensure handlers are ready)
-      setTimeout(() => {
-        slaWebSocketClient.requestUpdate()
-      }, 100)
+      // Request immediate update when connected (faster than waiting for backend push)
+      console.log('🔄 WebSocket connected, requesting immediate data update...')
+      slaWebSocketClient.requestUpdate()
     } else {
-      // Set loading state when disconnected
-      setData(prev => ({
-        ...prev,
-        isLoading: true
-      }))
+      // Don't set loading state when disconnected since we have REST API data
+      console.log('🔌 WebSocket disconnected, will rely on REST API data')
     }
   }, [])
   // Initialize WebSocket connection
@@ -125,54 +120,54 @@ export function useWebSocketSLA(autoConnect: boolean = true): WebSocketSLAData {
       slaWebSocketClient.requestUpdate()
       isInitialized.current = true
       return
-    }
-
-    console.log('🔌 Setting up new WebSocket connection...')
+    }    console.log('🔌 Setting up new WebSocket connection...')
 
     // Subscribe to WebSocket events
     const unsubscribeSLAUpdate = slaWebSocketClient.onSLAUpdate(handleSLAUpdate)
-    const unsubscribeConnectionStatus = slaWebSocketClient.onConnectionStatus(handleConnectionStatus)// Connect to WebSocket (only on client side)
+    const unsubscribeConnectionStatus = slaWebSocketClient.onConnectionStatus(handleConnectionStatus)
+
+    // Immediately start loading data via REST API for faster initial load
+    const loadInitialData = async () => {
+      try {
+        console.log('🚀 Loading initial data via REST API for fast display...')
+        const [systemHealth, alerts] = await Promise.all([
+          slaService.getSystemHealth(),
+          slaService.getCurrentAlerts()
+        ])
+
+        setData(prev => ({
+          ...prev,
+          systemHealth,
+          alerts,
+          isLoading: false,
+          lastUpdated: new Date()
+        }))
+        console.log('✅ Initial data loaded via REST API')
+      } catch (error) {
+        console.error('Failed to load initial SLA data via REST API:', error)
+        setData(prev => ({
+          ...prev,
+          error: 'Failed to load initial data',
+          isLoading: false
+        }))
+      }
+    }
+
+    // Load initial data immediately
+    loadInitialData()
+
+    // Connect to WebSocket in parallel (will overlay data when connected)
     const connectWebSocket = async () => {
       try {
         await slaWebSocketClient.connect()
       } catch (error) {
         console.error('Failed to connect WebSocket:', error)
       }
-    }
-    
+    }    
     connectWebSocket()
     isInitialized.current = true
 
-    // Fallback: Load initial data via REST API if WebSocket doesn't connect quickly
-    const fallbackTimeout = setTimeout(async () => {
-      if (!slaWebSocketClient.getConnectionStatus()) {
-        try {
-          console.log('WebSocket not connected, falling back to REST API')
-          const [systemHealth, alerts] = await Promise.all([
-            slaService.getSystemHealth(),
-            slaService.getCurrentAlerts()
-          ])
-
-          setData(prev => ({
-            ...prev,
-            systemHealth,
-            alerts,
-            isLoading: false,
-            lastUpdated: new Date()
-          }))
-        } catch (error) {
-          console.error('Failed to load SLA data via REST API:', error)
-          setData(prev => ({
-            ...prev,
-            error: 'Failed to load SLA data',
-            isLoading: false
-          }))
-        }
-      }
-    }, 3000) // Wait 3 seconds for WebSocket connection
-
     return () => {
-      clearTimeout(fallbackTimeout)
       unsubscribeSLAUpdate()
       unsubscribeConnectionStatus()
     }
@@ -260,7 +255,6 @@ export function useWebSocketSLA(autoConnect: boolean = true): WebSocketSLAData {
       isConnected: false
     }))
   }, [])
-
   return {
     ...data,
     refreshData,
@@ -268,8 +262,5 @@ export function useWebSocketSLA(autoConnect: boolean = true): WebSocketSLAData {
     connect,
     disconnect
   }
-}
-function setData(arg0: (prev: any) => any) {
-  throw new Error('Function not implemented.')
 }
 

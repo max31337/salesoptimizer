@@ -73,15 +73,26 @@ export class SLAWebSocketClient {
   private shouldReconnect = true
   private isConnecting = false // Prevent multiple connection attempts
   private connectionPromise: Promise<void> | null = null // Cache connection promise
+  private authCheckCache: { isValid: boolean; timestamp: number } | null = null
+  private authCheckCacheDuration = 60000 // Cache auth check for 1 minute
 
   // Event handlers
   private messageHandlers: MessageHandler[] = []
   private slaUpdateHandlers: SLAUpdateHandler[] = []
   private connectionStatusHandlers: ConnectionStatusHandler[] = []
-
   constructor() {
     // Don't initialize URL during SSR - will be set when connect() is called
     this.url = null
+    
+    // Preemptively check authentication to warm up the cache
+    if (typeof window !== 'undefined') {
+      // Small delay to avoid blocking initial page render
+      setTimeout(() => {
+        this.checkAuthentication().catch(() => {
+          // Ignore errors during preemptive auth check
+        })
+      }, 100)
+    }
     
     // Add page visibility change listener to handle reconnection
     if (typeof window !== 'undefined') {
@@ -135,11 +146,24 @@ export class SLAWebSocketClient {
     // Check if we're on the client side
     if (typeof window === 'undefined') return false
     
+    // Check cache first to avoid unnecessary API calls
+    if (this.authCheckCache) {
+      const now = Date.now()
+      if (now - this.authCheckCache.timestamp < this.authCheckCacheDuration) {
+        console.log('🔑 Using cached WebSocket authentication check')
+        return this.authCheckCache.isValid
+      }
+    }
+    
     try {
       // Use relative URL - Next.js will proxy to backend via rewrites
       const apiUrl = process.env.NODE_ENV === 'development' 
         ? 'http://localhost:8000/api/v1/auth/websocket-token'
         : '/api/v1/auth/websocket-token'
+      
+      // Create a fast authentication check with shorter timeout
+      const controller = new AbortController()
+      const timeoutId = setTimeout(() => controller.abort(), 2000) // 2 second timeout
       
       // Check if user is authenticated and has proper permissions
       const response = await fetch(apiUrl, {
@@ -148,21 +172,35 @@ export class SLAWebSocketClient {
         headers: {
           'Content-Type': 'application/json',
         },
+        signal: controller.signal
       })
       
-      if (response.ok) {
-        const data = await response.json()
+      clearTimeout(timeoutId)
+      const isValid = response.ok
+      
+      // Cache the result
+      this.authCheckCache = {
+        isValid,
+        timestamp: Date.now()
+      }
+      
+      if (isValid) {
         console.log('🔑 WebSocket authentication check passed')
-        return true
       } else {
         console.error('❌ WebSocket authentication check failed:', response.status, response.statusText)
-        return false
       }
+      
+      return isValid
     } catch (error) {
       console.error('❌ Error checking WebSocket authentication:', error)
+      // Cache negative result for shorter time on error
+      this.authCheckCache = {
+        isValid: false,
+        timestamp: Date.now() - (this.authCheckCacheDuration - 5000) // Cache for only 5 seconds on error
+      }
       return false
     }
-  }  public async connect(): Promise<void> {
+  }public async connect(): Promise<void> {
     // Check if we're on the client side
     if (typeof window === 'undefined') {
       console.warn('⚠️ Cannot connect WebSocket on server side')
@@ -175,9 +213,10 @@ export class SLAWebSocketClient {
       return this.connectionPromise
     }
 
-    // If already connected, don't reconnect
+    // If already connected, just request fresh data
     if (this.ws && this.ws.readyState === WebSocket.OPEN) {
-      console.log('✅ WebSocket already connected')
+      console.log('✅ WebSocket already connected, requesting fresh data')
+      this.requestUpdate()
       return Promise.resolve()
     }
 
@@ -201,9 +240,9 @@ export class SLAWebSocketClient {
     try {
       await this.connectionPromise
     } finally {
-      this.connectionPromise = null
-    }
+      this.connectionPromise = null    }
   }
+
   private async _connect(): Promise<void> {
     this.initializeUrl()
     
@@ -215,16 +254,16 @@ export class SLAWebSocketClient {
     this.isConnecting = true
 
     try {
-      // Check authentication before connecting
+      // Check authentication before connecting (with caching)
       const isAuthenticated = await this.checkAuthentication()
       if (!isAuthenticated) {
         console.error('WebSocket authentication failed')
         this.isConnecting = false
-        return
+        throw new Error('Authentication failed')
       }
 
       // Connect without token parameter - cookies will be sent automatically
-      console.log('Connecting to SLA WebSocket:', this.url)
+      console.log('🔌 Connecting to SLA WebSocket:', this.url)
 
       this.ws = new WebSocket(this.url)
 
@@ -232,10 +271,18 @@ export class SLAWebSocketClient {
         if (!this.ws) {
           reject(new Error('WebSocket instance is null'))
           return
-        }
+        }        // Set a connection timeout
+        const connectionTimeout = setTimeout(() => {
+          if (this.ws && this.ws.readyState === WebSocket.CONNECTING) {
+            this.ws.close()
+            this.isConnecting = false
+            reject(new Error('WebSocket connection timeout'))
+          }
+        }, 3000) // Reduced to 3 second timeout for faster failure detection
 
         this.ws.onopen = () => {
-          console.log('SLA WebSocket connected')
+          clearTimeout(connectionTimeout)
+          console.log('✅ SLA WebSocket connected')
           this.isConnected = true
           this.isConnecting = false
           this.reconnectAttempts = 0
@@ -243,10 +290,8 @@ export class SLAWebSocketClient {
           this.notifyConnectionStatus(true)
           this.startPingInterval()
           
-          // Request initial data after connection is established
-          setTimeout(() => {
-            this.requestUpdate()
-          }, 500)
+          // Request initial data immediately
+          this.requestUpdate()
           
           resolve()
         }
@@ -261,11 +306,15 @@ export class SLAWebSocketClient {
         }
 
         this.ws.onclose = (event) => {
+          clearTimeout(connectionTimeout)
           console.log('SLA WebSocket closed:', event.code, event.reason)
           this.isConnected = false
           this.isConnecting = false
           this.notifyConnectionStatus(false)
           this.stopPingInterval()
+
+          // Clear auth cache on disconnect
+          this.authCheckCache = null
 
           if (this.shouldReconnect && this.reconnectAttempts < this.maxReconnectAttempts) {
             this.scheduleReconnect()
@@ -273,10 +322,14 @@ export class SLAWebSocketClient {
         }
 
         this.ws.onerror = (error) => {
+          clearTimeout(connectionTimeout)
           console.error('SLA WebSocket error:', error)
           this.isConnected = false
           this.isConnecting = false
-          this.notifyConnectionStatus(false)
+          this.notifyConnectionStatus(false)          
+          // Clear auth cache on error
+          this.authCheckCache = null
+          
           reject(error)
         }
       })
@@ -284,7 +337,9 @@ export class SLAWebSocketClient {
       console.error('Error creating WebSocket connection:', error)
       this.isConnecting = false
       throw error
-    }  }
+    }
+  }
+
   private handleMessage(message: WebSocketMessage): void {
     console.log('📨 WebSocket message received:', message.type, message)
     
@@ -364,11 +419,11 @@ export class SLAWebSocketClient {
     this.connectionStatusHandlers.forEach(handler => handler(connected))
   }
 
-  public send(message: any): void {
+  private send(message: WebSocketMessage): void {
     if (this.ws && this.ws.readyState === WebSocket.OPEN) {
       this.ws.send(JSON.stringify(message))
     } else {
-      console.warn('WebSocket is not connected, cannot send message:', message)
+      console.warn('Cannot send message: WebSocket not connected')
     }
   }
 

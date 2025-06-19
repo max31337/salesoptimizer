@@ -131,12 +131,25 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         created_at: userData.created_at,
         updated_at: userData.updated_at,
         team_info: userData.team_info
-      }
-      
+      }      
       console.log('✅ Auth check successful, user:', user.email, 'role:', user.role)
       setUser(user)
       // Mark that user was logged in
       localStorage.setItem('salesoptimizer_was_logged_in', 'true')
+      
+      // Prefetch SLA data for super admin users for faster dashboard loading
+      if (user.role === 'super_admin') {
+        import('@/features/sla/services/sla-service').then(({ slaService }) => {
+          Promise.all([
+            slaService.getSystemHealth(),
+            slaService.getCurrentAlerts()
+          ]).catch(() => {
+            // Ignore prefetch errors
+          })
+        }).catch(() => {
+          // Ignore import errors
+        })
+      }
     } catch (error) {
       console.log('❌ Auth check failed - user not authenticated')
       setUser(null)
@@ -203,11 +216,26 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         phone: data.phone,
         bio: data.bio,
         profile_picture_url: data.profile_picture_url
-      }
-      
+      }      
       setUser(user)
       // Mark that user is logged in
       localStorage.setItem('salesoptimizer_was_logged_in', 'true')
+      
+      // Prefetch SLA data for super admin users for faster dashboard loading
+      if (user.role === 'super_admin') {
+        // Import and prefetch SLA data (don't await to avoid blocking login)
+        import('@/features/sla/services/sla-service').then(({ slaService }) => {
+          Promise.all([
+            slaService.getSystemHealth(),
+            slaService.getCurrentAlerts()
+          ]).catch(() => {
+            // Ignore prefetch errors - data will be loaded normally when needed
+          })
+        }).catch(() => {
+          // Ignore import errors
+        })
+      }
+      
       return { user }
     } catch (error) {
       console.error('Login error:', error)

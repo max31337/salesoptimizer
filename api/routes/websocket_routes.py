@@ -81,7 +81,7 @@ async def send_current_sla_data(websocket: WebSocket, user: User):
         from infrastructure.db.database import get_async_session
         from infrastructure.dependencies.service_container import get_sla_monitoring_use_case
         
-        logger.info("🔄 Starting to send current SLA data...")
+        logger.debug("Sending current SLA data...")
         
         # Get database session and SLA use case using async context manager
         async for session in get_async_session():
@@ -89,11 +89,8 @@ async def send_current_sla_data(websocket: WebSocket, user: User):
             
             system_health = await sla_use_case.get_system_health_summary()
             alerts = await sla_use_case.get_current_alerts()
-            logger.info(f"📊 Retrieved system health: {system_health.overall_status if system_health else 'None'}")
-            logger.info(f"🚨 Retrieved alerts count: {len(alerts) if alerts else 0}")
             
             # Send system health update with correct structure expected by frontend
-            logger.info(f"📤 Sending SLA data via WebSocket - Status: {system_health.overall_status}, Health: {system_health.health_percentage}%")
             message_data: Dict[str, Any] = {
                 "type": "sla_update",
                 "data": {
@@ -130,11 +127,10 @@ async def send_current_sla_data(websocket: WebSocket, user: User):
                         "update_interval": 30000  # 30 seconds
                     }
                 }
-            }
-            
-            logger.info(f"📤 Sending WebSocket message with type: {message_data['type']}")
+            }            
+            logger.debug(f"Sending WebSocket message with type: {message_data['type']}")
             await websocket_manager.send_to_websocket(websocket, message_data)
-            logger.info("✅ Successfully sent SLA data via WebSocket")
+            logger.debug("Successfully sent SLA data via WebSocket")
             break  # Exit the async generator after first iteration
         
     except Exception as e:
