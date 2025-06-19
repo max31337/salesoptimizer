@@ -416,6 +416,35 @@ async def oauth_config(
     }
 
 
+@router.get("/websocket-token")
+async def get_websocket_token(
+    current_user: Annotated[User, Depends(get_current_user_from_cookie)]
+) -> Dict[str, Any]:
+    """Check WebSocket authentication - verify user has proper permissions."""
+    try:
+        # Check if user has super_admin role for SLA monitoring
+        if current_user.role.value != 'super_admin':
+            raise HTTPException(
+                status_code=status.HTTP_403_FORBIDDEN,
+                detail="Insufficient permissions for WebSocket access"
+            )
+        
+        return {
+            "authenticated": True,
+            "user_id": str(current_user.id.value) if current_user.id else "",
+            "role": current_user.role.value,
+            "message": "WebSocket authentication check passed"
+        }
+    
+    except HTTPException:
+        # Re-raise HTTP exceptions (like 403 Forbidden)
+        raise
+    except Exception as e:
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail=f"WebSocket authentication check failed: {str(e)}"
+        )
+
 #===============================================================================
 #                              🔐 Organization Routes                          |
 #===============================================================================

@@ -1,8 +1,8 @@
 from typing import Optional, Annotated
-from fastapi import Depends, HTTPException, status, Request
+from fastapi import Depends, HTTPException, status, Request, WebSocket
 from fastapi.security import HTTPBearer, HTTPAuthorizationCredentials
-
 from infrastructure.dependencies.service_container import get_application_service
+from infrastructure.db.database import get_async_session
 from application.services.application_service import ApplicationService
 from domain.organization.entities.user import User
 from domain.organization.value_objects.user_role import Permission
@@ -180,4 +180,50 @@ async def get_current_user_from_websocket_token(token: str) -> Optional[User]:
     except Exception as e:
         import logging
         logging.getLogger(__name__).error(f"WebSocket auth error: {e}")
+        return None
+
+
+async def get_current_user_from_websocket_cookies(websocket: WebSocket) -> Optional[User]:
+    """Extract user from WebSocket cookies for real-time connections."""
+    
+    try:
+        # Get cookies from WebSocket headers
+        cookie_header: Optional[str] = websocket.headers.get("cookie")
+        if not cookie_header:
+            return None
+        
+        # Parse cookies to find access_token
+        cookies: dict[str, str] = {}
+        for cookie in cookie_header.split(';'):
+            if '=' in cookie:
+                name, value = cookie.strip().split('=', 1)
+                cookies[name] = value
+        
+        token: Optional[str] = cookies.get("access_token")
+        if not token:
+            return None
+        
+        # Get a database session using async context manager
+        async for session in get_async_session():
+            app_service = await get_application_service(session)
+            
+            # Verify token using auth service
+            payload = await app_service.auth_service.verify_token(token)
+            if not payload:
+                return None
+            
+            # Get user ID from token payload
+            user_id_str = payload.get("sub")  # JWT 'sub' claim contains user ID
+            if not user_id_str:
+                return None
+            
+            # Get user from database
+            user = await app_service.auth_service.get_user_by_id(user_id_str)
+            if not user or not user.is_active():
+                return None
+            
+            return user
+    except Exception as e:
+        import logging
+        logging.getLogger(__name__).error(f"WebSocket cookie auth error: {e}")
         return None

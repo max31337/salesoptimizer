@@ -2,7 +2,7 @@ import { useState, useEffect, useRef, useCallback } from 'react'
 import { slaWebSocketClient, type SLAUpdateData } from '@/lib/websocket'
 import { slaService, type SLASystemHealth, type SLAAlert } from '../services/sla-service'
 
-interface WebSocketSLAData {
+interface WebSocketSLAState {
   systemHealth: SLASystemHealth | null
   alerts: SLAAlert[]
   connectionInfo: {
@@ -15,8 +15,15 @@ interface WebSocketSLAData {
   lastUpdated: Date | null
 }
 
-export function useWebSocketSLA(autoConnect: boolean = true) {
-  const [data, setData] = useState<WebSocketSLAData>({
+interface WebSocketSLAData extends WebSocketSLAState {
+  refreshData: () => Promise<void>
+  acknowledgeAlert: (alertId: string) => Promise<{ success: boolean; message: string; acknowledged_by: string; acknowledged_at: string }>
+  connect: () => void
+  disconnect: () => void
+}
+
+export function useWebSocketSLA(autoConnect: boolean = true): WebSocketSLAData {
+  const [data, setData] = useState<WebSocketSLAState>({
     systemHealth: null,
     alerts: [],
     connectionInfo: null,
@@ -27,9 +34,17 @@ export function useWebSocketSLA(autoConnect: boolean = true) {
   })
 
   const isInitialized = useRef(false)
-  const retryTimeout = useRef<NodeJS.Timeout | null>(null)
-  // Handle SLA updates from WebSocket
-  const handleSLAUpdate = useCallback((updateData: SLAUpdateData) => {    // Convert WebSocket data to SLA service types
+  const retryTimeout = useRef<NodeJS.Timeout | null>(null)  // Handle SLA updates from WebSocket
+  const handleSLAUpdate = useCallback((updateData: SLAUpdateData) => {
+    console.log('🔄 Processing SLA update in hook:', updateData)
+    
+    // Check if we have valid data
+    if (!updateData?.system_health) {
+      console.error('❌ Invalid SLA update data - missing system_health:', updateData)
+      return
+    }
+    
+    // Convert WebSocket data to SLA service types
     const systemHealth: SLASystemHealth = {
       ...updateData.system_health,
       uptime_percentage: updateData.system_health.uptime_percentage,
@@ -43,8 +58,17 @@ export function useWebSocketSLA(autoConnect: boolean = true) {
       metrics_summary: updateData.system_health.metrics_summary
     }
 
-    const alerts: SLAAlert[] = updateData.alerts
+    const alerts: SLAAlert[] = updateData.alerts || []
 
+    console.log('✅ Setting SLA data in state:', { 
+      systemHealthStatus: systemHealth.overall_status,
+      healthPercentage: systemHealth.health_percentage,
+      uptimePercentage: systemHealth.uptime_percentage,
+      uptimeStatus: systemHealth.uptime_status,
+      alertsCount: alerts.length,
+      connectionInfo: updateData.connection_info
+    })
+    
     setData(prev => ({
       ...prev,
       systemHealth,
@@ -57,8 +81,7 @@ export function useWebSocketSLA(autoConnect: boolean = true) {
   }, [])
 
   // Handle connection status changes
-  const handleConnectionStatus = useCallback((connected: boolean) => {
-    setData(prev => ({
+  const handleConnectionStatus = useCallback((connected: boolean) => {    setData(prev => ({
       ...prev,
       isConnected: connected,
       error: connected ? null : 'WebSocket disconnected'
@@ -71,8 +94,10 @@ export function useWebSocketSLA(autoConnect: boolean = true) {
         retryTimeout.current = null
       }
       
-      // Request immediate update when connected
-      slaWebSocketClient.requestUpdate()
+      // Request immediate update when connected (with small delay to ensure handlers are ready)
+      setTimeout(() => {
+        slaWebSocketClient.requestUpdate()
+      }, 100)
     } else {
       // Set loading state when disconnected
       setData(prev => ({
@@ -85,12 +110,37 @@ export function useWebSocketSLA(autoConnect: boolean = true) {
   useEffect(() => {
     if (!autoConnect || isInitialized.current || typeof window === 'undefined') return
 
+    console.log('🔌 Initializing WebSocket connection...')
+
+    // Check if WebSocket is already connected (from previous component mount)
+    if (slaWebSocketClient.getConnectionStatus()) {
+      console.log('✅ WebSocket already connected, skipping reconnection')
+      setData(prev => ({
+        ...prev,
+        isConnected: true,
+        isLoading: false
+      }))
+      
+      // Request data update since we're using existing connection
+      slaWebSocketClient.requestUpdate()
+      isInitialized.current = true
+      return
+    }
+
+    console.log('🔌 Setting up new WebSocket connection...')
+
     // Subscribe to WebSocket events
     const unsubscribeSLAUpdate = slaWebSocketClient.onSLAUpdate(handleSLAUpdate)
-    const unsubscribeConnectionStatus = slaWebSocketClient.onConnectionStatus(handleConnectionStatus)
-
-    // Connect to WebSocket (only on client side)
-    slaWebSocketClient.connect()
+    const unsubscribeConnectionStatus = slaWebSocketClient.onConnectionStatus(handleConnectionStatus)// Connect to WebSocket (only on client side)
+    const connectWebSocket = async () => {
+      try {
+        await slaWebSocketClient.connect()
+      } catch (error) {
+        console.error('Failed to connect WebSocket:', error)
+      }
+    }
+    
+    connectWebSocket()
     isInitialized.current = true
 
     // Fallback: Load initial data via REST API if WebSocket doesn't connect quickly
@@ -219,3 +269,7 @@ export function useWebSocketSLA(autoConnect: boolean = true) {
     disconnect
   }
 }
+function setData(arg0: (prev: any) => any) {
+  throw new Error('Function not implemented.')
+}
+

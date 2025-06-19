@@ -1,14 +1,20 @@
 import { useState, useEffect, useCallback, useRef } from 'react'
-import { webSocketService, type WebSocketMessage, type SLAUpdateData } from '@/services/websocket-service'
+import { slaWebSocketClient, type SLAUpdateData } from '@/lib/websocket'
 import { useAuth } from '@/features/auth/hooks/useAuth'
+import { slaService, type SLASystemHealth, type SLAAlert } from '@/features/sla/services/sla-service'
+
+interface WebSocketMessage {
+  type: string
+  data?: any
+}
 
 export interface WebSocketSLAData {
-  systemHealth: SLAUpdateData['system_health'] | null
-  alerts: SLAUpdateData['alerts']
-  connectionCount: number
+  systemHealth: SLASystemHealth | null
+  alerts: SLAAlert[]
   isConnected: boolean
   connectionState: string
   lastUpdated: Date | null
+  acknowledgeAlert: (alertId: string) => Promise<{ success: boolean; message: string; acknowledged_by: string; acknowledged_at: string }>
   connect: () => Promise<void>
   disconnect: () => void
   requestUpdate: () => void
@@ -16,146 +22,181 @@ export interface WebSocketSLAData {
 
 export function useWebSocketSLA(): WebSocketSLAData {
   const { isAuthenticated, user } = useAuth()
-  const [systemHealth, setSystemHealth] = useState<SLAUpdateData['system_health'] | null>(null)
-  const [alerts, setAlerts] = useState<SLAUpdateData['alerts']>([])
-  const [connectionCount, setConnectionCount] = useState(0)
+  const [systemHealth, setSystemHealth] = useState<SLASystemHealth | null>(null)
+  const [alerts, setAlerts] = useState<SLAAlert[]>([])
   const [isConnected, setIsConnected] = useState(false)
   const [connectionState, setConnectionState] = useState('disconnected')
   const [lastUpdated, setLastUpdated] = useState<Date | null>(null)
   
   // Use refs to avoid stale closures in event handlers
-  const systemHealthRef = useRef(systemHealth)
-  const alertsRef = useRef(alerts)
-  
-  systemHealthRef.current = systemHealth
-  alertsRef.current = alerts
-
-  // Check if user has super admin permissions
+  const isInitialized = useRef(false)
   const hasPermission = user?.role === 'super_admin'
 
+  // Convert WebSocket data to frontend types
+  const convertToFrontendTypes = useCallback((data: SLAUpdateData): { systemHealth: SLASystemHealth, alerts: SLAAlert[] } => {
+    const systemHealth: SLASystemHealth = {
+      overall_status: data.system_health.overall_status as 'healthy' | 'warning' | 'critical',
+      health_percentage: data.system_health.health_percentage,
+      uptime_status: data.system_health.uptime_status,
+      last_updated: new Date().toISOString(),
+      total_metrics: data.system_health.total_metrics,
+      healthy_metrics: data.system_health.healthy_metrics,
+      warning_metrics: data.system_health.warning_metrics,
+      critical_metrics: data.system_health.critical_metrics,
+      uptime_percentage: data.system_health.uptime_percentage,
+      uptime_duration: data.system_health.uptime_duration,
+      system_start_time: data.system_health.system_start_time ?? undefined,
+      metrics_summary: data.system_health.metrics_summary
+    }
+
+    const alerts: SLAAlert[] = data.alerts.map(alert => ({
+      id: alert.id,
+      alert_type: alert.alert_type as 'warning' | 'critical',
+      title: alert.title,
+      message: alert.message,
+      metric_type: alert.metric_type,
+      current_value: alert.current_value,
+      threshold_value: alert.threshold_value,
+      triggered_at: alert.triggered_at,
+      acknowledged: alert.acknowledged,
+      acknowledged_at: null,
+      acknowledged_by: null
+    }))
+
+    return { systemHealth, alerts }
+  }, [])
+
   const updateConnectionState = useCallback(() => {
-    setIsConnected(webSocketService.isConnected)
-    setConnectionState(webSocketService.connectionState)
+    const connected = slaWebSocketClient.getConnectionStatus()
+    setIsConnected(connected)
+    setConnectionState(connected ? 'connected' : 'disconnected')
   }, [])
 
-  const handleSLAUpdate = useCallback((message: WebSocketMessage) => {
-    if (message.type === 'sla_update' && message.data) {
-      const data: SLAUpdateData = message.data
-      setSystemHealth(data.system_health)
-      setAlerts(data.alerts)
-      setConnectionCount(data.connection_count || 0)
+  const handleSLAUpdate = useCallback((data: SLAUpdateData) => {
+    try {
+      const converted = convertToFrontendTypes(data)
+      setSystemHealth(converted.systemHealth)
+      setAlerts(converted.alerts)
       setLastUpdated(new Date())
-      console.log('📊 Updated SLA data from WebSocket')
+      console.log('📊 Updated SLA data from WebSocket:', converted.systemHealth.overall_status)
+    } catch (error) {
+      console.error('Error converting WebSocket data:', error)
+    }
+  }, [convertToFrontendTypes])
+
+  const handleConnectionChange = useCallback((connected: boolean) => {
+    setIsConnected(connected)
+    setConnectionState(connected ? 'connected' : 'disconnected')
+    
+    if (!connected) {
+      console.log('WebSocket disconnected, falling back to REST API')
+      // Fallback to REST API when WebSocket disconnects
+      fetchDataFromAPI()
     }
   }, [])
 
-  const handleUptimeUpdate = useCallback((message: WebSocketMessage) => {
-    if (message.type === 'uptime_update' && message.data) {
-      // Update only uptime-related fields in system health
-      setSystemHealth(current => {
-        if (!current) return current
-        return {
-          ...current,
-          uptime_percentage: message.data.uptime_percentage ?? current.uptime_percentage,
-          uptime_duration: message.data.uptime_duration ?? current.uptime_duration,
-          uptime_status: message.data.uptime_status ?? current.uptime_status,
-          system_start_time: message.data.system_start_time ?? current.system_start_time
-        }
-      })
+  // Fallback to REST API
+  const fetchDataFromAPI = useCallback(async () => {
+    if (!hasPermission) return
+    
+    try {
+      const [healthData, alertsData] = await Promise.all([
+        slaService.getSystemHealth(),
+        slaService.getCurrentAlerts()
+      ])
+      
+      setSystemHealth(healthData)
+      setAlerts(alertsData)
       setLastUpdated(new Date())
-      console.log('⏱️ Updated uptime data from WebSocket')
+      console.log('📡 Updated SLA data from REST API')
+    } catch (error) {
+      console.error('Failed to fetch SLA data from API:', error)
     }
-  }, [])
-
-  const handleNewAlert = useCallback((message: WebSocketMessage) => {
-    if (message.type === 'new_alert' && message.data) {
-      // Add new alert to the beginning of the alerts array
-      setAlerts(current => [message.data, ...current])
-      setLastUpdated(new Date())
-      console.log('🚨 Received new alert from WebSocket')
-    }
-  }, [])
-
-  const handleConnectionEstablished = useCallback((message: WebSocketMessage) => {
-    if (message.type === 'connection_established') {
-      console.log('✅ WebSocket connection established')
-      // Request initial data
-      webSocketService.requestUpdate()
-    }
-  }, [])
+  }, [hasPermission])
 
   const connect = useCallback(async () => {
-    if (!isAuthenticated || !hasPermission) {
-      console.log('❌ Cannot connect WebSocket: not authenticated or insufficient permissions')
+    if (!hasPermission || !isAuthenticated) {
+      console.log('No permission or not authenticated for WebSocket connection')
       return
     }
 
     try {
-      await webSocketService.connect()
-      updateConnectionState()
+      await slaWebSocketClient.connect()
+      console.log('🔌 WebSocket connected successfully')
     } catch (error) {
-      console.error('❌ Failed to connect WebSocket:', error)
-      updateConnectionState()
+      console.error('Failed to connect WebSocket:', error)
+      // Fallback to REST API
+      await fetchDataFromAPI()
     }
-  }, [isAuthenticated, hasPermission, updateConnectionState])
+  }, [hasPermission, isAuthenticated, fetchDataFromAPI])
 
   const disconnect = useCallback(() => {
-    webSocketService.disconnect()
-    updateConnectionState()
-  }, [updateConnectionState])
+    slaWebSocketClient.disconnect()
+  }, [])
 
   const requestUpdate = useCallback(() => {
-    const success = webSocketService.requestUpdate()
-    if (!success) {
-      console.warn('⚠️ Failed to request update: WebSocket not connected')
+    if (isConnected) {
+      slaWebSocketClient.requestUpdate()
+    } else {
+      fetchDataFromAPI()
+    }
+  }, [isConnected, fetchDataFromAPI])
+
+  const acknowledgeAlert = useCallback(async (alertId: string) => {
+    try {
+      const result = await slaService.acknowledgeAlert(alertId)
+      
+      // Update local state
+      setAlerts(prev => 
+        prev.map(alert => 
+          alert.id === alertId 
+            ? { 
+                ...alert, 
+                acknowledged: true, 
+                acknowledged_at: result.acknowledged_at,
+                acknowledged_by: result.acknowledged_by
+              }
+            : alert
+        )
+      )
+      
+      return result
+    } catch (error) {
+      console.error('Failed to acknowledge alert:', error)
+      throw error
     }
   }, [])
 
-  // Set up event listeners
+  // Initialize WebSocket connection
   useEffect(() => {
-    // Add event listeners
-    webSocketService.on('sla_update', handleSLAUpdate)
-    webSocketService.on('uptime_update', handleUptimeUpdate)
-    webSocketService.on('new_alert', handleNewAlert)
-    webSocketService.on('connection_established', handleConnectionEstablished)
+    if (!hasPermission || !isAuthenticated || isInitialized.current) {
+      return
+    }
 
-    // Update connection state periodically
-    const stateInterval = setInterval(updateConnectionState, 1000)
+    isInitialized.current = true
+
+    // Set up event handlers
+    slaWebSocketClient.onSLAUpdate(handleSLAUpdate)
+
+    // Initial connection attempt
+    connect()
+
+    // Initial data fetch as fallback
+    fetchDataFromAPI()
 
     return () => {
-      // Remove event listeners
-      webSocketService.off('sla_update', handleSLAUpdate)
-      webSocketService.off('uptime_update', handleUptimeUpdate)
-      webSocketService.off('new_alert', handleNewAlert)
-      webSocketService.off('connection_established', handleConnectionEstablished)
-      
-      clearInterval(stateInterval)
-    }
-  }, [handleSLAUpdate, handleUptimeUpdate, handleNewAlert, handleConnectionEstablished, updateConnectionState])
-
-  // Auto-connect when authenticated and has permission
-  useEffect(() => {
-    if (isAuthenticated && hasPermission && !webSocketService.isConnected) {
-      connect()
-    } else if ((!isAuthenticated || !hasPermission) && webSocketService.isConnected) {
       disconnect()
+      isInitialized.current = false
     }
-  }, [isAuthenticated, hasPermission, connect, disconnect])
-
-  // Cleanup on unmount
-  useEffect(() => {
-    return () => {
-      disconnect()
-    }
-  }, [disconnect])
+  }, [hasPermission, isAuthenticated, connect, disconnect, handleSLAUpdate, handleConnectionChange, fetchDataFromAPI])
 
   return {
     systemHealth,
     alerts,
-    connectionCount,
     isConnected,
     connectionState,
     lastUpdated,
+    acknowledgeAlert,
     connect,
     disconnect,
     requestUpdate
