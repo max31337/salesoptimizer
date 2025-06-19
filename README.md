@@ -4,7 +4,7 @@ A multi-tenant sales optimization platform with predictive analytics, built usin
 
 ## 🎯 Overview
 
-SalesOptimizer leverages machine learning to predict opportunity success rates and optimize sales processes across multiple organizations. Features include role-based access control, real-time analytics, and collaborative task management.
+SalesOptimizer leverages machine learning to predict opportunity success rates and optimize sales processes across multiple teams in an organization. Features include role-based access control, real-time analytics, and collaborative task management.
 
 ## 🛠️ Tech Stack
 
