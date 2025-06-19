@@ -18,6 +18,7 @@ export interface UserProfile {
   bio?: string
   profile_picture_url?: string
   role: string
+  password_strength?: 'weak' | 'medium' | 'strong' | 'very_strong'
   organization_id?: string
   is_active: boolean
   created_at: string

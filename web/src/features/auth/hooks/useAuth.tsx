@@ -8,6 +8,7 @@ import { getNameComponents, createFullName } from '@/utils/nameParser'
 interface User {
   id: string
   email: string
+  username?: string
   role: string
   first_name?: string
   last_name?: string
@@ -17,6 +18,7 @@ interface User {
   profile_picture_url?: string
   status?: string
   is_email_verified?: boolean
+  password_strength?: string
   last_login?: string
   created_at?: string
   updated_at?: string
@@ -80,13 +82,15 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       setHasInitialized(true)
       return
     }    console.log('✅ Auth indicators found, verifying with server...')
-    setIsLoading(true)
-    try {      const userData = await apiClient.get<{
+    setIsLoading(true)    
+    try {      
+      const userData = await apiClient.get<{
         user_id: string
         email: string
         role: string
         status?: string
         is_email_verified?: boolean
+        password_strength?: string
         last_login?: string
         created_at?: string
         updated_at?: string
@@ -119,9 +123,10 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         tenant_id: userData.tenant_id,
         phone: userData.phone,
         bio: userData.bio,
-        profile_picture_url: userData.profile_picture_url,
+        profile_picture_url: userData.profile_picture_url,        
         status: userData.status,
         is_email_verified: userData.is_email_verified,
+        password_strength: userData.password_strength,
         last_login: userData.last_login,
         created_at: userData.created_at,
         updated_at: userData.updated_at,
@@ -229,14 +234,15 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const dismissSessionExpiredModal = () => {
     setShowSessionExpiredModal(false)
   }
-  
-  const refreshUser = async () => {
-    try {      const userData = await apiClient.get<{
+    const refreshUser = async () => {
+    try {
+      const userData = await apiClient.get<{
         user_id: string
         email: string
         role: string
         status?: string
         is_email_verified?: boolean
+        password_strength?: string
         last_login?: string
         created_at?: string
         updated_at?: string
@@ -270,8 +276,8 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         phone: userData.phone,
         bio: userData.bio,
         profile_picture_url: userData.profile_picture_url,
-        status: userData.status,
-        is_email_verified: userData.is_email_verified,
+        status: userData.status,        is_email_verified: userData.is_email_verified,
+        password_strength: userData.password_strength,
         last_login: userData.last_login,
         created_at: userData.created_at,
         updated_at: userData.updated_at,

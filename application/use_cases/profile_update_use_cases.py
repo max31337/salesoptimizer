@@ -30,7 +30,7 @@ class ProfileUpdateUseCase:
 
     async def get_user_profile(self, user_id: UUID) -> UserProfileResponse:
         """Get user profile information."""
-        user = await self.user_repository.get_by_id(UserId(user_id))
+        user = await self.user_repository.get_by_id(UserId(user_id))        
         if not user:
             raise ValueError("User not found")
         
@@ -40,12 +40,12 @@ class ProfileUpdateUseCase:
             username=user.username,
             first_name=user.first_name,
             last_name=user.last_name,
-            full_name=user.full_name,
             phone=user.phone,
             profile_picture_url=user.profile_picture_url,
             bio=user.bio,
             role=user.role.value,
             status=user.status.value,
+            password_strength=user.password_strength,
             is_email_verified=user.is_email_verified,
             last_login=user.last_login,
             created_at=user.created_at,

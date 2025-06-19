@@ -12,6 +12,8 @@ import { ProfileUpdateModal } from "@/components/modals/profile-update-modal"
 import { UserAvatar } from "@/components/ui/user-avatar"
 import { profileService, type ProfileUpdateRequest } from "@/features/profile/services/profile-service"
 import { ProfilePictureCacheManager } from "@/utils/profile-picture-cache"
+import { PasswordStrengthIndicator } from "@/components/ui/password-strength-indicator"
+import { PasswordInput } from "@/components/ui/password-input"
 import { User, Mail, Phone, Building, Upload, Trash2, Loader2, AlertTriangle, Lock } from "lucide-react"
 
 export default function ProfileSettingsPage() {
@@ -341,10 +343,8 @@ export default function ProfileSettingsPage() {
               </Button>
             )}
           </div>        </CardContent>
-      </Card>
-
-      {/* Password Change */}
-      <Card>
+      </Card>      {/* Password Change */}
+      <Card id="password">
         <CardHeader>
           <CardTitle className="flex items-center gap-2">
             <Lock className="h-5 w-5" />
@@ -369,24 +369,19 @@ export default function ProfileSettingsPage() {
             </Alert>
           )}
 
-          <form onSubmit={handlePasswordChange} className="space-y-4">
-            <div className="space-y-2">
+          <form onSubmit={handlePasswordChange} className="space-y-4">            <div className="space-y-2">
               <Label htmlFor="currentPassword">Current Password</Label>
-              <Input
+              <PasswordInput
                 id="currentPassword"
-                type="password"
                 value={passwordData.currentPassword}
                 onChange={(e) => setPasswordData(prev => ({ ...prev, currentPassword: e.target.value }))}
                 placeholder="Enter your current password"
                 disabled={isChangingPassword}
               />
-            </div>
-
-            <div className="space-y-2">
+            </div>            <div className="space-y-2">
               <Label htmlFor="newPassword">New Password</Label>
-              <Input
+              <PasswordInput
                 id="newPassword"
-                type="password"
                 value={passwordData.newPassword}
                 onChange={(e) => setPasswordData(prev => ({ ...prev, newPassword: e.target.value }))}
                 placeholder="Enter your new password"
@@ -395,13 +390,18 @@ export default function ProfileSettingsPage() {
               <p className="text-xs text-muted-foreground">
                 Password must be at least 8 characters long
               </p>
+              {passwordData.newPassword && (
+                <PasswordStrengthIndicator 
+                  password={passwordData.newPassword}
+                  className="mt-2"
+                />
+              )}
             </div>
 
             <div className="space-y-2">
               <Label htmlFor="confirmPassword">Confirm New Password</Label>
-              <Input
+              <PasswordInput
                 id="confirmPassword"
-                type="password"
                 value={passwordData.confirmPassword}
                 onChange={(e) => setPasswordData(prev => ({ ...prev, confirmPassword: e.target.value }))}
                 placeholder="Confirm your new password"

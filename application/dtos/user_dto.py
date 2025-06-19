@@ -39,6 +39,7 @@ class UserProfileResponse(BaseModel):
     bio: Optional[str] = None
     role: str
     status: str
+    password_strength: Optional[str] = None
     is_email_verified: bool = False
     last_login: Optional[datetime] = None
     created_at: datetime
@@ -64,6 +65,7 @@ class UserProfilePublicResponse(BaseModel):
     bio: Optional[str] = None
     role: str
     status: str
+    password_strength: Optional[str] = None
     is_email_verified: bool = False
     last_login: Optional[datetime] = None
     created_at: datetime

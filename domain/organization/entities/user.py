@@ -8,6 +8,7 @@ from domain.organization.value_objects.user_id import UserId
 from domain.organization.value_objects.user_role import UserRole, Permission
 from domain.organization.value_objects.user_status import UserStatus
 
+
 @dataclass
 class User:
     """User aggregate root."""
@@ -20,6 +21,7 @@ class User:
     password_hash: Optional[str]    
     role: UserRole
     status: UserStatus
+    password_strength: Optional[str] = None
     tenant_id: Optional[UUID] = None
     team_id: Optional[UUID] = None
     phone: Optional[str] = None

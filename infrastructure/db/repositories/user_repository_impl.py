@@ -126,8 +126,7 @@ class UserRepositoryImpl(UserRepository):
         """Delete user by ID."""
         stmt = select(UserModel).where(UserModel.id == user_id.value)
         result = await self._session.execute(stmt)
-        model = result.scalar_one_or_none()
-        
+        model = result.scalar_one_or_none()        
         if model:
                 await self._session.delete(model)
                 return True
@@ -142,6 +141,7 @@ class UserRepositoryImpl(UserRepository):
             first_name=model.first_name,
             last_name=model.last_name,
             password_hash=model.password_hash,
+            password_strength=model.password_strength,
             role=UserRole(model.role),
             status=UserStatus(model.status),
             tenant_id=model.tenant_id,
@@ -158,7 +158,6 @@ class UserRepositoryImpl(UserRepository):
             _oauth_provider=model.oauth_provider,
             _oauth_provider_id=model.oauth_provider_id
         )
-    
     def _entity_to_model(self, user: User) -> UserModel:
         """Convert domain entity to database model."""
         return UserModel(
@@ -168,6 +167,7 @@ class UserRepositoryImpl(UserRepository):
             first_name=user.first_name,
             last_name=user.last_name,
             password_hash=user.password_hash,
+            password_strength=user.password_strength,
             role=user.role.value,
             status=user.status.value,
             tenant_id=user.tenant_id,

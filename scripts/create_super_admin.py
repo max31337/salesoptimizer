@@ -154,10 +154,14 @@ def initialize_platform(email: str = "admin@salesoptimizer.com", password: str =
             if not platform_service.superadmin_service.can_create_superadmin():
                 print("❌ Cannot create superadmin: constraint violation")
                 return {"error": "Cannot create superadmin due to constraint violation"}
-            
-            # Create password hash
+              # Create password hash and calculate strength
             password_service = PasswordService()
             password_hash = password_service.hash_password(password)
+            
+            # Calculate password strength
+            from domain.organization.value_objects.password import Password
+            password_obj = Password(password)
+            password_strength = password_obj.strength.value
             
             # Create Super Admin user with system organization
             superadmin = UserModel(
@@ -169,6 +173,7 @@ def initialize_platform(email: str = "admin@salesoptimizer.com", password: str =
                 first_name="Super",
                 last_name="Admin",
                 password_hash=password_hash,
+                password_strength=password_strength,
                 role=UserRole.SUPER_ADMIN,
                 status=UserStatus.ACTIVE,
                 is_email_verified=True,

@@ -36,6 +36,21 @@ export default function ProfilePage() {
   const [isLoadingOrg, setIsLoadingOrg] = useState(true)
   const [error, setError] = useState('')
 
+  const getPasswordStrengthInfo = (strength?: string) => {
+    switch (strength) {
+      case 'weak':
+        return { label: 'Weak', variant: 'destructive' as const, color: 'text-red-600' }
+      case 'medium':
+        return { label: 'Medium', variant: 'secondary' as const, color: 'text-yellow-600' }
+      case 'strong':
+        return { label: 'Strong', variant: 'outline' as const, color: 'text-green-600' }
+      case 'very_strong':
+        return { label: 'Very Strong', variant: 'default' as const, color: 'text-green-700' }
+      default:
+        return { label: 'Unknown', variant: 'outline' as const, color: 'text-gray-600' }
+    }
+  }
+
   useEffect(() => {
     const fetchOrganization = async () => {
       if (!user?.tenant_id) {
@@ -167,6 +182,11 @@ export default function ProfilePage() {
                     <p className="text-lg text-muted-foreground">
                       {user.email}
                     </p>
+                    {user.username && (
+                      <p className="text-sm text-muted-foreground">
+                        @{user.username}
+                      </p>
+                    )}
                   </div>
 
                   {/* Role Badge */}
@@ -413,16 +433,22 @@ export default function ProfilePage() {
                         Not Enabled
                       </Badge>
                     </div>
-                  </div>
-
-                  <div className="flex items-center gap-3">
-                    <Shield className="h-4 w-4 text-muted-foreground" />
-                    <div>
-                      <p className="text-sm text-muted-foreground">Password Security</p>
-                      <Badge variant="outline">
-                        Strong
-                      </Badge>
+                  </div>                  <div className="flex items-center justify-between">
+                    <div className="flex items-center gap-3">
+                      <Shield className="h-4 w-4 text-muted-foreground" />
+                      <div>
+                        <p className="text-sm text-muted-foreground">Password Security</p>
+                        <Badge variant={getPasswordStrengthInfo(user.password_strength).variant}>
+                          {getPasswordStrengthInfo(user.password_strength).label}
+                        </Badge>
+                      </div>
                     </div>
+                    <Button variant="outline" size="sm" asChild>
+                      <Link href="/settings/profile#password">
+                        <Key className="h-3 w-3 mr-1" />
+                        Change
+                      </Link>
+                    </Button>
                   </div>
 
                   <div className="flex items-center gap-3">

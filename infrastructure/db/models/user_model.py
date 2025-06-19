@@ -77,6 +77,7 @@ class UserModel(Base):
     profile_picture_url: Mapped[str] = mapped_column(String(500), nullable=True)
     bio: Mapped[str] = mapped_column(String(1000), nullable=True)
     password_hash: Mapped[str] = mapped_column(String(255), nullable=True)
+    password_strength: Mapped[str] = mapped_column(String(20), nullable=True)
     role: Mapped[str] = mapped_column(String(50), nullable=False, default="sales_rep")
     status: Mapped[str] = mapped_column(String(20), nullable=False, default="pending")
     is_email_verified: Mapped[bool] = mapped_column(Boolean, default=False)

@@ -9,6 +9,7 @@ export interface User {
   role: 'super_admin' | 'org_admin' | 'sales_manager' | 'sales_rep'
   status: 'active' | 'inactive' | 'pending'
   is_email_verified: boolean
+  password_strength?: 'weak' | 'medium' | 'strong' | 'very_strong'
   tenant_id?: string
   profile_picture_url?: string
   last_login?: string

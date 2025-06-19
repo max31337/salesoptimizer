@@ -626,18 +626,19 @@ class AuthService:
         if user.password_hash:
             if not self._password_service.verify_password(current_password, user.password_hash):
                 raise InvalidCredentialsError()
-        
-        # Validate new password format
+          # Validate new password format and calculate strength
         try:
-            Password(new_password)
+            password_obj = Password(new_password)
+            password_strength = password_obj.strength.value
         except ValueError as e:
             raise ValueError(f"Invalid new password: {str(e)}")
         
         # Hash new password
         new_password_hash = self._password_service.hash_password(new_password)
         
-        # Update user password
+        # Update user password and strength
         user.password_hash = new_password_hash
+        user.password_strength = password_strength
         
         # Save user
         updated_user = await self._user_repository.update(user)
