@@ -74,7 +74,6 @@ export default function SLAMonitoringPage() {
       default: return 'outline' as const
     }
   }
-
   const getMetricIcon = (metricType: string) => {
     switch (metricType) {
       case 'cpu_usage': return <Cpu className="h-4 w-4" />
@@ -83,6 +82,7 @@ export default function SLAMonitoringPage() {
       case 'database_response_time': return <Database className="h-4 w-4" />
       case 'active_users': return <Users className="h-4 w-4" />
       case 'database_connections': return <Zap className="h-4 w-4" />
+      case 'uptime': return <Activity className="h-4 w-4" />
       default: return <Activity className="h-4 w-4" />
     }
   }
@@ -208,8 +208,55 @@ export default function SLAMonitoringPage() {
                   Pending acknowledgment
                 </p>
               </CardContent>
+            </Card>          </div>
+
+          {/* Uptime Overview */}
+          {systemHealth?.uptime_percentage !== undefined && (
+            <Card className="mb-8">
+              <CardHeader>
+                <CardTitle className="flex items-center gap-2">
+                  <Activity className="h-5 w-5" />
+                  System Uptime
+                </CardTitle>
+                <CardDescription>System availability and uptime statistics</CardDescription>
+              </CardHeader>
+              <CardContent>
+                <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+                  <div className="text-center">
+                    <div className="text-3xl font-bold text-green-600 dark:text-green-400 mb-1">
+                      {systemHealth.uptime_percentage.toFixed(2)}%
+                    </div>
+                    <p className="text-sm text-muted-foreground">Uptime (24h)</p>
+                  </div>
+                  
+                  <div className="text-center">
+                    <div className="text-lg font-medium text-card-foreground mb-1">
+                      {systemHealth.uptime_duration || 'N/A'}
+                    </div>
+                    <p className="text-sm text-muted-foreground">Current Uptime</p>
+                  </div>
+                  
+                  <div className="text-center">
+                    <Badge variant={
+                      systemHealth.uptime_status === 'operational' ? 'default' :
+                      systemHealth.uptime_status === 'degraded' ? 'secondary' : 'destructive'
+                    }>
+                      {systemHealth.uptime_status}
+                    </Badge>
+                    <p className="text-sm text-muted-foreground mt-1">Status</p>
+                  </div>
+                </div>
+                
+                {systemHealth.system_start_time && (
+                  <div className="mt-4 pt-4 border-t">
+                    <p className="text-xs text-muted-foreground">
+                      System started: {new Date(systemHealth.system_start_time).toLocaleString()}
+                    </p>
+                  </div>
+                )}
+              </CardContent>
             </Card>
-          </div>
+          )}
 
           {/* Metrics Overview */}
           {systemHealth?.metrics_summary && (

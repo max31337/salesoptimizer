@@ -19,6 +19,7 @@ class SLAMonitoringService:
         self.session = session
         self.repository = SLARepositoryImpl(session)
         self._default_thresholds = self._get_default_thresholds()
+        self._system_start_time = self._get_system_start_time()
     
     def _get_default_thresholds(self) -> Dict[MetricType, SLAThreshold]:
         """Get default SLA thresholds for different metrics."""
@@ -60,6 +61,43 @@ class SLAMonitoringService:
                 unit="%"
             ),
         }
+    
+    def _get_system_start_time(self) -> datetime:
+        """Get system boot time."""
+        try:
+            boot_timestamp = psutil.boot_time()
+            return datetime.fromtimestamp(boot_timestamp, tz=timezone.utc)
+        except Exception:
+            # Fallback to current time if unable to get boot time
+            return datetime.now(timezone.utc)
+    
+    def _calculate_uptime_percentage(self, start_time: datetime, current_time: datetime) -> float:
+        """Calculate system uptime percentage over the last 24 hours."""
+        # For simplicity, we'll calculate based on continuous uptime
+        # In a production system, you'd track actual downtime events
+        uptime_duration = current_time - start_time
+        
+        # If system has been up for more than 24 hours, consider it 100% for the last 24h
+        if uptime_duration.total_seconds() >= 86400:  # 24 hours in seconds
+            return 100.0
+        else:
+            # Calculate percentage of 24 hours the system has been up
+            return (uptime_duration.total_seconds() / 86400) * 100
+    
+    def _format_uptime_duration(self, start_time: datetime, current_time: datetime) -> str:
+        """Format uptime duration as human-readable string."""
+        uptime_duration = current_time - start_time
+        
+        days = uptime_duration.days
+        hours, remainder = divmod(uptime_duration.seconds, 3600)
+        minutes, _ = divmod(remainder, 60)
+        
+        if days > 0:
+            return f"{days} day{'s' if days != 1 else ''}, {hours} hour{'s' if hours != 1 else ''}"
+        elif hours > 0:
+            return f"{hours} hour{'s' if hours != 1 else ''}, {minutes} minute{'s' if minutes != 1 else ''}"
+        else:
+            return f"{minutes} minute{'s' if minutes != 1 else ''}"
     
     async def collect_system_metrics(self) -> List[SLAMetric]:
         """Collect current system performance metrics."""
@@ -105,6 +143,22 @@ class SLAMonitoringService:
             }
         )
         metrics.append(disk_metric)
+        
+        # Uptime
+        current_time = datetime.now(timezone.utc)
+        uptime_percentage = self._calculate_uptime_percentage(self._system_start_time, current_time)
+        uptime_metric = SLAMetric.create(
+            metric_type=MetricType.UPTIME,
+            value=uptime_percentage,
+            threshold=self._default_thresholds[MetricType.UPTIME],
+            additional_data={
+                "system_start_time": self._system_start_time.isoformat(),
+                "current_time": current_time.isoformat(),
+                "uptime_percentage": uptime_percentage,
+                "uptime_duration": self._format_uptime_duration(self._system_start_time, current_time)
+            }
+        )
+        metrics.append(uptime_metric)
         
         return metrics
       
@@ -378,4 +432,4 @@ class SLAMonitoringService:
             recommendations.append("Monitor user activity trends and engagement metrics.")
         
         return recommendations
-    
+

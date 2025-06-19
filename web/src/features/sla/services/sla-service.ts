@@ -28,13 +28,21 @@ export interface SLAMetric {
 
 export interface SLASystemHealth {
   overall_status: 'healthy' | 'warning' | 'critical'
+  health_percentage: number
+  uptime_status: string
+  last_updated: string
   total_metrics: number
   healthy_metrics: number
   warning_metrics: number
   critical_metrics: number
-  active_alerts: number
-  unacknowledged_alerts: number
-  last_check: string
+  cpu_usage?: number
+  memory_usage?: number
+  disk_usage?: number
+  database_response_time?: number
+  active_users_24h?: number
+  uptime_percentage?: number
+  uptime_duration?: string
+  system_start_time?: string
   metrics_summary: {
     cpu_usage: number
     memory_usage: number

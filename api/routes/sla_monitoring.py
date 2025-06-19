@@ -135,8 +135,8 @@ async def get_monitoring_status(
             "Performance Metrics Collection",
             "Real-time Alerts",
             "SLA Reporting"
-        ],
-        "supported_metrics": [
+        ],        "supported_metrics": [
+            "Uptime",
             "CPU Usage",
             "Memory Usage", 
             "Disk Usage",

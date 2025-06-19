@@ -62,8 +62,7 @@ class SLAMonitoringUseCase:
         total_metrics = len(report.metrics)
         healthy_count = len([m for m in report.metrics if m.status == SLAStatus.HEALTHY])
         warning_count = len([m for m in report.metrics if m.status == SLAStatus.WARNING])
-        critical_count = len([m for m in report.metrics if m.status == SLAStatus.CRITICAL])
-        
+        critical_count = len([m for m in report.metrics if m.status == SLAStatus.CRITICAL])        
         health_percentage = (healthy_count / total_metrics * 100) if total_metrics > 0 else 0
         
         # Extract key metrics
@@ -72,6 +71,10 @@ class SLAMonitoringUseCase:
         disk_usage = None
         database_response_time = None
         active_users_24h = None
+        database_connections = None
+        uptime_percentage = None
+        uptime_duration = None
+        system_start_time = None
         
         for metric in report.metrics:
             if metric.metric_type.value == "cpu_usage":
@@ -84,11 +87,31 @@ class SLAMonitoringUseCase:
                 database_response_time = metric.value
             elif metric.metric_type.value == "active_users":
                 active_users_24h = int(metric.value)
+            elif metric.metric_type.value == "database_connections":
+                database_connections = int(metric.value)
+            elif metric.metric_type.value == "uptime":
+                uptime_percentage = metric.value
+                if metric.additional_data:
+                    uptime_duration = metric.additional_data.get("uptime_duration")
+                    system_start_time_str = metric.additional_data.get("system_start_time")
+                    if system_start_time_str:
+                        from datetime import datetime
+                        system_start_time = datetime.fromisoformat(system_start_time_str.replace('Z', '+00:00'))
+        
+        # Determine uptime status
+        uptime_status = "operational"
+        if uptime_percentage is not None:
+            if uptime_percentage < 90:
+                uptime_status = "critical"
+            elif uptime_percentage < 95:
+                uptime_status = "degraded"
+            else:
+                uptime_status = "operational"
         
         return SLASystemHealthResponse(
             overall_status=report.overall_status.value,
             health_percentage=health_percentage,
-            uptime_status="operational",  # This could be calculated from uptime metrics
+            uptime_status=uptime_status,
             last_updated=report.generated_at,
             total_metrics=total_metrics,
             healthy_metrics=healthy_count,            
@@ -98,7 +121,18 @@ class SLAMonitoringUseCase:
             memory_usage=memory_usage,
             disk_usage=disk_usage,            
             database_response_time=database_response_time,
-            active_users_24h=active_users_24h
+            active_users_24h=active_users_24h,
+            uptime_percentage=uptime_percentage,
+            uptime_duration=uptime_duration,
+            system_start_time=system_start_time,
+            metrics_summary={
+                "cpu_usage": cpu_usage or 0.0,
+                "memory_usage": memory_usage or 0.0,
+                "disk_usage": disk_usage or 0.0,
+                "database_response_time": database_response_time or 0.0,
+                "active_users": active_users_24h or 0,
+                "database_connections": database_connections or 0
+            }
         )
     
     async def get_current_alerts(self) -> List[SLAAlertResponse]:

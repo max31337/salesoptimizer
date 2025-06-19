@@ -126,10 +126,9 @@ export default function SuperAdminDashboard() {
       </header>
 
       {/* Main Content */}
-      <main className="max-w-7xl mx-auto py-6 sm:px-6 lg:px-8">
-        <div className="px-4 py-6 sm:px-0">
+      <main className="max-w-7xl mx-auto py-6 sm:px-6 lg:px-8">        <div className="px-4 py-6 sm:px-0">
           {/* Stats Cards */}
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-6 mb-8">
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 mb-8">
             <Card className="bg-card border-border">
               <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
                 <CardTitle className="text-sm font-medium text-card-foreground">Organizations</CardTitle>
@@ -154,12 +153,55 @@ export default function SuperAdminDashboard() {
                   +12% from last month
                 </p>
               </CardContent>
-            </Card>            <Card className="bg-card border-border">
+            </Card>
+
+            <Card className="bg-card border-border">
+              <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+                <CardTitle className="text-sm font-medium text-card-foreground">System Uptime</CardTitle>
+                <div className="flex items-center gap-2">
+                  {slaLoading && <Loader2 className="h-3 w-3 animate-spin text-muted-foreground" />}
+                  <Activity className="h-4 w-4 text-muted-foreground" />
+                </div>
+              </CardHeader>
+              <CardContent>
+                <div className="flex items-center gap-2">
+                  <div className={`text-2xl font-bold ${
+                    systemHealth?.uptime_status === 'operational' 
+                      ? 'text-green-600 dark:text-green-400'
+                      : systemHealth?.uptime_status === 'degraded'
+                      ? 'text-yellow-600 dark:text-yellow-400'
+                      : 'text-red-600 dark:text-red-400'
+                  }`}>
+                    {systemHealth?.uptime_percentage !== undefined
+                      ? `${systemHealth.uptime_percentage.toFixed(1)}%`
+                      : '---'
+                    }
+                  </div>
+                  <Badge 
+                    variant={
+                      systemHealth?.uptime_status === 'operational' 
+                        ? 'default'
+                        : systemHealth?.uptime_status === 'degraded'
+                        ? 'secondary'
+                        : 'destructive'
+                    }
+                    className="text-xs"
+                  >
+                    {systemHealth?.uptime_status || 'Unknown'}
+                  </Badge>
+                </div>
+                <p className="text-xs text-muted-foreground mt-1">
+                  {systemHealth?.uptime_duration || 'Loading...'}
+                </p>
+              </CardContent>
+            </Card>
+
+            <Card className="bg-card border-border">
               <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
                 <CardTitle className="text-sm font-medium text-card-foreground">System Health</CardTitle>
                 <div className="flex items-center gap-2">
                   {slaLoading && <Loader2 className="h-3 w-3 animate-spin text-muted-foreground" />}
-                  <Activity className="h-4 w-4 text-muted-foreground" />
+                  <Monitor className="h-4 w-4 text-muted-foreground" />
                 </div>
               </CardHeader>
               <CardContent>
@@ -198,7 +240,7 @@ export default function SuperAdminDashboard() {
                       <div className="flex items-center gap-1">
                         <AlertTriangle className="h-3 w-3 text-orange-500" />
                         <span className="text-xs text-orange-600 dark:text-orange-400">
-                          {unacknowledgedAlertsCount} unack.
+                          {unacknowledgedAlertsCount} unacknowledged
                         </span>
                       </div>
                     </>

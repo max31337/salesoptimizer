@@ -44,6 +44,16 @@ class SLAThreshold:
     
     def get_status(self, value: float) -> SLAStatus:
         """Determine SLA status based on value and thresholds."""
+        # Special case for uptime - higher is better
+        if self.metric_type == MetricType.UPTIME:
+            if value < self.critical_threshold:
+                return SLAStatus.CRITICAL
+            elif value < self.warning_threshold:
+                return SLAStatus.WARNING
+            else:
+                return SLAStatus.HEALTHY
+        
+        # Default case for other metrics - lower is better
         if value >= self.critical_threshold:
             return SLAStatus.CRITICAL
         elif value >= self.warning_threshold:
