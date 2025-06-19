@@ -13,12 +13,16 @@ asyncpg==0.28.0
 pydantic-settings
 aiosmtplib
 jinja2
+redis
 
 # Authentication & Security
 passlib[bcrypt]==1.7.4
 pyjwt==2.8.0
 python-multipart==0.0.6
-cryptography==41.0.7 
+cryptography==41.0.7
+# OAuth dependencies
+authlib==1.2.1
+httpx==0.25.2
 
 # Testing
 ##Unit
