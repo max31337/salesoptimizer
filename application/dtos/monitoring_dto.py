@@ -56,6 +56,11 @@ class SLASystemHealthResponse(BaseModel):
     disk_usage: Optional[float] = None
     database_response_time: Optional[float] = None
     active_users_24h: Optional[int] = None
+    
+    # Uptime tracking
+    uptime_percentage: Optional[float] = None
+    uptime_duration: Optional[str] = None  # Human readable uptime like "2 days, 3 hours"
+    system_start_time: Optional[datetime] = None
 
 
 class SLAAlertResponse(BaseModel):
