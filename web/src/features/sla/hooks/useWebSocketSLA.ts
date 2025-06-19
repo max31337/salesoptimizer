@@ -23,8 +23,8 @@ interface WebSocketSLAData extends WebSocketSLAState {
   disconnect: () => void
 }
 
-export function useWebSocketSLA(autoConnect: boolean = true): WebSocketSLAData {  
-  // Use the global store for persistent data across navigation
+export function useWebSocketSLA(autoConnect: boolean = true): WebSocketSLAData {
+  // Use the persistent global store
   const {
     systemHealth: storeSystemHealth,
     alerts: storeAlerts,
@@ -35,154 +35,163 @@ export function useWebSocketSLA(autoConnect: boolean = true): WebSocketSLAData {
     updateData: updateStoreData,
     setLoading: setStoreLoading,
     setError: setStoreError,
-    hasData: hasStoreData
+    setAlerts: setStoreAlerts,
+    hasData: hasStoreData,
+    hasFreshData,
+    restoreFromCache
   } = useSLADataStore()
 
-  const [localState, setLocalState] = useState({
-    isConnected: false
-  })
-
+  const [isConnected, setIsConnected] = useState(false)
   const isInitialized = useRef(false)
   const retryTimeout = useRef<NodeJS.Timeout | null>(null)
 
-  // Initialize store with cached data if available on first load
+  // Initialize with cached data on mount
   useEffect(() => {
-    if (!hasStoreData() && typeof window !== 'undefined') {
-      const cachedData = slaWebSocketClient.getCachedData()
-      if (cachedData) {
-        console.log('🔄 Initializing store with cached WebSocket data')
-        updateStoreData(cachedData)
+    if (typeof window !== 'undefined') {
+      // Try to restore from cache first
+      restoreFromCache()
+      
+      // If we have fresh cached data, show it immediately
+      if (hasFreshData()) {
+        console.log('📦 Using fresh cached SLA data')
+        setStoreLoading(false)
       }
     }
-  }, [])  // Handle SLA updates from WebSocket
+  }, [hasFreshData, restoreFromCache, setStoreLoading])
+
+  // Handle SLA updates from WebSocket
   const handleSLAUpdate = useCallback((updateData: SLAUpdateData) => {
     console.log('🔄 Processing SLA update in hook:', updateData)
     
-    // Check if we have valid data
     if (!updateData?.system_health) {
       console.error('❌ Invalid SLA update data - missing system_health:', updateData)
       return
     }
     
-    // Update the global store
     updateStoreData(updateData)
-    console.log('✅ Updated SLA data in global store')
+    console.log('✅ Updated SLA data in store and cache')
   }, [updateStoreData])
-  // Handle connection status changes
-  const handleConnectionStatus = useCallback((connected: boolean) => {
-    setData(prev => ({
-      ...prev,
-      isConnected: connected,
-      error: connected ? null : 'WebSocket disconnected'
-    }))
 
+  // Handle connection status changes  
+  const handleConnectionStatus = useCallback((connected: boolean) => {
+    setIsConnected(connected)
+    
     if (connected) {
+      console.log('✅ WebSocket connected')
+      setStoreError(null)
+      
       // Clear any retry timeout
       if (retryTimeout.current) {
         clearTimeout(retryTimeout.current)
         retryTimeout.current = null
       }
       
-      // Request immediate update when connected (faster than waiting for backend push)
-      console.log('🔄 WebSocket connected, requesting immediate data update...')
-      slaWebSocketClient.requestUpdate()
+      // Request immediate update when connected
+      setTimeout(() => {
+        slaWebSocketClient.requestUpdate()
+      }, 100)
     } else {
-      // Don't set loading state when disconnected since we have REST API data
-      console.log('🔌 WebSocket disconnected, will rely on REST API data')
+      console.log('❌ WebSocket disconnected')
+      setStoreError('WebSocket disconnected')
     }
-  }, [])
+  }, [setStoreError])
+
+  // Load initial data from REST API as fallback
+  const loadInitialData = useCallback(async () => {
+    if (hasFreshData()) {
+      console.log('📦 Fresh data available, skipping REST API load')
+      return
+    }
+
+    try {
+      console.log('🌐 Loading initial SLA data via REST API...')
+      setStoreLoading(true)
+      
+      const [systemHealth, alerts] = await Promise.all([
+        slaService.getSystemHealth(),
+        slaService.getCurrentAlerts()
+      ])
+
+      // Create update data structure for the store
+      const updateData: SLAUpdateData = {
+        system_health: {
+          overall_status: systemHealth.overall_status,
+          health_percentage: systemHealth.health_percentage,
+          uptime_status: systemHealth.uptime_status,
+          uptime_percentage: systemHealth.uptime_percentage || 0,
+          uptime_duration: systemHealth.uptime_duration || '',
+          system_start_time: systemHealth.system_start_time || null,
+          last_updated: systemHealth.last_updated,
+          total_metrics: systemHealth.total_metrics,
+          healthy_metrics: systemHealth.healthy_metrics,
+          warning_metrics: systemHealth.warning_metrics,
+          critical_metrics: systemHealth.critical_metrics,
+          metrics_summary: systemHealth.metrics_summary
+        },
+        alerts: alerts.map(alert => ({
+          id: alert.id,
+          alert_type: alert.alert_type,
+          title: alert.title,
+          message: alert.message,
+          metric_type: alert.metric_type,
+          current_value: alert.current_value,
+          threshold_value: alert.threshold_value,
+          triggered_at: alert.triggered_at,
+          acknowledged: alert.acknowledged,
+          acknowledged_at: alert.acknowledged_at,
+          acknowledged_by: alert.acknowledged_by
+        })),
+        connection_info: {
+          active_connections: 1,
+          update_interval: 30000
+        }
+      }
+
+      updateStoreData(updateData)
+      console.log('✅ Initial SLA data loaded via REST API')
+    } catch (error) {
+      console.error('❌ Failed to load initial SLA data:', error)
+      setStoreError('Failed to load SLA data')
+    } finally {
+      setStoreLoading(false)
+    }
+  }, [hasFreshData, updateStoreData, setStoreLoading, setStoreError])
+
   // Initialize WebSocket connection
   useEffect(() => {
     if (!autoConnect || isInitialized.current || typeof window === 'undefined') return
 
-    console.log('🔌 Initializing WebSocket connection...')
+    console.log('🔌 Initializing WebSocket SLA connection...')
+    isInitialized.current = true
 
-    // Check if WebSocket is already connected (from previous component mount)
-    if (slaWebSocketClient.getConnectionStatus()) {
-      console.log('✅ WebSocket already connected, skipping reconnection')
-      setData(prev => ({
-        ...prev,
-        isConnected: true,
-        isLoading: false
-      }))
-      
-      // Request data update since we're using existing connection
-      slaWebSocketClient.requestUpdate()
-      isInitialized.current = true
-      return
-    }    console.log('🔌 Setting up new WebSocket connection...')
+    // Load initial data immediately (from cache or REST API)
+    loadInitialData()
 
     // Subscribe to WebSocket events
     const unsubscribeSLAUpdate = slaWebSocketClient.onSLAUpdate(handleSLAUpdate)
-    const unsubscribeConnectionStatus = slaWebSocketClient.onConnectionStatus(handleConnectionStatus)    // Immediately start loading data via REST API for faster initial load
-    const loadInitialData = async () => {
-      // Skip loading if we already have fresh cached data
-      if (slaWebSocketClient.hasFreshCachedData()) {
-        console.log('🔄 Using fresh cached data, skipping REST API call')
-        setData(prev => ({ ...prev, isLoading: false }))
-        return
-      }
+    const unsubscribeConnectionStatus = slaWebSocketClient.onConnectionStatus(handleConnectionStatus)
 
-      try {
-        console.log('🚀 Loading initial data via REST API for fast display...')
-        const [systemHealth, alerts] = await Promise.all([
-          slaService.getSystemHealth(),
-          slaService.getCurrentAlerts()
-        ])
-
-        setData(prev => ({
-          ...prev,
-          systemHealth,
-          alerts,
-          isLoading: false,
-          lastUpdated: new Date()
-        }))
-        console.log('✅ Initial data loaded via REST API')
-      } catch (error) {
-        console.error('Failed to load initial SLA data via REST API:', error)
-        setData(prev => ({
-          ...prev,
-          error: 'Failed to load initial data',
-          isLoading: false
-        }))
-      }
-    }
-
-    // Load initial data immediately
-    loadInitialData()
-
-    // Connect to WebSocket in parallel (will overlay data when connected)
-    const connectWebSocket = async () => {
-      try {
-        await slaWebSocketClient.connect()
-      } catch (error) {
-        console.error('Failed to connect WebSocket:', error)
-      }
-    }    
-    connectWebSocket()
-    isInitialized.current = true
+    // Start WebSocket connection
+    slaWebSocketClient.connect().catch((error: Error) => {
+      console.error('❌ Failed to connect WebSocket:', error)
+    })
 
     return () => {
       unsubscribeSLAUpdate()
       unsubscribeConnectionStatus()
-    }
-  }, [autoConnect, handleSLAUpdate, handleConnectionStatus])
-
-  // Cleanup on unmount
-  useEffect(() => {
-    return () => {
       if (retryTimeout.current) {
         clearTimeout(retryTimeout.current)
       }
     }
-  }, [])
+  }, [autoConnect, handleSLAUpdate, handleConnectionStatus, loadInitialData])
 
-  // Manual refresh function (fallback to REST API)
+  // Manual refresh function
   const refreshData = useCallback(async () => {
     try {
-      setData(prev => ({ ...prev, isLoading: true, error: null }))
+      setStoreLoading(true)
+      setStoreError(null)
 
-      if (slaWebSocketClient.getConnectionStatus()) {
+      if (isConnected) {
         // If WebSocket is connected, request update
         slaWebSocketClient.requestUpdate()
       } else {
@@ -192,51 +201,108 @@ export function useWebSocketSLA(autoConnect: boolean = true): WebSocketSLAData {
           slaService.getCurrentAlerts()
         ])
 
-        setData(prev => ({
-          ...prev,
-          systemHealth,
-          alerts,
-          isLoading: false,
-          lastUpdated: new Date()
-        }))
+        const updateData: SLAUpdateData = {
+          system_health: {
+            overall_status: systemHealth.overall_status,
+            health_percentage: systemHealth.health_percentage,
+            uptime_status: systemHealth.uptime_status,
+            uptime_percentage: systemHealth.uptime_percentage || 0,
+            uptime_duration: systemHealth.uptime_duration || '',
+            system_start_time: systemHealth.system_start_time || null,
+            last_updated: systemHealth.last_updated,
+            total_metrics: systemHealth.total_metrics,
+            healthy_metrics: systemHealth.healthy_metrics,
+            warning_metrics: systemHealth.warning_metrics,
+            critical_metrics: systemHealth.critical_metrics,
+            metrics_summary: systemHealth.metrics_summary
+          },
+          alerts: alerts.map(alert => ({
+            id: alert.id,
+            alert_type: alert.alert_type,
+            title: alert.title,
+            message: alert.message,
+            metric_type: alert.metric_type,
+            current_value: alert.current_value,
+            threshold_value: alert.threshold_value,
+            triggered_at: alert.triggered_at,
+            acknowledged: alert.acknowledged,
+            acknowledged_at: alert.acknowledged_at,
+            acknowledged_by: alert.acknowledged_by
+          })),
+          connection_info: {
+            active_connections: 1,
+            update_interval: 30000
+          }
+        }
+
+        updateStoreData(updateData)
       }
     } catch (error) {
-      console.error('Failed to refresh SLA data:', error)
-      setData(prev => ({
-        ...prev,
-        error: 'Failed to refresh data',
-        isLoading: false
-      }))
+      console.error('❌ Failed to refresh SLA data:', error)
+      setStoreError('Failed to refresh data')
+    } finally {
+      setStoreLoading(false)
     }
-  }, [])
+  }, [isConnected, updateStoreData, setStoreLoading, setStoreError])
 
-  // Acknowledge alert function with WebSocket integration
+  // Acknowledge alert function with better error handling
   const acknowledgeAlert = useCallback(async (alertId: string) => {
     try {
+      // First check if the alert exists and is not already acknowledged
+      const alertToAcknowledge = storeAlerts.find(alert => alert.id === alertId)
+      
+      if (!alertToAcknowledge) {
+        console.warn(`⚠️ Alert ${alertId} not found in current alerts`)
+        throw new Error('Alert not found')
+      }
+      
+      if (alertToAcknowledge.acknowledged) {
+        console.warn(`⚠️ Alert ${alertId} is already acknowledged`)
+        return {
+          success: false,
+          message: 'Alert is already acknowledged',
+          acknowledged_by: alertToAcknowledge.acknowledged_by || '',
+          acknowledged_at: alertToAcknowledge.acknowledged_at || ''
+        }
+      }
+      
+      console.log(`🔄 Acknowledging alert ${alertId}...`)
       const response = await slaService.acknowledgeAlert(alertId)
       
-      // Update local state immediately for better UX
-      setData(prev => ({
-        ...prev,
-        alerts: prev.alerts.map(alert => 
-          alert.id === alertId 
-            ? { 
-                ...alert, 
-                acknowledged: true, 
-                acknowledged_at: response.acknowledged_at,
-                acknowledged_by: response.acknowledged_by
-              }
-            : alert
-        )
-      }))
+      // Update alerts in store immediately for better UX
+      const updatedAlerts = storeAlerts.map(alert => 
+        alert.id === alertId 
+          ? { 
+              ...alert, 
+              acknowledged: true, 
+              acknowledged_at: response.acknowledged_at,
+              acknowledged_by: response.acknowledged_by
+            }
+          : alert
+      )
+      
+      setStoreAlerts(updatedAlerts)
+      console.log(`✅ Alert ${alertId} acknowledged and cached`)
 
-      // WebSocket will send real-time update to all clients
       return response
     } catch (error) {
-      console.error('Failed to acknowledge alert:', error)
+      console.error(`❌ Failed to acknowledge alert ${alertId}:`, error)
+      
+      // If the error is that the alert doesn't exist or is already acknowledged,
+      // refresh the data to get the latest state
+      if (error instanceof Error && 
+          (error.message.includes('not found') || error.message.includes('already acknowledged'))) {
+        console.log('🔄 Refreshing data due to stale alert state...')
+        try {
+          await refreshData()
+        } catch (refreshError) {
+          console.error('Failed to refresh data:', refreshError)
+        }
+      }
+      
       throw error
     }
-  }, [])
+  }, [storeAlerts, setStoreAlerts, refreshData])
 
   // Connect/disconnect functions
   const connect = useCallback(() => {
@@ -245,64 +311,20 @@ export function useWebSocketSLA(autoConnect: boolean = true): WebSocketSLAData {
 
   const disconnect = useCallback(() => {
     slaWebSocketClient.disconnect()
-    setData(prev => ({
-      ...prev,
-      isConnected: false
-    }))
+    setIsConnected(false)
   }, [])
-  // Helper function to update both store and local state
-  const setData = useCallback((updater: (prev: WebSocketSLAState) => WebSocketSLAState) => {
-    const newState = updater({
-      systemHealth: storeSystemHealth,
-      alerts: storeAlerts,
-      connectionInfo: storeConnectionInfo,
-      isConnected: localState.isConnected,
-      isLoading: storeIsLoading,
-      error: storeError,
-      lastUpdated: storeLastUpdated
-    })
-    
-    // Update store data only if we have valid system health data
-    if (newState.systemHealth && newState.systemHealth.uptime_percentage !== undefined) {
-      const updateData: any = {
-        system_health: newState.systemHealth as Required<typeof newState.systemHealth>,
-        alerts: newState.alerts
-      }
-      
-      if (newState.connectionInfo) {
-        updateData.connection_info = newState.connectionInfo
-      }
-      
-      updateStoreData(updateData)
-    }
-    
-    // Update local state
-    setLocalState(prev => ({
-      ...prev,
-      isConnected: newState.isConnected
-    }))
-    
-    // Update store loading and error states
-    setStoreLoading(newState.isLoading)
-    setStoreError(newState.error)
-  }, [storeSystemHealth, storeAlerts, storeConnectionInfo, storeIsLoading, storeError, storeLastUpdated, localState.isConnected, updateStoreData, setLocalState, setStoreLoading, setStoreError])
 
-  const data: WebSocketSLAState = {
+  return {
     systemHealth: storeSystemHealth,
     alerts: storeAlerts,
     connectionInfo: storeConnectionInfo,
-    isConnected: localState.isConnected,
+    isConnected,
     isLoading: storeIsLoading,
     error: storeError,
-    lastUpdated: storeLastUpdated
-  }
-
-  return {
-    ...data,
+    lastUpdated: storeLastUpdated,
     refreshData,
     acknowledgeAlert,
     connect,
     disconnect
   }
 }
-

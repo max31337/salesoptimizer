@@ -159,8 +159,7 @@ async def acknowledge_alert(
         raise HTTPException(
             status_code=status.HTTP_403_FORBIDDEN,
             detail="Insufficient permissions. Admin access required to acknowledge alerts."
-        )
-    
+        )    
     try:
         # Get the current user ID
         if not current_user.id:
@@ -169,7 +168,10 @@ async def acknowledge_alert(
                 detail="User ID is required"
             )
         
-        success = await sla_use_case.acknowledge_alert(alert_id, str(current_user.id.value))
+        user_id_str = str(current_user.id.value)
+        print(f"DEBUG: Acknowledging alert {alert_id} for user {user_id_str}")
+        
+        success = await sla_use_case.acknowledge_alert(alert_id, user_id_str)
         
         if not success:
             raise HTTPException(

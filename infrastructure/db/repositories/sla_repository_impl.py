@@ -61,10 +61,10 @@ class SLARepositoryImpl:
             title=alert_data['title'],
             message=alert_data['message'],
             metric_type=alert_data['metric_type'],
-            current_value=alert_data['current_value'],
+            current_value=alert_data['current_value'],           
             threshold_value=alert_data['threshold_value'],
             triggered_at=alert_data.get('triggered_at', datetime.now(timezone.utc)),
-            additional_data=alert_data.get('additional_data, {})')
+            additional_data=alert_data.get('additional_data', {})
         )
         
         self.session.add(alert_model)
@@ -118,19 +118,31 @@ class SLARepositoryImpl:
         stmt = select(SLAAlertModel).where(SLAAlertModel.id == alert_id)
         result = await self.session.execute(stmt)
         return result.scalar_one_or_none()
-    
     async def acknowledge_alert(self, alert_id: UUID, acknowledged_by: UUID) -> bool:
         """Acknowledge an alert."""
-        alert = await self.get_alert_by_id(alert_id)
-        if not alert or alert.acknowledged:
-            return False
-        
-        alert.acknowledged = True
-        alert.acknowledged_at = datetime.now(timezone.utc)
-        alert.acknowledged_by = acknowledged_by
-        
-        await self.session.commit()
-        return True
+        try:
+            print(f"DEBUG: Repository - acknowledging alert {alert_id} by user {acknowledged_by}")
+            alert = await self.get_alert_by_id(alert_id)
+            if not alert:
+                print(f"DEBUG: Alert {alert_id} not found")
+                return False
+            
+            if alert.acknowledged:
+                print(f"DEBUG: Alert {alert_id} already acknowledged")
+                return False
+            
+            alert.acknowledged = True
+            alert.acknowledged_at = datetime.now(timezone.utc)
+            alert.acknowledged_by = acknowledged_by
+            
+            print(f"DEBUG: Committing acknowledgment for alert {alert_id}")
+            await self.session.commit()
+            print(f"DEBUG: Successfully acknowledged alert {alert_id}")
+            return True
+        except Exception as e:
+            print(f"DEBUG: Error in acknowledge_alert: {e}")
+            await self.session.rollback()
+            raise
     
     async def resolve_alert(self, alert_id: UUID) -> bool:
         """Mark an alert as resolved."""

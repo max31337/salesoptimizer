@@ -107,7 +107,7 @@ async def send_current_sla_data(websocket: WebSocket, user: User):
                         "warning_metrics": system_health.warning_metrics,
                         "critical_metrics": system_health.critical_metrics,
                         "metrics_summary": system_health.metrics_summary
-                    },
+                    },                    
                     "alerts": [
                         {
                             "id": alert.id,
@@ -118,7 +118,9 @@ async def send_current_sla_data(websocket: WebSocket, user: User):
                             "current_value": alert.current_value,
                             "threshold_value": alert.threshold_value,
                             "triggered_at": alert.triggered_at.isoformat(),
-                            "acknowledged": alert.acknowledged
+                            "acknowledged": alert.acknowledged,
+                            "acknowledged_at": alert.acknowledged_at.isoformat() if alert.acknowledged_at else None,
+                            "acknowledged_by": str(alert.acknowledged_by) if alert.acknowledged_by else None
                         }
                         for alert in alerts
                     ],
