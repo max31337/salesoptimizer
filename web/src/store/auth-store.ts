@@ -47,15 +47,28 @@ export const useAuthStore = create<AuthStore>()(
           set({ isLoading: false })
           throw error
         }
-      },
-
-      logout: async () => {
+      },      logout: async () => {
         try {
           // Call logout endpoint to revoke tokens on server
           await apiClient.post('/auth/logout', {})
         } catch (error) {
           console.error('Server logout failed:', error)
         } finally {
+          // Dispatch logout event for WebSocket cleanup
+          if (typeof window !== 'undefined') {
+            const event = new CustomEvent('auth-logout')
+            window.dispatchEvent(event)
+          }
+          
+          // Close WebSocket connection before clearing user state
+          try {
+            const { slaWebSocketClient } = await import('@/lib/websocket')
+            slaWebSocketClient.disconnect()
+            console.log('🔌 WebSocket disconnected on logout')
+          } catch (error) {
+            console.warn('Failed to disconnect WebSocket on logout:', error)
+          }
+          
           // Clear local state regardless of server response
           Cookies.remove('access_token')
           Cookies.remove('refresh_token')

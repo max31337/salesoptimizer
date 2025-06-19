@@ -211,8 +211,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       return { user }
     } catch (error) {
       console.error('Login error:', error)
-      throw error
-    } finally {
+      throw error    } finally {
       setIsLoading(false)
     }
   }
@@ -224,6 +223,32 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     } catch (error) {
       console.error('Logout error:', error)
     } finally {
+      // Dispatch logout event for WebSocket cleanup
+      if (typeof window !== 'undefined') {
+        const event = new CustomEvent('auth-logout')
+        window.dispatchEvent(event)
+      }
+        // Close WebSocket connection before clearing user state
+      try {
+        const { slaWebSocketClient } = await import('@/lib/websocket')
+        slaWebSocketClient.disconnect()
+        console.log('🔌 WebSocket disconnected on logout')
+        
+        // Also try to disconnect the old WebSocket service if it exists
+        try {
+          const websocketServiceModule = await import('@/services/websocket-service')
+          const websocketService = websocketServiceModule.webSocketService
+          if (websocketService && typeof websocketService.disconnect === 'function') {
+            websocketService.disconnect()
+            console.log('🔌 Old WebSocket service disconnected on logout')
+          }
+        } catch (error) {
+          // Ignore if old service doesn't exist
+        }
+      } catch (error) {
+        console.warn('Failed to disconnect WebSocket on logout:', error)
+      }
+      
       setUser(null)
       // Clear the login indicator
       localStorage.removeItem('salesoptimizer_was_logged_in')

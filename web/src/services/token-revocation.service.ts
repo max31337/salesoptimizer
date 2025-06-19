@@ -36,7 +36,6 @@ interface RefreshTokensResponse {
 
 class TokenRevocationService {
   private readonly baseUrl = '/api/auth';
-
   async logoutCurrentDevice(): Promise<{ success: boolean; message: string }> {
     try {
       const response = await fetch(`${this.baseUrl}/logout-current`, {
@@ -50,6 +49,19 @@ class TokenRevocationService {
       if (!response.ok) {
         const errorData = await response.json().catch(() => ({}));
         throw new Error(errorData.detail || 'Failed to logout from current device');
+      }      // Close WebSocket connection on successful logout
+      try {
+        // Dispatch logout event for WebSocket cleanup
+        if (typeof window !== 'undefined') {
+          const event = new CustomEvent('auth-logout')
+          window.dispatchEvent(event)
+        }
+        
+        const { slaWebSocketClient } = await import('@/lib/websocket')
+        slaWebSocketClient.disconnect()
+        console.log('🔌 WebSocket disconnected on device logout')
+      } catch (error) {
+        console.warn('Failed to disconnect WebSocket on logout:', error)
       }
 
       const data = await response.json();
@@ -65,7 +77,6 @@ class TokenRevocationService {
       };
     }
   }
-
   async logoutAllDevices(): Promise<{ success: boolean; message: string }> {
     try {
       const response = await fetch(`${this.baseUrl}/logout-all-devices`, {
@@ -80,6 +91,19 @@ class TokenRevocationService {
       if (!response.ok) {
         const errorData = await response.json().catch(() => ({}));
         throw new Error(errorData.detail || 'Failed to logout from all devices');
+      }      // Close WebSocket connection on successful logout
+      try {
+        // Dispatch logout event for WebSocket cleanup
+        if (typeof window !== 'undefined') {
+          const event = new CustomEvent('auth-logout')
+          window.dispatchEvent(event)
+        }
+        
+        const { slaWebSocketClient } = await import('@/lib/websocket')
+        slaWebSocketClient.disconnect()
+        console.log('🔌 WebSocket disconnected on all devices logout')
+      } catch (error) {
+        console.warn('Failed to disconnect WebSocket on logout:', error)
       }
 
       const data = await response.json();

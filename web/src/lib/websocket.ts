@@ -90,14 +90,25 @@ export class SLAWebSocketClient {
           console.log('Page became visible, checking WebSocket connection...')
           this.connect().catch(console.error)
         }
-      })
-        // Add beforeunload listener to gracefully close connection
+      })      // Add beforeunload listener to gracefully close connection
       window.addEventListener('beforeunload', () => {
         console.log('🔌 Page unloading, disconnecting WebSocket...')
         this.shouldReconnect = false
         if (this.ws && this.ws.readyState === WebSocket.OPEN) {
           this.ws.close(1000, 'Page unload')
         }
+      })
+      
+      // Listen for session expiry events to disconnect WebSocket
+      window.addEventListener('session-expired', () => {
+        console.log('🔌 Session expired, disconnecting WebSocket')
+        this.disconnect()
+      })
+      
+      // Listen for logout events to disconnect WebSocket
+      window.addEventListener('auth-logout', () => {
+        console.log('🔌 User logged out, disconnecting WebSocket')
+        this.disconnect()
       })
       
       // Add error event listener to handle connection errors
@@ -367,8 +378,8 @@ export class SLAWebSocketClient {
       timestamp: new Date().toISOString()
     })
   }
-
   public disconnect(): void {
+    console.log('🔌 Disconnecting WebSocket client...')
     this.shouldReconnect = false
     
     if (this.reconnectTimer) {
@@ -379,12 +390,25 @@ export class SLAWebSocketClient {
     this.stopPingInterval()
 
     if (this.ws) {
-      this.ws.close()
+      // Set state to disconnected before closing
+      this.isConnected = false
+      this.isConnecting = false
+      
+      // Close with normal closure code
+      this.ws.close(1000, 'Client disconnecting')
       this.ws = null
     }
 
-    this.isConnected = false
-    this.notifyConnectionStatus(false)
+    // Clear all handlers to prevent memory leaks
+    this.messageHandlers = []
+    this.slaUpdateHandlers = []
+    this.connectionStatusHandlers = []
+
+    // Reset connection state
+    this.reconnectAttempts = 0
+    this.connectionPromise = null
+    
+    console.log('✅ WebSocket client disconnected successfully')
   }
 
   // Event handler registration methods
