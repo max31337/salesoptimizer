@@ -76,13 +76,21 @@ export class SLAWebSocketClient {
   private authCheckCache: { isValid: boolean; timestamp: number } | null = null
   private authCheckCacheDuration = 60000 // Cache auth check for 1 minute
 
+  // Data caching
+  private lastSLAData: SLAUpdateData | null = null
+  private lastDataTimestamp: number | null = null
+  private dataCacheDuration = 5 * 60 * 1000 // Cache data for 5 minutes
+
   // Event handlers
   private messageHandlers: MessageHandler[] = []
   private slaUpdateHandlers: SLAUpdateHandler[] = []
-  private connectionStatusHandlers: ConnectionStatusHandler[] = []
+  private connectionStatusHandlers: ConnectionStatusHandler[] = []  
   constructor() {
     // Don't initialize URL during SSR - will be set when connect() is called
     this.url = null
+    
+    // Restore cached data from localStorage
+    this.restoreCachedData()
     
     // Preemptively check authentication to warm up the cache
     if (typeof window !== 'undefined') {
@@ -347,14 +355,16 @@ export class SLAWebSocketClient {
     this.messageHandlers.forEach(handler => handler(message))
 
     // Handle specific message types
-    switch (message.type) {
-      case 'connection_established':
+    switch (message.type) {      case 'connection_established':
         console.log('🔗 SLA WebSocket connection established:', message.data)
         break
 
       case 'sla_update':
         console.log('📊 Received SLA update via WebSocket:', message.data)
         if (message.data) {
+          // Cache the data before forwarding to handlers
+          this.saveCachedData(message.data)
+          
           console.log('🔄 Forwarding to SLA handlers, count:', this.slaUpdateHandlers.length)
           this.slaUpdateHandlers.forEach(handler => handler(message.data))
         } else {
@@ -496,9 +506,70 @@ export class SLAWebSocketClient {
       }
     }
   }
-
   public getConnectionStatus(): boolean {
     return this.isConnected
+  }
+
+  // Data caching methods
+  private saveCachedData(data: SLAUpdateData): void {
+    if (typeof window === 'undefined') return
+    
+    try {
+      const cacheData = {
+        data,
+        timestamp: Date.now()
+      }
+      localStorage.setItem('sla_websocket_cache', JSON.stringify(cacheData))
+      this.lastSLAData = data
+      this.lastDataTimestamp = Date.now()
+    } catch (error) {
+      console.warn('Failed to cache SLA data:', error)
+    }
+  }
+
+  private restoreCachedData(): void {
+    if (typeof window === 'undefined') return
+    
+    try {
+      const cached = localStorage.getItem('sla_websocket_cache')
+      if (cached) {
+        const cacheData = JSON.parse(cached)
+        const age = Date.now() - cacheData.timestamp
+        
+        // Use cached data if it's not too old
+        if (age < this.dataCacheDuration) {
+          this.lastSLAData = cacheData.data
+          this.lastDataTimestamp = cacheData.timestamp
+          console.log('🔄 Restored cached SLA data from localStorage')
+          
+          // Immediately notify handlers with cached data
+          setTimeout(() => {
+            if (this.lastSLAData) {
+              this.slaUpdateHandlers.forEach(handler => handler(this.lastSLAData!))
+            }
+          }, 50)
+        } else {
+          // Clear expired cache
+          localStorage.removeItem('sla_websocket_cache')
+        }
+      }
+    } catch (error) {
+      console.warn('Failed to restore cached SLA data:', error)
+      // Clear corrupted cache
+      try {
+        localStorage.removeItem('sla_websocket_cache')
+      } catch {}
+    }
+  }
+
+  public getCachedData(): SLAUpdateData | null {
+    return this.lastSLAData
+  }
+
+  public hasFreshCachedData(): boolean {
+    if (!this.lastSLAData || !this.lastDataTimestamp) return false
+    const age = Date.now() - this.lastDataTimestamp
+    return age < this.dataCacheDuration
   }
 }
 
