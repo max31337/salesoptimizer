@@ -149,3 +149,35 @@ def require_system_management(current_user: User = Depends(get_current_user)) ->
 def require_org_management(current_user: User = Depends(get_current_user)) -> User:
     """Require organization management permission."""
     return require_permission(Permission.MANAGE_ORGANIZATION)(current_user)
+
+
+async def get_current_user_from_websocket_token(token: str) -> Optional[User]:
+    """Extract user from WebSocket token for real-time connections."""
+    from infrastructure.dependencies.service_container import get_application_service
+    from infrastructure.db.database import get_async_session
+    
+    try:
+        # Get a database session using async context manager
+        async for session in get_async_session():
+            app_service = await get_application_service(session)
+            
+            # Verify token using auth service
+            payload = await app_service.auth_service.verify_token(token)
+            if not payload:
+                return None
+            
+            # Get user ID from token payload
+            user_id_str = payload.get("sub")  # JWT 'sub' claim contains user ID
+            if not user_id_str:
+                return None
+            
+            # Get user from database
+            user = await app_service.auth_service.get_user_by_id(user_id_str)
+            if not user or not user.is_active():
+                return None
+            
+            return user
+    except Exception as e:
+        import logging
+        logging.getLogger(__name__).error(f"WebSocket auth error: {e}")
+        return None

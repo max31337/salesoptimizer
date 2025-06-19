@@ -1,11 +1,12 @@
 "use client"
 
-import { useState } from "react"
+import { useState, useEffect } from "react"
 import { Button } from "@/components/ui/button"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
 import { Badge } from "@/components/ui/badge"
 import { Alert, AlertDescription } from "@/components/ui/alert"
 import { useSLAData } from "@/features/sla/hooks/useSLAData"
+import { useClientWebSocketSLA } from "@/features/sla/hooks/useClientWebSocketSLA"
 import { 
   ArrowLeft, 
   RefreshCw, 
@@ -19,33 +20,43 @@ import {
   Cpu,
   HardDrive,
   Users,
-  Zap
+  Zap,
+  Wifi,
+  WifiOff
 } from "lucide-react"
 import Link from "next/link"
 import { format } from "date-fns"
 import { type SLAAlert } from "@/features/sla/services/sla-service"
 
 export default function SLAMonitoringPage() {
+  // Use WebSocket for real-time updates
   const { 
     systemHealth, 
     alerts, 
-    metrics, 
     isLoading, 
     error, 
     lastUpdated, 
-    acknowledgeAlert, 
-    refreshData   } = useSLAData(true, 30000)
+    acknowledgeAlert: wsAcknowledgeAlert,
+    refreshData,
+    isConnected: wsConnected,
+    connectionInfo
+  } = useClientWebSocketSLA(true)
+  
+  // Keep the old hook as fallback for metrics and manual refresh
+  const { 
+    metrics = [],
+    refreshData: fallbackRefresh 
+  } = useSLAData(false, 0)
   
   const [acknowledgingAlerts, setAcknowledgingAlerts] = useState<Set<string>>(new Set())
 
   // Calculate real-time alert counts from the alerts array
   const activeAlertsCount = alerts.length
   const unacknowledgedAlertsCount = alerts.filter(alert => !alert.acknowledged).length
-
   const handleAcknowledgeAlert = async (alertId: string) => {
     setAcknowledgingAlerts(prev => new Set([...Array.from(prev), alertId]))
     try {
-      await acknowledgeAlert(alertId)
+      await wsAcknowledgeAlert(alertId)
     } catch (error) {
       console.error('Failed to acknowledge alert:', error)
     } finally {
@@ -115,9 +126,15 @@ export default function SLAMonitoringPage() {
                 </p>
               </div>
             </div>
-            
-            <div className="flex items-center space-x-4">
+              <div className="flex items-center space-x-4">
               <div className="text-right">
+                <div className="flex items-center gap-2 justify-end">
+                  <div className={`w-2 h-2 rounded-full ${wsConnected ? 'bg-green-500' : 'bg-red-500'}`}></div>
+                  <p className="text-xs text-muted-foreground">
+                    {wsConnected ? 'Real-time' : 'Offline'}
+                    {connectionInfo && ` (${connectionInfo.active_connections} clients)`}
+                  </p>
+                </div>
                 <p className="text-xs text-muted-foreground">Last updated</p>
                 <p className="text-sm font-medium">
                   {lastUpdated ? format(lastUpdated, 'HH:mm:ss') : '---'}
@@ -441,8 +458,7 @@ export default function SLAMonitoringPage() {
                 )}
               </CardContent>
             </Card>
-          </div>
-        </div>
+          </div>        </div>
       </main>
     </div>
   )

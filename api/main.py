@@ -12,7 +12,7 @@ from contextlib import asynccontextmanager
 from infrastructure.db.models import register_models
 
 #Route registration imports
-from api.routes import auth, invitations, sla_monitoring, token_revocation, profile
+from api.routes import auth, invitations, sla_monitoring, token_revocation, profile, websocket_routes
 
 @asynccontextmanager
 async def lifespan(app: FastAPI):
@@ -45,11 +45,26 @@ async def lifespan(app: FastAPI):
     except Exception as e:
         print(f"⚠️  Platform initialization error: {str(e)}")
         # Don't fail startup, just log the error
+      # Start SLA WebSocket service for real-time monitoring
+    try:
+        from infrastructure.services.sla_websocket_service import sla_websocket_service
+        await sla_websocket_service.start()
+        print("✅ SLA WebSocket service started")
+    except Exception as e:
+        print(f"⚠️  SLA WebSocket service error: {str(e)}")
     
     yield
     
     # Shutdown
     print("👋 Shutting down SalesOptimizer API...")
+    
+    # Stop SLA WebSocket service
+    try:
+        from infrastructure.services.sla_websocket_service import sla_websocket_service
+        await sla_websocket_service.stop()
+        print("✅ SLA WebSocket service stopped")
+    except Exception as e:
+        print(f"⚠️  SLA WebSocket service shutdown error: {str(e)}")
 
 app = FastAPI(
     title="SalesOptimizer CRM", 
@@ -102,4 +117,5 @@ app.include_router(auth.router, prefix="/api/v1")
 app.include_router(invitations.router, prefix="/api/v1")
 app.include_router(token_revocation.router, prefix="/api/v1")
 app.include_router(profile.router, prefix="/api/v1")
-app.include_router(sla_monitoring.router, prefix="/api/v1")   
+app.include_router(sla_monitoring.router, prefix="/api/v1")
+app.include_router(websocket_routes.router, prefix="/api/v1")

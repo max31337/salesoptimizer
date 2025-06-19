@@ -36,3 +36,6 @@ httpx==0.25.2
 ##Integration
 factory-boy==3.3.0
 faker==20.1.0
+
+# WebSocket testing
+websockets==12.0

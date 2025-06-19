@@ -6,7 +6,7 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/com
 import { Badge } from "@/components/ui/badge"
 import { InviteOrgAdminModal } from "@/components/admin/invite-org-admin-modal"
 import { useAuth } from "@/features/auth/hooks/useAuth"
-import { useSLAData } from "@/features/sla/hooks/useSLAData"
+import { useClientWebSocketSLA } from "@/features/sla/hooks/useClientWebSocketSLA"
 import { ThemeToggle } from "@/components/ui/theme-toggle"
 import { UserAvatar } from "@/components/ui/user-avatar"
 import { Building, Users, Activity, UserPlus, Settings, FileText, LogOut, User as UserIcon, Monitor, AlertTriangle, Loader2 } from "lucide-react"
@@ -21,11 +21,17 @@ import {
 import Link from "next/link"
 import { createFullName } from "@/utils/nameParser"
 
-export default function SuperAdminDashboard() {  
+export default function SuperAdminDashboard() {   
   const [isInviteModalOpen, setIsInviteModalOpen] = useState(false)
   const [isLoggingOut, setIsLoggingOut] = useState(false)
   const { user, logout } = useAuth()
-  const { systemHealth, alerts, isLoading: slaLoading } = useSLAData(true, 30000)
+  const { 
+    systemHealth, 
+    alerts, 
+    isLoading: slaLoading, 
+    isConnected: wsConnected,
+    lastUpdated 
+  } = useClientWebSocketSLA(true)
   
   // Calculate real-time alert counts from the alerts array
   const activeAlertsCount = alerts.length
@@ -162,8 +168,7 @@ export default function SuperAdminDashboard() {
                   {slaLoading && <Loader2 className="h-3 w-3 animate-spin text-muted-foreground" />}
                   <Activity className="h-4 w-4 text-muted-foreground" />
                 </div>
-              </CardHeader>
-              <CardContent>
+              </CardHeader>              <CardContent>
                 <div className="flex items-center gap-2">
                   <div className={`text-2xl font-bold ${
                     systemHealth?.uptime_status === 'operational' 
@@ -190,9 +195,17 @@ export default function SuperAdminDashboard() {
                     {systemHealth?.uptime_status || 'Unknown'}
                   </Badge>
                 </div>
-                <p className="text-xs text-muted-foreground mt-1">
-                  {systemHealth?.uptime_duration || 'Loading...'}
-                </p>
+                <div className="flex items-center justify-between mt-1">
+                  <p className="text-xs text-muted-foreground">
+                    {systemHealth?.uptime_duration || 'Loading...'}
+                  </p>
+                  <div className="flex items-center gap-1">
+                    <div className={`w-2 h-2 rounded-full ${wsConnected ? 'bg-green-500' : 'bg-red-500'}`}></div>
+                    <span className="text-xs text-muted-foreground">
+                      {wsConnected ? 'Live' : 'Offline'}
+                    </span>
+                  </div>
+                </div>
               </CardContent>
             </Card>
 

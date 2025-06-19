@@ -177,6 +177,14 @@ async def acknowledge_alert(
                 detail="Alert not found or already acknowledged"
             )
         
+        # Trigger real-time update to all connected clients
+        try:
+            from infrastructure.services.sla_websocket_service import sla_websocket_service
+            await sla_websocket_service.send_immediate_update()
+        except Exception as e:
+            # Don't fail the request if WebSocket update fails
+            print(f"Warning: Failed to send WebSocket update: {e}")
+        
         return {
             "success": True,
             "message": f"Alert {alert_id} acknowledged successfully",

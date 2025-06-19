@@ -1,0 +1,221 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>SLA WebSocket Test</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            max-width: 800px;
+            margin: 0 auto;
+            padding: 20px;
+            background: #f5f5f5;
+        }
+        .container {
+            background: white;
+            padding: 20px;
+            border-radius: 8px;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+        }
+        .status {
+            padding: 10px;
+            margin: 10px 0;
+            border-radius: 4px;
+        }
+        .connected { background: #d4edda; color: #155724; }
+        .disconnected { background: #f8d7da; color: #721c24; }
+        .log {
+            background: #f8f9fa;
+            padding: 15px;
+            border-radius: 4px;
+            height: 300px;
+            overflow-y: scroll;
+            font-family: monospace;
+            font-size: 12px;
+            margin: 10px 0;
+        }
+        button {
+            background: #007bff;
+            color: white;
+            border: none;
+            padding: 10px 20px;
+            border-radius: 4px;
+            cursor: pointer;
+            margin: 5px;
+        }
+        button:disabled {
+            background: #6c757d;
+            cursor: not-allowed;
+        }
+        input {
+            width: 300px;
+            padding: 8px;
+            margin: 5px;
+            border: 1px solid #ddd;
+            border-radius: 4px;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>🧪 SLA Monitoring WebSocket Test</h1>
+        
+        <div>
+            <label>JWT Token (get from browser cookies after login):</label><br>
+            <input type="text" id="tokenInput" placeholder="Enter your JWT token here">
+        </div>
+        
+        <div>
+            <button onclick="connect()">Connect</button>
+            <button onclick="disconnect()">Disconnect</button>
+            <button onclick="sendPing()" id="pingBtn" disabled>Send Ping</button>
+            <button onclick="requestUpdate()" id="updateBtn" disabled>Request Update</button>
+            <button onclick="clearLog()">Clear Log</button>
+        </div>
+        
+        <div id="status" class="status disconnected">
+            Status: Disconnected
+        </div>
+        
+        <div class="log" id="log">
+            Ready to connect...<br>
+        </div>
+        
+        <div>
+            <h3>📊 Latest SLA Data:</h3>
+            <div id="slaData">No data received yet</div>
+        </div>
+    </div>
+
+    <script>
+        let ws = null;
+        let isConnected = false;
+
+        function log(message) {
+            const logElement = document.getElementById('log');
+            const timestamp = new Date().toLocaleTimeString();
+            logElement.innerHTML += `[${timestamp}] ${message}<br>`;
+            logElement.scrollTop = logElement.scrollHeight;
+        }
+
+        function updateStatus(connected) {
+            isConnected = connected;
+            const statusElement = document.getElementById('status');
+            const pingBtn = document.getElementById('pingBtn');
+            const updateBtn = document.getElementById('updateBtn');
+            
+            if (connected) {
+                statusElement.textContent = 'Status: Connected';
+                statusElement.className = 'status connected';
+                pingBtn.disabled = false;
+                updateBtn.disabled = false;
+            } else {
+                statusElement.textContent = 'Status: Disconnected';
+                statusElement.className = 'status disconnected';
+                pingBtn.disabled = true;
+                updateBtn.disabled = true;
+            }
+        }
+
+        function connect() {
+            const token = document.getElementById('tokenInput').value.trim();
+            if (!token) {
+                alert('Please enter a JWT token first');
+                return;
+            }
+
+            if (ws) {
+                ws.close();
+            }            const wsUrl = `ws://localhost:8000/api/v1/ws/sla-monitoring?token=${encodeURIComponent(token)}`;
+            log(`Connecting to: ${wsUrl}`);
+
+            ws = new WebSocket(wsUrl);
+
+            ws.onopen = function() {
+                log('✅ Connected to WebSocket');
+                updateStatus(true);
+            };
+
+            ws.onmessage = function(event) {
+                const data = JSON.parse(event.data);
+                log(`📥 Received: ${data.type}`);
+                
+                if (data.type === 'sla_update') {
+                    displaySLAData(data.data);
+                } else if (data.type === 'pong') {
+                    log('   Pong received - connection alive!');
+                }
+            };
+
+            ws.onclose = function(event) {
+                log(`❌ Connection closed: ${event.code} - ${event.reason}`);
+                updateStatus(false);
+            };
+
+            ws.onerror = function(error) {
+                log(`❌ WebSocket error: ${error}`);
+                updateStatus(false);
+            };
+        }
+
+        function disconnect() {
+            if (ws) {
+                ws.close();
+                ws = null;
+            }
+        }
+
+        function sendPing() {
+            if (ws && isConnected) {
+                const message = {
+                    type: 'ping',
+                    timestamp: new Date().toISOString()
+                };
+                ws.send(JSON.stringify(message));
+                log(`📤 Sent ping`);
+            }
+        }
+
+        function requestUpdate() {
+            if (ws && isConnected) {
+                const message = { type: 'request_update' };
+                ws.send(JSON.stringify(message));
+                log(`📤 Requested SLA update`);
+            }
+        }
+
+        function clearLog() {
+            document.getElementById('log').innerHTML = '';
+        }
+
+        function displaySLAData(data) {
+            const slaElement = document.getElementById('slaData');
+            const health = data.system_health;
+            const alertsCount = data.alerts.length;
+            
+            slaElement.innerHTML = `
+                <strong>System Status:</strong> ${health.overall_status}<br>
+                <strong>Health:</strong> ${health.health_percentage.toFixed(1)}%<br>
+                <strong>Uptime:</strong> ${health.uptime_percentage || 'N/A'}%<br>
+                <strong>Uptime Duration:</strong> ${health.uptime_duration || 'N/A'}<br>
+                <strong>Metrics:</strong> ${health.healthy_metrics}/${health.total_metrics} healthy<br>
+                <strong>Active Alerts:</strong> ${alertsCount}
+            `;
+        }
+
+        // Auto-fill token from localStorage if available
+        window.onload = function() {
+            const savedToken = localStorage.getItem('testToken');
+            if (savedToken) {
+                document.getElementById('tokenInput').value = savedToken;
+            }
+        };
+
+        // Save token to localStorage when input changes
+        document.getElementById('tokenInput').addEventListener('input', function(e) {
+            localStorage.setItem('testToken', e.target.value);
+        });
+    </script>
+</body>
+</html>
