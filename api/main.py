@@ -12,7 +12,7 @@ from contextlib import asynccontextmanager
 from infrastructure.db.models import register_models
 
 #Route registration imports
-from api.routes import auth, invitations, token_revocation, profile
+from api.routes import auth, invitations, sla_monitoring, token_revocation, profile
 
 @asynccontextmanager
 async def lifespan(app: FastAPI):
@@ -102,3 +102,4 @@ app.include_router(auth.router, prefix="/api/v1")
 app.include_router(invitations.router, prefix="/api/v1")
 app.include_router(token_revocation.router, prefix="/api/v1")
 app.include_router(profile.router, prefix="/api/v1")
+app.include_router(sla_monitoring.router, prefix="/api/v1")   

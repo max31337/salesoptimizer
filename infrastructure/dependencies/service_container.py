@@ -12,12 +12,14 @@ from infrastructure.db.repositories.tenant_repository_impl import TenantReposito
 from infrastructure.db.repositories.team_repository_impl import TeamRepositoryImpl
 from infrastructure.db.repositories.refresh_token_repository_impl import RefreshTokenRepositoryImpl
 from infrastructure.db.repositories.profile_update_request_repository_impl import ProfileUpdateRequestRepositoryImpl
+from infrastructure.db.repositories.activity_log_repository_impl import ActivityLogRepositoryImpl
 from infrastructure.email.smtp_email_service import SMTPEmailService
 from infrastructure.services.password_service import PasswordService
 from infrastructure.services.jwt_service import JWTService
 from infrastructure.services.oauth_service import OAuthService
 from infrastructure.config.oauth_config import OAuthConfig
 from infrastructure.config.redis_config import redis_config
+
 
 # Domain services
 from domain.organization.services.auth_service import AuthService
@@ -26,6 +28,7 @@ from domain.organization.services.tenant_service import TenantService
 from domain.organization.services.team_service import TeamService
 from domain.organization.services.profile_update_service import ProfileUpdateService
 from domain.organization.services.activity_log_service import ActivityLogService
+from domain.monitoring.services.sla_monitoring_service import SLAMonitoringService
 
 # Application layer
 from application.services.application_service import ApplicationService
@@ -33,6 +36,7 @@ from application.use_cases.auth_use_cases import AuthUseCases
 from application.use_cases.invitation_use_cases import InvitationUseCases
 from application.use_cases.token_revocation_use_cases import TokenRevocationUseCases
 from application.use_cases.profile_update_use_cases import ProfileUpdateUseCase
+from application.use_cases.sla_monitoring_use_cases import SLAMonitoringUseCase
 from domain.shared.services.email_service import EmailService
 from domain.shared.services.token_blacklist_service import InMemoryTokenBlacklistService
 
@@ -129,8 +133,7 @@ async def get_application_service(
     )
     
     # Activity log service
-    from infrastructure.db.repositories.activity_log_repository_impl import ActivityLogRepositoryImpl
-    from domain.organization.services.activity_log_service import ActivityLogService
+
     activity_log_repository = ActivityLogRepositoryImpl(session)
     activity_log_service = ActivityLogService(activity_log_repository)
     
@@ -193,3 +196,12 @@ async def get_activity_log_service(
     
     activity_log_repository = ActivityLogRepositoryImpl(session)
     return ActivityLogService(activity_log_repository)
+
+
+async def get_sla_monitoring_use_case(
+    session: AsyncSession = Depends(get_async_session)
+) -> SLAMonitoringUseCase:
+    """Get SLA monitoring use case with dependencies."""
+    sla_monitoring_service = SLAMonitoringService(session)
+    sla_monitoring_use_case = SLAMonitoringUseCase(sla_monitoring_service)
+    return sla_monitoring_use_case

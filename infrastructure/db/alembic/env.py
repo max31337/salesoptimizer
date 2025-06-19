@@ -27,9 +27,13 @@ try:
     from infrastructure.db.models.refresh_token_model import RefreshTokenModel
     from infrastructure.db.models.profile_update_request_model import ProfileUpdateRequestModel
     from infrastructure.db.models.activity_log_model import ActivityLogModel
-
+    from infrastructure.db.models.sla_metric_model import SLAMetricModel
+    from infrastructure.db.models.sla_threshold_model import SLAThresholdModel
+    from infrastructure.db.models.sla_report_model import SLAReportModel
+    from infrastructure.db.models.sla_alert_model import SLAAlertModel
+    
     # Reference models to avoid "import not accessed" warning
-    _models: list[type] = [UserModel, TenantModel, TeamModel, InvitationModel, RefreshTokenModel, ProfileUpdateRequestModel, ActivityLogModel]
+    _models: list[type] = [UserModel, TenantModel, TeamModel, InvitationModel, RefreshTokenModel, ProfileUpdateRequestModel, ActivityLogModel, SLAMetricModel, SLAThresholdModel, SLAReportModel, SLAAlertModel]
 
     print(f"✅ Successfully imported Base and models")
     print(f"📋 Registered tables: {list(Base.metadata.tables.keys())}")
