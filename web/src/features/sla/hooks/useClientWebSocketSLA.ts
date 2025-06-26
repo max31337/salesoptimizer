@@ -10,7 +10,6 @@ export function useClientWebSocketSLA(autoConnect: boolean = true) {
   useEffect(() => {
     setIsClient(true)
   }, [])
-
   // Return default values during SSR
   if (!isClient) {
     return {
@@ -18,7 +17,7 @@ export function useClientWebSocketSLA(autoConnect: boolean = true) {
       alerts: [],
       connectionInfo: null,
       isConnected: false,
-      isLoading: true,
+      isLoading: true, // Only show loading during SSR, not when cached data is available
       error: null,
       lastUpdated: null,
       refreshData: async () => {},

@@ -174,26 +174,29 @@ export default function SuperAdminDashboard() {
                   +12% from last month
                 </p>
               </CardContent>
-            </Card>
-
+            </Card>            
             <Card className="bg-card border-border">
               <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-                <CardTitle className="text-sm font-medium text-card-foreground">System Uptime</CardTitle>                <div className="flex items-center gap-2">
-                  {!wsConnected && <Loader2 className="h-3 w-3 animate-spin text-muted-foreground" />}
+                <CardTitle className="text-sm font-medium text-card-foreground">System Uptime</CardTitle>                
+                <div className="flex items-center gap-2">
+                  {slaLoading && !systemHealth && <Loader2 className="h-3 w-3 animate-spin text-muted-foreground" />}
                   <Activity className="h-4 w-4 text-muted-foreground" />
                 </div>
-              </CardHeader>              <CardContent>
+              </CardHeader>
+              <CardContent>
                 <div className="flex items-center gap-2">
                   <div className={`text-2xl font-bold ${
                     systemHealth?.uptime_status === 'operational' 
                       ? 'text-green-600 dark:text-green-400'
                       : systemHealth?.uptime_status === 'degraded'
                       ? 'text-yellow-600 dark:text-yellow-400'
-                      : 'text-red-600 dark:text-red-400'
+                      : systemHealth?.uptime_status === 'critical' 
+                      ? 'text-red-600 dark:text-red-400'
+                      : 'text-muted-foreground'
                   }`}>
                     {systemHealth?.uptime_percentage !== undefined
                       ? `${systemHealth.uptime_percentage.toFixed(1)}%`
-                      : '---'
+                      : slaLoading ? '---' : 'N/A'
                     }
                   </div>
                   <Badge 
@@ -202,31 +205,31 @@ export default function SuperAdminDashboard() {
                         ? 'default'
                         : systemHealth?.uptime_status === 'degraded'
                         ? 'secondary'
-                        : 'destructive'
+                        : systemHealth?.uptime_status === 'critical'
+                        ? 'destructive'
+                        : 'outline'
                     }
                     className="text-xs"
                   >
-                    {systemHealth?.uptime_status || 'Unknown'}
+                    {systemHealth?.uptime_status || (slaLoading ? 'Loading...' : 'Unknown')}
                   </Badge>
                 </div>
                 <div className="flex items-center justify-between mt-1">
                   <p className="text-xs text-muted-foreground">
-                    {systemHealth?.uptime_duration || 'Loading...'}
+                    {systemHealth?.uptime_duration || (slaLoading ? 'Loading...' : 'No data')}
                   </p>
                   <div className="flex items-center gap-1">
-                    <div className={`w-2 h-2 rounded-full ${wsConnected ? 'bg-green-500' : 'bg-red-500'}`}></div>
+                    <div className={`w-2 h-2 rounded-full ${wsConnected ? 'bg-green-500' : systemHealth ? 'bg-yellow-500' : 'bg-red-500'}`}></div>
                     <span className="text-xs text-muted-foreground">
-                      {wsConnected ? 'Live' : 'Offline'}
+                      {wsConnected ? 'Live' : systemHealth ? 'Cached' : 'Offline'}
                     </span>
                   </div>
                 </div>
               </CardContent>
-            </Card>
-
-            <Card className="bg-card border-border">
+            </Card>            <Card className="bg-card border-border">
               <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
                 <CardTitle className="text-sm font-medium text-card-foreground">System Health</CardTitle>                <div className="flex items-center gap-2">
-                  {!wsConnected && <Loader2 className="h-3 w-3 animate-spin text-muted-foreground" />}
+                  {slaLoading && !systemHealth && <Loader2 className="h-3 w-3 animate-spin text-muted-foreground" />}
                   <Monitor className="h-4 w-4 text-muted-foreground" />
                 </div>
               </CardHeader>
@@ -237,11 +240,13 @@ export default function SuperAdminDashboard() {
                       ? 'text-green-600 dark:text-green-400'
                       : systemHealth?.overall_status === 'warning'
                       ? 'text-yellow-600 dark:text-yellow-400'
-                      : 'text-red-600 dark:text-red-400'
+                      : systemHealth?.overall_status === 'critical'
+                      ? 'text-red-600 dark:text-red-400'
+                      : 'text-muted-foreground'
                   }`}>
                     {systemHealth 
                       ? `${systemHealth.healthy_metrics}/${systemHealth.total_metrics}`
-                      : '---'
+                      : slaLoading ? '---' : 'N/A'
                     }
                   </div>
                   <Badge 
@@ -250,11 +255,13 @@ export default function SuperAdminDashboard() {
                         ? 'default'
                         : systemHealth?.overall_status === 'warning'
                         ? 'secondary'
-                        : 'destructive'
+                        : systemHealth?.overall_status === 'critical'
+                        ? 'destructive'
+                        : 'outline'
                     }
                     className="text-xs"
                   >
-                    {systemHealth?.overall_status || 'Unknown'}
+                    {systemHealth?.overall_status || (slaLoading ? 'Loading...' : 'Unknown')}
                   </Badge>
                 </div>                <div className="flex items-center gap-1 mt-1">
                   <p className="text-xs text-muted-foreground">

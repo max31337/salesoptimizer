@@ -114,13 +114,24 @@ export const useSLADataStore = create<SLADataStore>()(
         const now = Date.now()
         const fiveMinutesAgo = now - (5 * 60 * 1000) // 5 minutes cache
         return state.cacheTimestamp > fiveMinutesAgo
-      },
-
-      restoreFromCache: () => {
+      },      restoreFromCache: () => {
         // Data is automatically restored from localStorage via zustand persist
         const state = get()
+        console.log('📦 Restoring SLA data from cache:', {
+          hasData: state.hasData(),
+          hasFreshData: state.hasFreshData(),
+          cacheAge: state.cacheTimestamp ? Math.round((Date.now() - state.cacheTimestamp) / 1000) : null
+        })
+        
         if (state.hasFreshData()) {
+          console.log('📦 Fresh cached data available, disabling loading state')
           set({ isLoading: false })
+        } else if (state.hasData()) {
+          console.log('📦 Stale cached data available, keeping for display while refreshing')
+          // Keep data visible but maintain loading state to indicate refresh is needed
+        } else {
+          console.log('📦 No cached data available')
+          set({ isLoading: true })
         }
       }
     }),

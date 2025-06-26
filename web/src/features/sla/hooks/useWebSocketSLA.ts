@@ -44,20 +44,27 @@ export function useWebSocketSLA(autoConnect: boolean = true): WebSocketSLAData {
   const [isConnected, setIsConnected] = useState(false)
   const isInitialized = useRef(false)
   const retryTimeout = useRef<NodeJS.Timeout | null>(null)
-
   // Initialize with cached data on mount
   useEffect(() => {
     if (typeof window !== 'undefined') {
       // Try to restore from cache first
       restoreFromCache()
       
-      // If we have fresh cached data, show it immediately
+      // If we have fresh cached data, show it immediately and don't show loading
       if (hasFreshData()) {
-        console.log('📦 Using fresh cached SLA data')
+        console.log('📦 Using fresh cached SLA data - stopping loading state')
         setStoreLoading(false)
+      } else if (hasStoreData()) {
+        // If we have stale data, show it but keep loading state to indicate refresh
+        console.log('📦 Using stale cached SLA data - keeping loading state for refresh')
+        setStoreLoading(true)
+      } else {
+        // No data at all, definitely loading
+        console.log('📦 No cached SLA data - showing loading state')
+        setStoreLoading(true)
       }
     }
-  }, [hasFreshData, restoreFromCache, setStoreLoading])
+  }, [hasFreshData, hasStoreData, restoreFromCache, setStoreLoading])
 
   // Handle SLA updates from WebSocket
   const handleSLAUpdate = useCallback((updateData: SLAUpdateData) => {
@@ -95,18 +102,25 @@ export function useWebSocketSLA(autoConnect: boolean = true): WebSocketSLAData {
       setStoreError('WebSocket disconnected')
     }
   }, [setStoreError])
-
   // Load initial data from REST API as fallback
   const loadInitialData = useCallback(async () => {
+    // If we have fresh data, don't make unnecessary API calls
     if (hasFreshData()) {
       console.log('📦 Fresh data available, skipping REST API load')
+      setStoreLoading(false)
       return
     }
 
-    try {
-      console.log('🌐 Loading initial SLA data via REST API...')
+    // If we have stale data, keep it visible while refreshing
+    if (hasStoreData()) {
+      console.log('📦 Stale data available, refreshing in background...')
+      // Don't set loading to true here to avoid hiding the stale data
+    } else {
+      console.log('🌐 No data available, loading initial SLA data via REST API...')
       setStoreLoading(true)
-      
+    }
+
+    try {
       const [systemHealth, alerts] = await Promise.all([
         slaService.getSystemHealth(),
         slaService.getCurrentAlerts()
@@ -155,7 +169,7 @@ export function useWebSocketSLA(autoConnect: boolean = true): WebSocketSLAData {
     } finally {
       setStoreLoading(false)
     }
-  }, [hasFreshData, updateStoreData, setStoreLoading, setStoreError])
+  }, [hasFreshData, hasStoreData, updateStoreData, setStoreLoading, setStoreError])
 
   // Initialize WebSocket connection
   useEffect(() => {
@@ -184,18 +198,22 @@ export function useWebSocketSLA(autoConnect: boolean = true): WebSocketSLAData {
       }
     }
   }, [autoConnect, handleSLAUpdate, handleConnectionStatus, loadInitialData])
-
   // Manual refresh function
   const refreshData = useCallback(async () => {
     try {
-      setStoreLoading(true)
+      // Only show loading if we don't have any data to avoid hiding current data
+      if (!hasStoreData()) {
+        setStoreLoading(true)
+      }
       setStoreError(null)
 
       if (isConnected) {
         // If WebSocket is connected, request update
+        console.log('🔄 Requesting WebSocket update...')
         slaWebSocketClient.requestUpdate()
       } else {
         // Otherwise, use REST API
+        console.log('🔄 Refreshing via REST API...')
         const [systemHealth, alerts] = await Promise.all([
           slaService.getSystemHealth(),
           slaService.getCurrentAlerts()
@@ -236,6 +254,7 @@ export function useWebSocketSLA(autoConnect: boolean = true): WebSocketSLAData {
         }
 
         updateStoreData(updateData)
+        console.log('✅ Data refreshed via REST API')
       }
     } catch (error) {
       console.error('❌ Failed to refresh SLA data:', error)
@@ -243,7 +262,7 @@ export function useWebSocketSLA(autoConnect: boolean = true): WebSocketSLAData {
     } finally {
       setStoreLoading(false)
     }
-  }, [isConnected, updateStoreData, setStoreLoading, setStoreError])
+  }, [isConnected, hasStoreData, updateStoreData, setStoreLoading, setStoreError])
 
   // Acknowledge alert function with better error handling
   const acknowledgeAlert = useCallback(async (alertId: string) => {
