@@ -40,8 +40,13 @@ export function useWebSocketSLA(autoConnect: boolean = true): WebSocketSLAData {
     hasFreshData,
     restoreFromCache
   } = useSLADataStore()
-
-  const [isConnected, setIsConnected] = useState(false)
+  const [isConnected, setIsConnected] = useState(() => {
+    // Initialize with actual WebSocket connection status if available
+    if (typeof window !== 'undefined') {
+      return slaWebSocketClient.getConnectionStatus()
+    }
+    return false
+  })
   const isInitialized = useRef(false)
   const retryTimeout = useRef<NodeJS.Timeout | null>(null)
   // Initialize with cached data on mount
@@ -179,20 +184,33 @@ export function useWebSocketSLA(autoConnect: boolean = true): WebSocketSLAData {
     isInitialized.current = true
 
     // Load initial data immediately (from cache or REST API)
-    loadInitialData()
-
-    // Subscribe to WebSocket events
+    loadInitialData()    // Subscribe to WebSocket events
     const unsubscribeSLAUpdate = slaWebSocketClient.onSLAUpdate(handleSLAUpdate)
     const unsubscribeConnectionStatus = slaWebSocketClient.onConnectionStatus(handleConnectionStatus)
 
-    // Start WebSocket connection
+    // Sync initial connection status to ensure UI is accurate
+    const currentConnectionStatus = slaWebSocketClient.getConnectionStatus()
+    if (currentConnectionStatus !== isConnected) {
+      console.log(`🔄 Syncing connection status: ${currentConnectionStatus}`)
+      setIsConnected(currentConnectionStatus)
+    }    // Start WebSocket connection
     slaWebSocketClient.connect().catch((error: Error) => {
       console.error('❌ Failed to connect WebSocket:', error)
     })
 
+    // Periodically check connection status to ensure UI stays in sync
+    const connectionStatusChecker = setInterval(() => {
+      const currentStatus = slaWebSocketClient.getConnectionStatus()
+      if (currentStatus !== isConnected) {
+        console.log(`🔄 Connection status sync: ${isConnected} -> ${currentStatus}`)
+        setIsConnected(currentStatus)
+      }
+    }, 5000) // Check every 5 seconds
+
     return () => {
       unsubscribeSLAUpdate()
       unsubscribeConnectionStatus()
+      clearInterval(connectionStatusChecker)
       if (retryTimeout.current) {
         clearTimeout(retryTimeout.current)
       }
