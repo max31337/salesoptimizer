@@ -26,14 +26,8 @@ export function LoginForm() {
     try {
       const result = await login({ emailOrUsername, password })
       
-      // Redirect based on user role
-      if (result.user.role === "super_admin") {
-        router.push("/admin")
-      } else if (result.user.role === "org_admin") {
-        router.push("/dashboard")
-      } else {
-        router.push("/dashboard")
-      }
+      // Redirect all users to dashboard - super admin gets full features there
+      router.push("/dashboard")
     } catch (err: any) {
       console.error("Login failed:", err)
       setError(err.message || "Login failed. Please check your credentials.")

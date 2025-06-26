@@ -53,10 +53,15 @@ export const useSLADataStore = create<SLADataStore>()(
           metrics_summary: data.system_health.metrics_summary
         }
 
+        // Sort alerts by triggered_at desc (newest first) to ensure new alerts appear at the top
+        const sortedAlerts = (data.alerts || []).sort((a, b) => 
+          new Date(b.triggered_at).getTime() - new Date(a.triggered_at).getTime()
+        )
+
         const now = new Date()
         set({
           systemHealth,
-          alerts: data.alerts || [],
+          alerts: sortedAlerts,
           connectionInfo: data.connection_info,
           lastUpdated: now,
           isLoading: false,
@@ -75,9 +80,14 @@ export const useSLADataStore = create<SLADataStore>()(
       },
 
       setAlerts: (alerts: SLAAlert[]) => {
+        // Sort alerts by triggered_at desc (newest first)
+        const sortedAlerts = alerts.sort((a, b) => 
+          new Date(b.triggered_at).getTime() - new Date(a.triggered_at).getTime()
+        )
+        
         const now = new Date()
         set({ 
-          alerts, 
+          alerts: sortedAlerts, 
           lastUpdated: now,
           cacheTimestamp: now.getTime()
         })

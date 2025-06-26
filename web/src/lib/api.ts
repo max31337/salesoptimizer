@@ -47,6 +47,20 @@ class ApiClient {
     // Clear auth indicators
     if (typeof window !== 'undefined') {
       localStorage.removeItem('salesoptimizer_was_logged_in')
+      
+      // Clear authentication cookies
+      const cookiesToClear = ['access_token', 'refresh_token', 'token', 'session']
+      cookiesToClear.forEach(cookieName => {
+        // Clear for current domain
+        document.cookie = `${cookieName}=; expires=Thu, 01 Jan 1970 00:00:00 UTC; path=/; SameSite=Strict`
+        // Clear for parent domain (if any)
+        const domain = window.location.hostname
+        if (domain.includes('.')) {
+          const parentDomain = '.' + domain.split('.').slice(-2).join('.')
+          document.cookie = `${cookieName}=; expires=Thu, 01 Jan 1970 00:00:00 UTC; path=/; domain=${parentDomain}; SameSite=Strict`
+        }
+      })
+      
       // Notify auth store about session expiry
       const event = new CustomEvent('session-expired')
       window.dispatchEvent(event)

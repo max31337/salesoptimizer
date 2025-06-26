@@ -76,7 +76,7 @@ export interface AcknowledgeResponse {
 }
 
 class SLAService {
-  private readonly basePath = '/admin/sla'
+  private readonly basePath = '/admin/sla'  // Keep API path as /admin/sla (backend endpoint)
 
   async getSystemHealth(): Promise<SLASystemHealth> {
     return apiClient.get<SLASystemHealth>(`${this.basePath}/health`)

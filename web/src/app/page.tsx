@@ -14,13 +14,9 @@ export default function HomePage() {
     // Only run redirect logic after auth has been checked
     if (!isLoading) {
       if (isAuthenticated && user) {
-        // Redirect authenticated users based on role
-        console.log('HomePage: Redirecting authenticated user:', user.role)
-        if (user.role === 'super_admin') {
-          router.push('/admin')
-        } else {
-          router.push('/dashboard')
-        }
+        // Redirect all authenticated users to dashboard
+        console.log('HomePage: Redirecting authenticated user to dashboard')
+        router.push('/dashboard')
       } else {
         // Show landing page for unauthenticated users
         console.log('HomePage: Showing landing page for unauthenticated user')

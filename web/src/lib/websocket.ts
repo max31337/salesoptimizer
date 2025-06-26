@@ -378,7 +378,11 @@ export class SLAWebSocketClient {
 
       case 'new_alert':
         console.log('🚨 New alert received:', message.data)
-        // You could show a notification here
+        // Trigger an immediate SLA data refresh to include the new alert
+        if (this.slaUpdateHandlers.length > 0) {
+          // Request an immediate update from the server
+          this.requestUpdate()
+        }
         break
 
       case 'pong':

@@ -5,7 +5,7 @@ import { useRouter } from "next/navigation"
 import { useEffect } from "react"
 import { DashboardLayout } from "@/components/layout/dashboard-layout"
 
-export default function AdminLayoutWrapper({
+export default function DashboardLayoutWrapper({
   children,
 }: {
   children: React.ReactNode
@@ -17,15 +17,8 @@ export default function AdminLayoutWrapper({
     // Only perform checks when loading is complete
     if (!isLoading) {
       if (!isAuthenticated) {
-        console.log('Admin layout: User not authenticated, redirecting to login')
+        console.log('Dashboard layout: User not authenticated, redirecting to login')
         router.push('/login')
-        return
-      }
-      
-      // Check if user is super admin
-      if (user?.role !== 'super_admin') {
-        console.log('Admin layout: User not super admin, redirecting to dashboard')
-        router.push('/dashboard')
         return
       }
     }
@@ -41,7 +34,7 @@ export default function AdminLayoutWrapper({
   }
 
   // Show loading while redirect is happening
-  if (!isAuthenticated || user?.role !== 'super_admin') {
+  if (!isAuthenticated) {
     return (
       <div className="min-h-screen flex items-center justify-center">
         <div className="text-center">

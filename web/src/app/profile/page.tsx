@@ -120,7 +120,7 @@ export default function ProfilePage() {
         <div className="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8">
           <div className="flex items-center gap-4 py-6">
             <Button variant="ghost" size="sm" asChild>
-              <Link href={user?.role === 'super_admin' ? '/admin' : '/dashboard'}>
+              <Link href={user?.role === 'super_admin' ? '/dashboard' : '/dashboard'}>
                 <ArrowLeft className="h-4 w-4 mr-2" />
                 Back to Dashboard
               </Link>

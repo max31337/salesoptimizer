@@ -277,9 +277,26 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         console.warn('Failed to disconnect WebSocket on logout:', error)
       }
       
+      // Clear all authentication state
       setUser(null)
+      setShowSessionExpiredModal(false)
+      
       // Clear the login indicator
       localStorage.removeItem('salesoptimizer_was_logged_in')
+      
+      // Clear all cookies by setting them with past expiration
+      const cookiesToClear = ['access_token', 'refresh_token', 'token', 'session']
+      cookiesToClear.forEach(cookieName => {
+        // Clear for current domain
+        document.cookie = `${cookieName}=; expires=Thu, 01 Jan 1970 00:00:00 UTC; path=/; SameSite=Strict`
+        // Clear for parent domain (if any)
+        const domain = window.location.hostname
+        if (domain.includes('.')) {
+          const parentDomain = '.' + domain.split('.').slice(-2).join('.')
+          document.cookie = `${cookieName}=; expires=Thu, 01 Jan 1970 00:00:00 UTC; path=/; domain=${parentDomain}; SameSite=Strict`
+        }
+      })
+      
       setIsLoading(false)
       router.push('/')
     }  }

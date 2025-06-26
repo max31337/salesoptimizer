@@ -1,32 +1,31 @@
 "use client"
 
 import { useState } from "react"
+import { useAuth } from "@/features/auth/hooks/useAuth"
+import { useClientWebSocketSLA } from "@/features/sla/hooks/useClientWebSocketSLA"
 import { Button } from "@/components/ui/button"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
 import { Badge } from "@/components/ui/badge"
-import { InviteOrgAdminModal } from "@/components/admin/invite-org-admin-modal"
-import { useAuth } from "@/features/auth/hooks/useAuth"
-import { useClientWebSocketSLA } from "@/features/sla/hooks/useClientWebSocketSLA"
-import { ThemeToggle } from "@/components/ui/theme-toggle"
-import { UserAvatar } from "@/components/ui/user-avatar"
-import { Building, Users, Activity, UserPlus, Settings, FileText, LogOut, User as UserIcon, Monitor, AlertTriangle, Loader2 } from "lucide-react"
-import {
-  DropdownMenu,
-  DropdownMenuContent,
-  DropdownMenuItem,
-  DropdownMenuLabel,
-  DropdownMenuSeparator,
-  DropdownMenuTrigger,
-} from "@/components/ui/dropdown-menu"
+import { 
+  Monitor, 
+  AlertTriangle, 
+  CheckCircle, 
+  Clock, 
+  Activity,
+  Settings,
+  Users,
+  Database,
+  Loader2,
+  Wifi,
+  WifiOff
+} from "lucide-react"
 import Link from "next/link"
-import { createFullName } from "@/utils/nameParser"
+import { format } from "date-fns"
 
-export default function SuperAdminDashboard() {   
-  const [isInviteModalOpen, setIsInviteModalOpen] = useState(false)
-  const [isLoggingOut, setIsLoggingOut] = useState(false)
-  const { user, logout } = useAuth()
+export default function SuperAdminPage() {
+  const { user } = useAuth()
   
-  // Use WebSocket SLA data with immediate fallback to REST API
+  // Use WebSocket SLA data for real-time monitoring
   const { 
     systemHealth, 
     alerts, 
@@ -34,35 +33,32 @@ export default function SuperAdminDashboard() {
     isConnected: wsConnected,
     lastUpdated 
   } = useClientWebSocketSLA()
-  
-  // Calculate real-time alert counts from the alerts array
+  // Check if user is super admin
+  if (user?.role !== 'super_admin') {
+    return (
+      <div className="flex-1 flex items-center justify-center">
+        <Card className="w-full max-w-md">
+          <CardHeader>
+            <CardTitle className="text-center">Access Denied</CardTitle>
+          </CardHeader>
+          <CardContent>
+            <p className="text-center text-muted-foreground">
+              You need super admin privileges to access this area.
+            </p>
+          </CardContent>
+        </Card>
+      </div>
+    )
+  }
+
+  // Calculate alert statistics
   const activeAlertsCount = alerts.length
-  const unacknowledgedAlertsCount = alerts.filter(alert => !alert.acknowledged).length  
-  // Debug logging
-  console.log('🐛 Super Admin Dashboard - Data:', {
-    systemHealth: systemHealth ? {
-      overall_status: systemHealth.overall_status,
-      uptime_status: systemHealth.uptime_status,
-      uptime_percentage: systemHealth.uptime_percentage,
-      health_percentage: systemHealth.health_percentage
-    } : null,
-    alerts: alerts.length,
-    isConnected: wsConnected,
-    isLoading: slaLoading,
-    lastUpdated
-  })
-  
+  const unacknowledgedAlertsCount = alerts.filter(alert => !alert.acknowledged).length
+  const criticalAlertsCount = alerts.filter(alert => alert.alert_type === 'critical').length
+  const warningAlertsCount = alerts.filter(alert => alert.alert_type === 'warning').length
+
   const handleLogout = async () => {
-    if (isLoggingOut) return
-    
-    setIsLoggingOut(true)
-    try {
-      await logout()
-    } catch (error) {
-      console.error('Logout failed:', error)
-    } finally {
-      setIsLoggingOut(false)
-    }
+    // Logout functionality moved to sidebar
   }
 
   return (
@@ -77,158 +73,43 @@ export default function SuperAdminDashboard() {
                 Welcome back, {user?.first_name || user?.email}
               </p>
             </div>
-              <div className="flex items-center space-x-4">
-              <Badge variant="secondary" className="bg-purple-100 dark:bg-purple-900/30 text-purple-800 dark:text-purple-300">
-                Super Admin
-              </Badge>
-              
-              <Button 
-                variant="outline" 
-                size="sm" 
-                className="flex items-center gap-2"
-                asChild
-              >
-                <Link href="/admin/sla-monitoring">
-                  <Monitor className="h-4 w-4" />
-                  SLA Monitoring
-                </Link>
-              </Button>
-              
-              <ThemeToggle />
-              
-              {/* User Profile Dropdown */}
-              <DropdownMenu>                <DropdownMenuTrigger asChild>
-                  <Button variant="ghost" className="relative h-10 w-10 rounded-full">
-                    <UserAvatar 
-                      user={user} 
-                      className="h-10 w-10" 
-                      fallbackClassName="bg-purple-100 dark:bg-purple-900/50 text-purple-800 dark:text-purple-300"
-                    />
-                  </Button>
-                </DropdownMenuTrigger>
-                <DropdownMenuContent className="w-56" align="end" forceMount>
-                  <DropdownMenuLabel className="font-normal">
-                    <div className="flex flex-col space-y-1">                      <p className="text-sm font-medium leading-none">
-                        {user?.first_name && user?.last_name 
-                          ? createFullName(user.first_name, user.last_name)
-                          : user?.email}
-                      </p>
-                      <p className="text-xs leading-none text-muted-foreground">
-                        {user?.email}
-                      </p>
-                    </div>
-                  </DropdownMenuLabel>                  <DropdownMenuSeparator />
-                  <DropdownMenuItem className="cursor-pointer" asChild>
-                    <Link href="/profile">
-                      <UserIcon className="mr-2 h-4 w-4" />
-                      <span>Profile</span>
-                    </Link>
-                  </DropdownMenuItem>
-                  <DropdownMenuItem className="cursor-pointer" asChild>
-                    <Link href="/settings">
-                      <Settings className="mr-2 h-4 w-4" />
-                      <span>Settings</span>
-                    </Link>
-                  </DropdownMenuItem>
-                  <DropdownMenuSeparator />
-                  <DropdownMenuItem 
-                    className="cursor-pointer text-red-600 dark:text-red-400 focus:text-red-600 dark:focus:text-red-400"
-                    onClick={handleLogout}
-                    disabled={isLoggingOut}
-                  >
-                    <LogOut className="mr-2 h-4 w-4" />
-                    <span>{isLoggingOut ? 'Signing out...' : 'Sign out'}</span>
-                  </DropdownMenuItem>
-                </DropdownMenuContent>
-              </DropdownMenu>
+            <div className="flex items-center gap-4">
+              <div className="text-right">
+                <div className="flex items-center gap-2 justify-end">
+                  <div className={`w-2 h-2 rounded-full ${wsConnected ? 'bg-green-500' : 'bg-red-500'}`}></div>
+                  <p className="text-xs text-muted-foreground flex items-center gap-1">
+                    {wsConnected ? (
+                      <>
+                        <Wifi className="h-3 w-3" />
+                        Real-time
+                      </>
+                    ) : (
+                      <>
+                        <WifiOff className="h-3 w-3" />
+                        Offline
+                      </>
+                    )}
+                  </p>
+                </div>
+                <p className="text-xs text-muted-foreground">Last updated</p>
+                <p className="text-sm font-medium">
+                  {lastUpdated ? format(lastUpdated, 'HH:mm:ss') : '---'}
+                </p>
+              </div>
             </div>
           </div>
         </div>
       </header>
 
-      {/* Main Content */}
-      <main className="max-w-7xl mx-auto py-6 sm:px-6 lg:px-8">        <div className="px-4 py-6 sm:px-0">
-          {/* Stats Cards */}
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 mb-8">
-            <Card className="bg-card border-border">
+      <main className="max-w-7xl mx-auto py-6 sm:px-6 lg:px-8">
+        <div className="px-4 py-6 sm:px-0">
+          
+          {/* System Overview Cards */}
+          <div className="grid grid-cols-1 md:grid-cols-4 gap-6 mb-8">
+            <Card>
               <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-                <CardTitle className="text-sm font-medium text-card-foreground">Organizations</CardTitle>
-                <Building className="h-4 w-4 text-muted-foreground" />
-              </CardHeader>
-              <CardContent>
-                <div className="text-2xl font-bold text-card-foreground">24</div>
-                <p className="text-xs text-muted-foreground">
-                  +3 from last month
-                </p>
-              </CardContent>
-            </Card>
-
-            <Card className="bg-card border-border">
-              <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-                <CardTitle className="text-sm font-medium text-card-foreground">Active Users</CardTitle>
-                <Users className="h-4 w-4 text-muted-foreground" />
-              </CardHeader>
-              <CardContent>
-                <div className="text-2xl font-bold text-card-foreground">1,247</div>
-                <p className="text-xs text-muted-foreground">
-                  +12% from last month
-                </p>
-              </CardContent>
-            </Card>            
-            <Card className="bg-card border-border">
-              <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-                <CardTitle className="text-sm font-medium text-card-foreground">System Uptime</CardTitle>                
+                <CardTitle className="text-sm font-medium">System Status</CardTitle>
                 <div className="flex items-center gap-2">
-                  {slaLoading && !systemHealth && <Loader2 className="h-3 w-3 animate-spin text-muted-foreground" />}
-                  <Activity className="h-4 w-4 text-muted-foreground" />
-                </div>
-              </CardHeader>
-              <CardContent>
-                <div className="flex items-center gap-2">
-                  <div className={`text-2xl font-bold ${
-                    systemHealth?.uptime_status === 'operational' 
-                      ? 'text-green-600 dark:text-green-400'
-                      : systemHealth?.uptime_status === 'degraded'
-                      ? 'text-yellow-600 dark:text-yellow-400'
-                      : systemHealth?.uptime_status === 'critical' 
-                      ? 'text-red-600 dark:text-red-400'
-                      : 'text-muted-foreground'
-                  }`}>
-                    {systemHealth?.uptime_percentage !== undefined
-                      ? `${systemHealth.uptime_percentage.toFixed(1)}%`
-                      : slaLoading ? '---' : 'N/A'
-                    }
-                  </div>
-                  <Badge 
-                    variant={
-                      systemHealth?.uptime_status === 'operational' 
-                        ? 'default'
-                        : systemHealth?.uptime_status === 'degraded'
-                        ? 'secondary'
-                        : systemHealth?.uptime_status === 'critical'
-                        ? 'destructive'
-                        : 'outline'
-                    }
-                    className="text-xs"
-                  >
-                    {systemHealth?.uptime_status || (slaLoading ? 'Loading...' : 'Unknown')}
-                  </Badge>
-                </div>
-                <div className="flex items-center justify-between mt-1">
-                  <p className="text-xs text-muted-foreground">
-                    {systemHealth?.uptime_duration || (slaLoading ? 'Loading...' : 'No data')}
-                  </p>
-                  <div className="flex items-center gap-1">
-                    <div className={`w-2 h-2 rounded-full ${wsConnected ? 'bg-green-500' : systemHealth ? 'bg-yellow-500' : 'bg-red-500'}`}></div>
-                    <span className="text-xs text-muted-foreground">
-                      {wsConnected ? 'Live' : systemHealth ? 'Cached' : 'Offline'}
-                    </span>
-                  </div>
-                </div>
-              </CardContent>
-            </Card>            <Card className="bg-card border-border">
-              <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-                <CardTitle className="text-sm font-medium text-card-foreground">System Health</CardTitle>                <div className="flex items-center gap-2">
                   {slaLoading && !systemHealth && <Loader2 className="h-3 w-3 animate-spin text-muted-foreground" />}
                   <Monitor className="h-4 w-4 text-muted-foreground" />
                 </div>
@@ -263,7 +144,8 @@ export default function SuperAdminDashboard() {
                   >
                     {systemHealth?.overall_status || (slaLoading ? 'Loading...' : 'Unknown')}
                   </Badge>
-                </div>                <div className="flex items-center gap-1 mt-1">
+                </div>
+                <div className="flex items-center gap-1 mt-1">
                   <p className="text-xs text-muted-foreground">
                     {activeAlertsCount > 0 ? `${activeAlertsCount} alerts` : 'No alerts'}
                   </p>
@@ -281,83 +163,194 @@ export default function SuperAdminDashboard() {
                 </div>
               </CardContent>
             </Card>
+
+            <Card>
+              <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+                <CardTitle className="text-sm font-medium">Health Score</CardTitle>
+                <CheckCircle className="h-4 w-4 text-muted-foreground" />
+              </CardHeader>
+              <CardContent>
+                <div className="text-2xl font-bold">
+                  {slaLoading ? '...' : `${systemHealth?.health_percentage?.toFixed(2) || '0.00'}%`}
+                </div>
+                <p className="text-xs text-muted-foreground">
+                  Overall system health
+                </p>
+              </CardContent>
+            </Card>
+
+            <Card>
+              <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+                <CardTitle className="text-sm font-medium">Critical Alerts</CardTitle>
+                <AlertTriangle className="h-4 w-4 text-red-500" />
+              </CardHeader>
+              <CardContent>
+                <div className="text-2xl font-bold text-red-600">
+                  {criticalAlertsCount}
+                </div>
+                <p className="text-xs text-muted-foreground">
+                  Require immediate action
+                </p>
+              </CardContent>
+            </Card>
+
+            <Card>
+              <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+                <CardTitle className="text-sm font-medium">Warning Alerts</CardTitle>
+                <AlertTriangle className="h-4 w-4 text-yellow-500" />
+              </CardHeader>
+              <CardContent>
+                <div className="text-2xl font-bold text-yellow-600">
+                  {warningAlertsCount}
+                </div>
+                <p className="text-xs text-muted-foreground">
+                  Need monitoring
+                </p>
+              </CardContent>
+            </Card>
           </div>
 
           {/* Quick Actions */}
-          <Card className="mb-8 bg-card border-border">
-            <CardHeader>
-              <CardTitle className="text-card-foreground">Quick Actions</CardTitle>
-              <CardDescription className="text-muted-foreground">
-                Common administrative tasks
-              </CardDescription>
-            </CardHeader>
-            <CardContent>
-              <div className="flex flex-wrap gap-4">
-                <Button 
-                  onClick={() => setIsInviteModalOpen(true)}
-                  className="flex items-center gap-2"
-                >
-                  <UserPlus className="h-4 w-4" />
-                  Invite Organization Admin
-                </Button>
-                
-                <Button variant="outline" className="flex items-center gap-2">
-                  <Settings className="h-4 w-4" />
-                  System Settings
-                </Button>
-                
-                <Button variant="outline" className="flex items-center gap-2">
-                  <FileText className="h-4 w-4" />
-                  View Audit Logs
-                </Button>
-              </div>
-            </CardContent>
-          </Card>
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6 mb-8">
+            <Card className="hover:shadow-md transition-shadow">
+              <CardHeader>
+                <CardTitle className="flex items-center gap-2">
+                  <AlertTriangle className="h-5 w-5 text-red-500" />
+                  System Alerts
+                </CardTitle>
+                <CardDescription>
+                  Monitor and manage system alerts in real-time
+                </CardDescription>
+              </CardHeader>
+              <CardContent>
+                <div className="flex items-center justify-between">
+                  <div>
+                    <div className="text-2xl font-bold">{activeAlertsCount}</div>
+                    <p className="text-sm text-muted-foreground">Active alerts</p>
+                  </div>
+                  <Button asChild>
+                    <Link href="/admin/alerts">
+                      View Alerts
+                    </Link>
+                  </Button>
+                </div>
+              </CardContent>
+            </Card>
 
-          {/* Recent Activity */}
-          <Card className="bg-card border-border">
-            <CardHeader>
-              <CardTitle className="text-card-foreground">Recent Activity</CardTitle>
-              <CardDescription className="text-muted-foreground">
-                Latest system events and user activities
-              </CardDescription>
-            </CardHeader>
-            <CardContent>
-              <div className="space-y-4">
-                <div className="flex items-center space-x-4">
-                  <div className="w-2 h-2 bg-green-500 rounded-full"></div>
-                  <div className="flex-1">
-                    <p className="text-sm font-medium text-card-foreground">New organization created</p>
-                    <p className="text-xs text-muted-foreground">Acme Corp - 2 hours ago</p>
+            <Card className="hover:shadow-md transition-shadow">
+              <CardHeader>
+                <CardTitle className="flex items-center gap-2">
+                  <Activity className="h-5 w-5 text-blue-500" />
+                  System Metrics
+                </CardTitle>
+                <CardDescription>
+                  View detailed performance metrics and analytics
+                </CardDescription>
+              </CardHeader>
+              <CardContent>
+                <div className="flex items-center justify-between">
+                  <div>
+                    <div className="text-2xl font-bold">
+                      {systemHealth?.total_metrics || 0}
+                    </div>
+                    <p className="text-sm text-muted-foreground">Monitored metrics</p>
                   </div>
+                  <Button asChild variant="outline">
+                    <Link href="/admin/metrics">
+                      View Metrics
+                    </Link>
+                  </Button>
                 </div>
-                
-                <div className="flex items-center space-x-4">
-                  <div className="w-2 h-2 bg-blue-500 rounded-full"></div>
-                  <div className="flex-1">
-                    <p className="text-sm font-medium text-card-foreground">Organization admin invited</p>
-                    <p className="text-xs text-muted-foreground">admin@techstart.com - 4 hours ago</p>
+              </CardContent>
+            </Card>
+
+            <Card className="hover:shadow-md transition-shadow">
+              <CardHeader>
+                <CardTitle className="flex items-center gap-2">
+                  <Monitor className="h-5 w-5 text-green-500" />
+                  SLA Monitoring
+                </CardTitle>
+                <CardDescription>
+                  Comprehensive system health and SLA monitoring
+                </CardDescription>
+              </CardHeader>
+              <CardContent>
+                <div className="flex items-center justify-between">
+                  <div>
+                    <div className="text-2xl font-bold">
+                      {systemHealth?.uptime_percentage?.toFixed(1) || '0.0'}%
+                    </div>
+                    <p className="text-sm text-muted-foreground">Uptime (24h)</p>
                   </div>
+                  <Button asChild variant="outline">
+                    <Link href="/dashboard/sla-monitoring">
+                      View SLA
+                    </Link>
+                  </Button>
                 </div>
-                
-                <div className="flex items-center space-x-4">
-                  <div className="w-2 h-2 bg-yellow-500 rounded-full"></div>
-                  <div className="flex-1">
-                    <p className="text-sm font-medium text-card-foreground">System maintenance completed</p>
-                    <p className="text-xs text-muted-foreground">Database optimization - 6 hours ago</p>
+              </CardContent>
+            </Card>
+          </div>
+
+          {/* Recent Alerts Preview */}
+          {alerts.length > 0 && (
+            <Card>
+              <CardHeader>
+                <div className="flex items-center justify-between">
+                  <div>
+                    <CardTitle>Recent Alerts</CardTitle>
+                    <CardDescription>
+                      Latest system alerts and warnings
+                    </CardDescription>
                   </div>
+                  <Button asChild variant="outline" size="sm">
+                    <Link href="/admin/alerts" className="flex items-center gap-2">
+                      <AlertTriangle className="h-4 w-4" />
+                      View All Alerts
+                    </Link>
+                  </Button>
                 </div>
-              </div>
-            </CardContent>
-          </Card>
+              </CardHeader>
+              <CardContent>
+                <div className="space-y-3">
+                  {alerts.slice(0, 5).map((alert) => (
+                    <div key={alert.id} className="flex items-center justify-between p-3 border rounded-lg">
+                      <div className="flex items-center gap-3">
+                        <AlertTriangle className={`h-4 w-4 ${
+                          alert.alert_type === 'critical' ? 'text-red-500' : 'text-yellow-500'
+                        }`} />
+                        <div>
+                          <p className="font-medium text-sm">{alert.title}</p>
+                          <p className="text-xs text-muted-foreground">
+                            {format(new Date(alert.triggered_at), 'MMM dd, HH:mm')}
+                          </p>
+                        </div>
+                      </div>
+                      <div className="flex items-center gap-2">
+                        <Badge variant={alert.alert_type === 'critical' ? 'destructive' : 'secondary'}>
+                          {alert.alert_type}
+                        </Badge>
+                        {alert.acknowledged ? (
+                          <Badge variant="default" className="bg-green-100 text-green-800">
+                            <CheckCircle className="h-3 w-3 mr-1" />
+                            ACK
+                          </Badge>
+                        ) : (
+                          <Badge variant="secondary">
+                            <Clock className="h-3 w-3 mr-1" />
+                            Pending
+                          </Badge>
+                        )}
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              </CardContent>
+            </Card>
+          )}
+
         </div>
       </main>
-
-      {/* Invite Modal */}
-      <InviteOrgAdminModal 
-        open={isInviteModalOpen}
-        onOpenChange={setIsInviteModalOpen}
-      />
     </div>
   )
 }
