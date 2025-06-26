@@ -53,10 +53,28 @@ async def lifespan(app: FastAPI):
     except Exception as e:
         print(f"⚠️  SLA WebSocket service error: {str(e)}")
     
+    # Start uptime monitoring service
+    try:
+        from infrastructure.services.uptime_service_startup import get_uptime_startup
+        uptime_startup = await get_uptime_startup()
+        await uptime_startup.start()
+        print("✅ Uptime monitoring service started")
+    except Exception as e:
+        print(f"⚠️  Uptime monitoring service error: {str(e)}")
+    
     yield
     
     # Shutdown
     print("👋 Shutting down SalesOptimizer API...")
+    
+    # Stop uptime monitoring service
+    try:
+        from infrastructure.services.uptime_service_startup import get_uptime_startup
+        uptime_startup = await get_uptime_startup()
+        await uptime_startup.stop()
+        print("✅ Uptime monitoring service stopped")
+    except Exception as e:
+        print(f"⚠️  Uptime monitoring service shutdown error: {str(e)}")
     
     # Stop SLA WebSocket service
     try:

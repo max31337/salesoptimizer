@@ -1,7 +1,8 @@
 import psutil
 import time
+import logging
 from datetime import datetime, timezone, timedelta
-from typing import Dict, List, Any
+from typing import Dict, List, Any, Sequence
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy import text, func, select
 
@@ -10,14 +11,17 @@ from domain.monitoring.entities.sla_monitoring import (
 )
 from infrastructure.db.models.activity_log_model import ActivityLogModel
 from infrastructure.db.repositories.sla_repository_impl import SLARepositoryImpl
+from infrastructure.services.uptime_monitoring_service import UptimeMonitoringService
+
+logger = logging.getLogger(__name__)
 
 
 class SLAMonitoringService:
     """Service for SLA monitoring and metrics collection."""
-    
     def __init__(self, session: AsyncSession):
         self.session = session
         self.repository = SLARepositoryImpl(session)
+        self.uptime_service = UptimeMonitoringService(session)
         self._default_thresholds = self._get_default_thresholds()
         self._system_start_time = self._get_system_start_time()
     
@@ -61,7 +65,6 @@ class SLAMonitoringService:
                 unit="%"
             ),
         }
-    
     def _get_system_start_time(self) -> datetime:
         """Get system boot time."""
         try:
@@ -72,17 +75,10 @@ class SLAMonitoringService:
             return datetime.now(timezone.utc)
     
     def _calculate_uptime_percentage(self, start_time: datetime, current_time: datetime) -> float:
-        """Calculate system uptime percentage over the last 24 hours."""
-        # For simplicity, we'll calculate based on continuous uptime
-        # In a production system, you'd track actual downtime events
-        uptime_duration = current_time - start_time
-        
-        # If system has been up for more than 24 hours, consider it 100% for the last 24h
-        if uptime_duration.total_seconds() >= 86400:  # 24 hours in seconds
-            return 100.0
-        else:
-            # Calculate percentage of 24 hours the system has been up
-            return (uptime_duration.total_seconds() / 86400) * 100
+        """Calculate real system uptime percentage over the last 24 hours using uptime monitoring."""
+        # This method is now deprecated in favor of the uptime monitoring service
+        # Return default value for backward compatibility
+        return 100.0  # Fallback value
     
     def _format_uptime_duration(self, start_time: datetime, current_time: datetime) -> str:
         """Format uptime duration as human-readable string."""
@@ -144,19 +140,47 @@ class SLAMonitoringService:
         )
         metrics.append(disk_metric)
         
-        # Uptime
+        # Uptime - Use real uptime monitoring service
         current_time = datetime.now(timezone.utc)
-        uptime_percentage = self._calculate_uptime_percentage(self._system_start_time, current_time)
+        
+        try:
+            # Get real uptime metrics from the uptime monitoring service
+            uptime_summary = await self.uptime_service.get_uptime_summary(24)
+            uptime_percentage = uptime_summary.get('uptime_percentage', 100.0)
+            uptime_duration = uptime_summary.get('uptime_duration', 'Unknown')
+            
+            # Additional data includes detailed service states and incidents
+            additional_uptime_data: Dict[str, Any] = {
+                "system_start_time": self._system_start_time.isoformat(),
+                "current_time": current_time.isoformat(),
+                "uptime_percentage": uptime_percentage,
+                "uptime_duration": uptime_duration,
+                "overall_status": uptime_summary.get('overall_status', 'unknown'),
+                "total_downtime_seconds": uptime_summary.get('total_downtime_seconds', 0.0),
+                "downtime_incidents": uptime_summary.get('downtime_incidents', 0),
+                "period_hours": 24,
+                "services": uptime_summary.get('services', {}),
+                "last_updated": uptime_summary.get('last_updated', current_time).isoformat() if uptime_summary.get('last_updated') else current_time.isoformat()
+            }
+            
+        except Exception as e:
+            logger.error(f"Failed to get real uptime metrics, using fallback: {e}")
+            # Fallback to old calculation method if uptime service fails
+            uptime_percentage = self._calculate_uptime_percentage(self._system_start_time, current_time)
+            additional_uptime_data: Dict[str, Any] = {
+                "system_start_time": self._system_start_time.isoformat(),
+                "current_time": current_time.isoformat(),
+                "uptime_percentage": uptime_percentage,
+                "uptime_duration": self._format_uptime_duration(self._system_start_time, current_time),
+                "fallback_mode": True,
+                "error": str(e)
+            }
+        
         uptime_metric = SLAMetric.create(
             metric_type=MetricType.UPTIME,
             value=uptime_percentage,
             threshold=self._default_thresholds[MetricType.UPTIME],
-            additional_data={
-                "system_start_time": self._system_start_time.isoformat(),
-                "current_time": current_time.isoformat(),
-                "uptime_percentage": uptime_percentage,
-                "uptime_duration": self._format_uptime_duration(self._system_start_time, current_time)
-            }
+            additional_data=additional_uptime_data
         )
         metrics.append(uptime_metric)
         
@@ -432,4 +456,48 @@ class SLAMonitoringService:
             recommendations.append("Monitor user activity trends and engagement metrics.")
         
         return recommendations
+    
+    async def initialize_uptime_monitoring(self):
+        """Initialize the uptime monitoring system."""
+        try:
+            await self.uptime_service.initialize_monitoring()
+            logger.info("Uptime monitoring initialized successfully")
+        except Exception as e:
+            logger.error(f"Failed to initialize uptime monitoring: {e}")
+    
+    async def perform_health_checks(self):
+        """Perform health checks using the uptime monitoring service."""
+        try:
+            await self.uptime_service.perform_health_checks()
+        except Exception as e:
+            logger.error(f"Failed to perform health checks: {e}")
+    
+    async def get_uptime_summary(self, hours: int = 24) -> Dict[str, Any]:
+        """Get comprehensive uptime summary."""
+        try:
+            return await self.uptime_service.get_uptime_summary(hours)
+        except Exception as e:
+            logger.error(f"Failed to get uptime summary: {e}")
+            # Return fallback data
+            current_time = datetime.now(timezone.utc)
+            return {
+                'overall_status': 'unknown',
+                'uptime_percentage': 100.0,
+                'uptime_duration': 'Unknown',
+                'total_downtime_seconds': 0.0,
+                'downtime_incidents': 0,
+                'period_hours': hours,
+                'services': {},
+                'metrics_by_service': {},
+                'last_updated': current_time
+            }
+    
+    async def get_recent_incidents(self, hours: int = 24, limit: int = 10) -> Sequence[Dict[str, Any]]:
+        """Get recent uptime incidents."""
+        try:
+            incidents = await self.uptime_service.get_recent_incidents(hours, limit)
+            return [dict(incident) for incident in incidents]
+        except Exception as e:
+            logger.error(f"Failed to get recent incidents: {e}")
+            return []
 
