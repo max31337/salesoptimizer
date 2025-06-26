@@ -30,7 +30,6 @@ import {
 import { cn } from "@/lib/utils"
 import { useAuth } from "@/features/auth/hooks/useAuth"
 import { useTheme } from "@/contexts/theme-context"
-import { Button } from "@/components/ui/button"
 import {
   Sidebar,
   SidebarContent,
@@ -89,7 +88,7 @@ const getSettingsItems = (userRole?: string) => {
   const baseSettingsItems = [
     {
       title: "Profile",
-      url: "/settings/profile",
+      url: "/profile",
       icon: UserIcon,
     },
     {
@@ -215,14 +214,7 @@ const getNavigationItems = (userRole?: string): { groups: CollapsibleNavGroup[] 
     title: "Settings",
     url: "/settings",
     icon: Settings,
-    items: [
-      {
-        title: "Profile",
-        url: "/profile",
-        icon: UserIcon,
-      },
-      ...getSettingsItems(userRole)
-    ],
+    items: getSettingsItems(userRole),
   }
 
   if (userRole === 'super_admin') {
