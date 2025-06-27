@@ -12,7 +12,7 @@ export function LandingHeader() {
   const navigation = [
     { name: "Features", href: "#features" },
     { name: "Pricing", href: "#pricing" },
-    { name: "About", href: "#about" },
+    { name: "Sign Up", href: "#signup" },
     { name: "Contact", href: "#contact" },
   ]
 
@@ -57,11 +57,11 @@ export function LandingHeader() {
                 Sign In
               </Button>
             </Link>
-            <Link href="/login">
+            <a href="#signup">
               <Button className="bg-gradient-to-r from-blue-600 to-purple-600 hover:from-blue-700 hover:to-purple-700 text-white shadow-lg hover:shadow-xl transition-all duration-200 border-0">
                 Get Started
               </Button>
-            </Link>
+            </a>
           </div>
 
           {/* Mobile menu button */}
@@ -106,11 +106,11 @@ export function LandingHeader() {
                     Sign In
                   </Button>
                 </Link>
-                <Link href="/login" className="block">
+                <a href="#signup" className="block">
                   <Button className="w-full bg-gradient-to-r from-blue-600 to-purple-600 hover:from-blue-700 hover:to-purple-700 text-white shadow-lg hover:shadow-xl transition-all duration-200">
                     Get Started
                   </Button>
-                </Link>
+                </a>
               </div>
             </div>
           </div>

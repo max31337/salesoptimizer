@@ -7,7 +7,7 @@ interface CreateInvitationRequest {
   slug?: string
 }
 
-interface InvitationResponse {
+export interface InvitationResponse {
   id: string
   email: string
   organization_name: string
@@ -16,6 +16,8 @@ interface InvitationResponse {
   token: string
   expires_at: string
   created_at: string
+  status: string
+  role: string
 }
 
 interface TenantResponse {
@@ -44,6 +46,10 @@ class InvitationService {
 
   async deleteInvitation(invitationId: string): Promise<void> {
     return apiClient.delete(`/invitations/${invitationId}`)
+  }
+
+  async resendInvitation(invitationId: string): Promise<InvitationResponse> {
+    return apiClient.post(`/invitations/${invitationId}/resend`, {})
   }
 }
 

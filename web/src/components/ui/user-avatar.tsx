@@ -8,6 +8,7 @@ interface UserAvatarProps {
   user: {
     id?: string
     profile_picture_url?: string | null
+    avatar_url?: string | null
     first_name?: string | null
     last_name?: string | null
     email?: string | null
@@ -40,7 +41,7 @@ export function UserAvatar({ user, className, fallbackClassName, forceRefresh = 
     )
   }
 
-  const profilePictureUrl = getProfilePictureUrl(user?.profile_picture_url)
+  const profilePictureUrl = getProfilePictureUrl(user?.profile_picture_url || user?.avatar_url)
 
   return (
     <Avatar className={className}>

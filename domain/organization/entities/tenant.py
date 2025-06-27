@@ -34,13 +34,13 @@ class Tenant:
     def create(
         cls,
         name: TenantName,
-        subscription_tier: str = "basic",
+        subscription_tier: str = "trial",
         slug: Optional[str] = None,
         owner_id: Optional[UserId] = None,
     ) -> "Tenant":
         """Create a new tenant."""
-        if subscription_tier not in ["basic", "pro", "enterprise", "system"]:
-            raise ValueError("Invalid subscription tier. Must be: basic, pro, enterprise, or system")        # Generate slug if not provided
+        if subscription_tier not in ["trial", "basic", "pro", "enterprise", "system"]:
+            raise ValueError("Invalid subscription tier. Must be: trial, basic, pro, enterprise, or system")        # Generate slug if not provided
         if slug is None:
             slug = cls._generate_slug_from_name(name.value)
         else:

@@ -66,6 +66,7 @@
   
   html {
     @apply bg-background text-foreground;
+    scroll-behavior: smooth;
   }
   
   body {

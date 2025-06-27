@@ -12,6 +12,7 @@ import {
 import Link from "next/link"
 import { LandingHeader } from "@/components/landing/landing-header"
 import { LandingFooter } from "@/components/landing/landing-footer"
+import { SignupSection } from "@/components/landing/signup-section"
 import { useState } from "react"
 
 export function LandingPage() {
@@ -279,12 +280,12 @@ export function LandingPage() {
           </p>
           
           <div className="flex flex-col sm:flex-row gap-4 justify-center items-center mb-12">
-            <Link href="/login">
+            <a href="#signup">
               <Button size="lg" className="bg-gradient-to-r from-blue-600 to-purple-600 hover:from-blue-700 hover:to-purple-700 text-white px-8 py-3 text-lg font-semibold shadow-lg hover:shadow-xl transition-all duration-200">
                 Get Started Free
                 <ArrowRight className="ml-2 h-5 w-5" />
               </Button>
-            </Link>
+            </a>
             
             <Button variant="outline" size="lg" className="px-8 py-3 text-lg font-semibold border-2 hover:bg-accent">
               Watch Demo
@@ -861,6 +862,9 @@ export function LandingPage() {
         </div>
       </section>
 
+      {/* Signup Section */}
+      <SignupSection />
+
       {/* CTA Section */}
       <section className="py-20 px-4 sm:px-6 lg:px-8 bg-gradient-to-r from-blue-600 to-purple-600 dark:from-blue-700 dark:to-purple-700">
         <div className="max-w-4xl mx-auto text-center">
@@ -873,12 +877,12 @@ export function LandingPage() {
           </p>
           
           <div className="flex flex-col sm:flex-row gap-4 justify-center items-center">
-            <Link href="/login">
+            <a href="#signup">
               <Button size="lg" variant="secondary" className="bg-white text-blue-600 hover:bg-gray-300 px-8 py-3 text-lg font-semibold shadow-lg hover:shadow-xl transition-all duration-200">
                 Start Free Trial
                 <ArrowRight className="ml-2 h-5 w-5" />
               </Button>
-            </Link>
+            </a>
             
             <Button variant="outline" size="lg" className="bg-white border-white text-blue-600 hover:bg-gray-300 hover:text-blue-600 px-8 py-3 text-lg font-semibold transition-all duration-200">
               Contact Sales

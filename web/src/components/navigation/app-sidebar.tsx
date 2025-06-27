@@ -3,6 +3,7 @@
 import * as React from "react"
 import { usePathname } from "next/navigation"
 import Link from "next/link"
+import { useState, useEffect } from "react"
 import { 
   Building, 
   Users, 
@@ -33,6 +34,7 @@ import {
 import { cn } from "@/lib/utils"
 import { useAuth } from "@/features/auth/hooks/useAuth"
 import { useTheme } from "@/contexts/theme-context"
+import { profileService, type Organization } from "@/features/profile/services/profile-service"
 import {
   Sidebar,
   SidebarContent,
@@ -166,24 +168,19 @@ const getNavigationItems = (userRole?: string): { groups: CollapsibleNavGroup[] 
       ]
     },
     {
-      title: "SalesOptimizer Platform",
-      url: "/dashboard/platform",
-      icon: Brain,
+      title: "Client Organizations",
+      url: "/dashboard/organizations",
+      icon: Building,
       items: [
         {
-          title: "Platform Overview",
-          url: "/dashboard/platform",
-          icon: Brain,
-        },
-        {
-          title: "Organizations",
+          title: "All Organizations",
           url: "/dashboard/organizations",
           icon: Building,
         },
         {
-          title: "Multi-tenant",
-          url: "/dashboard/tenants",
-          icon: Database,
+          title: "Organization Teams",
+          url: "/dashboard/teams",
+          icon: Users,
         },
         {
           title: "Billing & Subscriptions",
@@ -326,6 +323,54 @@ export function AppSidebar({ ...props }: React.ComponentProps<typeof Sidebar>) {
   const [isLoggingOut, setIsLoggingOut] = React.useState(false)
   const [collapsedGroups, setCollapsedGroups] = React.useState<Record<string, boolean>>({})
   const [expandedItems, setExpandedItems] = React.useState<Record<string, boolean>>({})
+  
+  // Organization state
+  const [organization, setOrganization] = useState<Organization | null>(null)
+  const [isLoadingOrg, setIsLoadingOrg] = useState(true)
+
+  // Fetch organization information
+  useEffect(() => {
+    const fetchOrganization = async () => {
+      if (!user?.tenant_id) {
+        setIsLoadingOrg(false)
+        return
+      }
+
+      try {
+        const response = await profileService.getOrganization()
+        setOrganization(response.organization)
+      } catch (err: any) {
+        console.error('Failed to fetch organization:', err)
+        // Don't show error in sidebar, just fail silently
+      } finally {
+        setIsLoadingOrg(false)
+      }
+    }
+
+    if (user) {
+      fetchOrganization()
+    }
+  }, [user])
+
+  // Helper function to get role display name
+  const getRoleDisplayName = (role: string) => {
+    switch (role) {
+      case 'super_admin':
+        return 'System Administrator'
+      case 'org_admin':
+        return 'Organization Admin'
+      case 'sales_manager':
+        return 'Sales Manager'
+      case 'team_manager':
+        return 'Team Manager'
+      case 'sales_rep':
+        return 'Sales Representative'
+      case 'member':
+        return 'Member'
+      default:
+        return role.replace('_', ' ').replace(/\b\w/g, l => l.toUpperCase())
+    }
+  }
 
   const handleLogout = React.useCallback(async () => {
     setIsLoggingOut(true)
@@ -481,6 +526,122 @@ export function AppSidebar({ ...props }: React.ComponentProps<typeof Sidebar>) {
         ))}
       </SidebarContent>
       <SidebarFooter>
+        {/* Organization and Role Info */}
+        <div className="px-2 py-2 space-y-1">
+          {/* Organization Name */}
+          <TooltipProvider>
+            <Tooltip>
+              <TooltipTrigger asChild>
+                <div className="group-data-[collapsible=icon]:hidden">
+                  {isLoadingOrg ? (
+                    <div className="text-xs text-muted-foreground animate-pulse">
+                      Loading organization...
+                    </div>
+                  ) : organization ? (
+                    <div className="text-xs text-muted-foreground">
+                      <div className="flex items-center gap-1">
+                        <Building className="h-3 w-3" />
+                        <span className="truncate font-medium">{organization.name}</span>
+                      </div>
+                    </div>
+                  ) : user?.role === 'super_admin' ? (
+                    <div className="text-xs text-muted-foreground">
+                      <div className="flex items-center gap-1">
+                        <Building className="h-3 w-3" />
+                        <span className="truncate font-medium">SalesOptimizer Platform</span>
+                      </div>
+                    </div>
+                  ) : (
+                    <div className="text-xs text-muted-foreground">
+                      <div className="flex items-center gap-1">
+                        <Building className="h-3 w-3" />
+                        <span className="truncate">No organization</span>
+                      </div>
+                    </div>
+                  )}
+                </div>
+              </TooltipTrigger>
+              <TooltipContent 
+                side="right"
+                className="group-data-[collapsible=open]:hidden"
+              >
+                {isLoadingOrg ? (
+                  "Loading organization..."
+                ) : organization ? (
+                  `Organization: ${organization.name}`
+                ) : user?.role === 'super_admin' ? (
+                  "Organization: SalesOptimizer Platform"
+                ) : (
+                  "No organization assigned"
+                )}
+              </TooltipContent>
+            </Tooltip>
+          </TooltipProvider>
+          
+          {/* User Role */}
+          {user?.role && (
+            <TooltipProvider>
+              <Tooltip>
+                <TooltipTrigger asChild>
+                  <div className="group-data-[collapsible=icon]:hidden">
+                    <div className="text-xs text-muted-foreground">
+                      <div className="flex items-center gap-1">
+                        <Shield className="h-3 w-3" />
+                        <span className="truncate">{getRoleDisplayName(user.role)}</span>
+                      </div>
+                    </div>
+                  </div>
+                </TooltipTrigger>
+                <TooltipContent 
+                  side="right"
+                  className="group-data-[collapsible=open]:hidden"
+                >
+                  {`Role: ${getRoleDisplayName(user.role)}`}
+                </TooltipContent>
+              </Tooltip>
+            </TooltipProvider>
+          )}
+        </div>
+        
+        {/* Compact info for collapsed state */}
+        <div className="group-data-[collapsible=icon]:flex hidden flex-col items-center py-2 space-y-1">
+          <TooltipProvider>
+            <Tooltip>
+              <TooltipTrigger asChild>
+                <div className="flex items-center justify-center w-8 h-6 rounded bg-sidebar-accent/50">
+                  <Building className="h-3 w-3 text-muted-foreground" />
+                </div>
+              </TooltipTrigger>
+              <TooltipContent side="right">
+                {isLoadingOrg ? (
+                  "Loading organization..."
+                ) : organization ? (
+                  `Organization: ${organization.name}`
+                ) : user?.role === 'super_admin' ? (
+                  "Organization: SalesOptimizer Platform"
+                ) : (
+                  "No organization assigned"
+                )}
+              </TooltipContent>
+            </Tooltip>
+          </TooltipProvider>
+          
+          {user?.role && (
+            <TooltipProvider>
+              <Tooltip>
+                <TooltipTrigger asChild>
+                  <div className="flex items-center justify-center w-8 h-6 rounded bg-sidebar-accent/50">
+                    <Shield className="h-3 w-3 text-muted-foreground" />
+                  </div>
+                </TooltipTrigger>
+                <TooltipContent side="right">
+                  {`Role: ${getRoleDisplayName(user.role)}`}
+                </TooltipContent>
+              </Tooltip>
+            </TooltipProvider>
+          )}
+        </div>
+        
         <SidebarMenu>
           <SidebarMenuItem>
             <DropdownMenu>
