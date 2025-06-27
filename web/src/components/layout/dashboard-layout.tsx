@@ -5,6 +5,17 @@ import { SidebarProvider, SidebarInset, SidebarTrigger } from "@/components/ui/s
 import { AppSidebar } from "@/components/navigation/app-sidebar"
 import { Separator } from "@/components/ui/separator"
 import { SimpleThemeToggle } from "@/components/ui/theme-toggle"
+import { Button } from "@/components/ui/button"
+import { Badge } from "@/components/ui/badge"
+import { Bell, Check, X, AlertCircle, Info, CheckCircle } from "lucide-react"
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuLabel,
+  DropdownMenuSeparator,
+  DropdownMenuTrigger,
+} from "@/components/ui/dropdown-menu"
 import {
   Breadcrumb,
   BreadcrumbItem,
@@ -14,6 +25,7 @@ import {
   BreadcrumbSeparator,
 } from "@/components/ui/breadcrumb"
 import { usePathname } from "next/navigation"
+import { cn } from "@/lib/utils"
 
 interface DashboardLayoutProps {
   children: React.ReactNode
@@ -22,6 +34,59 @@ interface DashboardLayoutProps {
     href?: string
   }[]
 }
+
+interface Notification {
+  id: string
+  title: string
+  message: string
+  type: 'info' | 'success' | 'warning' | 'error'
+  isRead: boolean
+  timestamp: Date
+}
+
+// Mock notifications data - in real app this would come from an API
+const mockNotifications: Notification[] = [
+  {
+    id: '1',
+    title: 'New Organization Created',
+    message: 'Acme Corp has been successfully created and is ready for setup.',
+    type: 'success',
+    isRead: false,
+    timestamp: new Date(Date.now() - 1000 * 60 * 5) // 5 minutes ago
+  },
+  {
+    id: '2',
+    title: 'SLA Alert',
+    message: 'Platform response time exceeded threshold for the last 10 minutes.',
+    type: 'warning',
+    isRead: false,
+    timestamp: new Date(Date.now() - 1000 * 60 * 15) // 15 minutes ago
+  },
+  {
+    id: '3',
+    title: 'System Maintenance',
+    message: 'Scheduled maintenance window will begin at 2:00 AM UTC tonight.',
+    type: 'info',
+    isRead: true,
+    timestamp: new Date(Date.now() - 1000 * 60 * 60 * 2) // 2 hours ago
+  },
+  {
+    id: '4',
+    title: 'User Registration Spike',
+    message: '50+ new users registered in the last hour. Consider scaling resources.',
+    type: 'info',
+    isRead: true,
+    timestamp: new Date(Date.now() - 1000 * 60 * 60 * 4) // 4 hours ago
+  },
+  {
+    id: '5',
+    title: 'Database Connection Error',
+    message: 'Temporary connection issues resolved. All services are operational.',
+    type: 'error',
+    isRead: true,
+    timestamp: new Date(Date.now() - 1000 * 60 * 60 * 6) // 6 hours ago
+  }
+]
 
 // Generate breadcrumbs from pathname
 function generateBreadcrumbs(pathname: string) {
@@ -134,6 +199,55 @@ function generateBreadcrumbs(pathname: string) {
 export function DashboardLayout({ children, breadcrumbs: customBreadcrumbs }: DashboardLayoutProps) {
   const pathname = usePathname()
   const breadcrumbs = customBreadcrumbs || generateBreadcrumbs(pathname)
+  const [notifications, setNotifications] = React.useState<Notification[]>(mockNotifications)
+
+  const unreadCount = notifications.filter(n => !n.isRead).length
+
+  const markAsRead = (id: string) => {
+    setNotifications(prev => 
+      prev.map(notification => 
+        notification.id === id 
+          ? { ...notification, isRead: true }
+          : notification
+      )
+    )
+  }
+
+  const markAllAsRead = () => {
+    setNotifications(prev => 
+      prev.map(notification => ({ ...notification, isRead: true }))
+    )
+  }
+
+  const removeNotification = (id: string) => {
+    setNotifications(prev => prev.filter(notification => notification.id !== id))
+  }
+
+  const getNotificationIcon = (type: Notification['type']) => {
+    switch (type) {
+      case 'success':
+        return <CheckCircle className="h-4 w-4 text-green-500" />
+      case 'warning':
+        return <AlertCircle className="h-4 w-4 text-yellow-500" />
+      case 'error':
+        return <AlertCircle className="h-4 w-4 text-red-500" />
+      default:
+        return <Info className="h-4 w-4 text-blue-500" />
+    }
+  }
+
+  const formatTimestamp = (timestamp: Date) => {
+    const now = new Date()
+    const diff = now.getTime() - timestamp.getTime()
+    const minutes = Math.floor(diff / (1000 * 60))
+    const hours = Math.floor(diff / (1000 * 60 * 60))
+    const days = Math.floor(diff / (1000 * 60 * 60 * 24))
+
+    if (minutes < 1) return 'Just now'
+    if (minutes < 60) return `${minutes}m ago`
+    if (hours < 24) return `${hours}h ago`
+    return `${days}d ago`
+  }
 
   return (
     <SidebarProvider>
@@ -165,6 +279,106 @@ export function DashboardLayout({ children, breadcrumbs: customBreadcrumbs }: Da
             </Breadcrumb>
           </div>
           <div className="flex items-center gap-2 px-4">
+            {/* Notifications Dropdown */}
+            <DropdownMenu>
+              <DropdownMenuTrigger asChild>
+                <Button
+                  variant="ghost"
+                  size="sm"
+                  className="relative h-8 w-8 p-0"
+                >
+                  <Bell className="h-4 w-4" />
+                  {unreadCount > 0 && (
+                    <Badge 
+                      variant="destructive" 
+                      className="absolute -top-1 -right-1 h-5 w-5 rounded-full p-0 text-xs flex items-center justify-center"
+                    >
+                      {unreadCount > 9 ? '9+' : unreadCount}
+                    </Badge>
+                  )}
+                </Button>
+              </DropdownMenuTrigger>
+              <DropdownMenuContent
+                className="w-80 max-h-96 overflow-y-auto"
+                side="bottom"
+                align="end"
+                sideOffset={4}
+              >
+                <DropdownMenuLabel className="flex items-center justify-between">
+                  <span>Notifications</span>
+                  {unreadCount > 0 && (
+                    <Button
+                      variant="ghost"
+                      size="sm"
+                      onClick={markAllAsRead}
+                      className="h-6 px-2 text-xs"
+                    >
+                      Mark all read
+                    </Button>
+                  )}
+                </DropdownMenuLabel>
+                <DropdownMenuSeparator />
+                {notifications.length === 0 ? (
+                  <div className="p-4 text-center text-muted-foreground">
+                    No notifications
+                  </div>
+                ) : (
+                  notifications.map((notification) => (
+                    <DropdownMenuItem
+                      key={notification.id}
+                      className={cn(
+                        "flex flex-col items-start p-3 cursor-pointer",
+                        !notification.isRead && "bg-accent/50"
+                      )}
+                      onClick={() => markAsRead(notification.id)}
+                    >
+                      <div className="flex items-start justify-between w-full">
+                        <div className="flex items-start gap-2 flex-1">
+                          {getNotificationIcon(notification.type)}
+                          <div className="flex-1 min-w-0">
+                            <div className="font-medium text-sm truncate">
+                              {notification.title}
+                            </div>
+                            <div className="text-xs text-muted-foreground mt-1 line-clamp-2">
+                              {notification.message}
+                            </div>
+                            <div className="text-xs text-muted-foreground mt-2">
+                              {formatTimestamp(notification.timestamp)}
+                            </div>
+                          </div>
+                        </div>
+                        <div className="flex items-center gap-1 ml-2">
+                          {!notification.isRead && (
+                            <div className="w-2 h-2 bg-primary rounded-full" />
+                          )}
+                          <Button
+                            variant="ghost"
+                            size="sm"
+                            onClick={(e) => {
+                              e.stopPropagation()
+                              removeNotification(notification.id)
+                            }}
+                            className="h-6 w-6 p-0 hover:bg-destructive/20"
+                          >
+                            <X className="h-3 w-3" />
+                          </Button>
+                        </div>
+                      </div>
+                    </DropdownMenuItem>
+                  ))
+                )}
+                {notifications.length > 0 && (
+                  <>
+                    <DropdownMenuSeparator />
+                    <DropdownMenuItem className="text-center justify-center">
+                      <Button variant="ghost" size="sm" className="text-xs">
+                        View all notifications
+                      </Button>
+                    </DropdownMenuItem>
+                  </>
+                )}
+              </DropdownMenuContent>
+            </DropdownMenu>
             <SimpleThemeToggle />
           </div>
         </header>
