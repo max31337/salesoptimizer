@@ -24,6 +24,9 @@ import {
   Zap,
   Sun,
   Moon,
+  DollarSign,
+  Flag,
+  Database,
   type LucideIcon
 } from "lucide-react"
 
@@ -37,6 +40,7 @@ import {
   SidebarGroup,
   SidebarGroupContent,
   SidebarGroupLabel,
+  SidebarHeader,
   SidebarMenu,
   SidebarMenuButton,
   SidebarMenuItem,
@@ -127,124 +131,161 @@ const getSettingsItems = (userRole?: string) => {
 
 // Navigation items for different user roles
 const getNavigationItems = (userRole?: string): { groups: CollapsibleNavGroup[] } => {
-  // SLA Monitoring group for super admins
-  const slaMonitoringItems: NavItem[] = [
+  // Platform Management items for super admins
+  const platformManagementItems: NavItem[] = [
     {
       title: "Dashboard",
       url: "/dashboard",
       icon: Home,
     },
     {
-      title: "Overview",
+      title: "SLA Monitoring",
       url: "/dashboard/sla-monitoring",
       icon: Activity,
+      items: [
+        {
+          title: "Overview",
+          url: "/dashboard/sla-monitoring",
+          icon: Activity,
+        },
+        {
+          title: "Alerts",
+          url: "/dashboard/sla-monitoring/alerts",
+          icon: AlertTriangle,
+        },
+        {
+          title: "Metrics",
+          url: "/dashboard/sla-monitoring/metrics",
+          icon: BarChart3,
+        },
+        {
+          title: "Reports",
+          url: "/dashboard/sla-monitoring/reports",
+          icon: FileText,
+        },
+      ]
     },
     {
-      title: "Alerts",
-      url: "/dashboard/sla-monitoring/alerts",
-      icon: AlertTriangle,
+      title: "SalesOptimizer Platform",
+      url: "/dashboard/platform",
+      icon: Brain,
+      items: [
+        {
+          title: "Platform Overview",
+          url: "/dashboard/platform",
+          icon: Brain,
+        },
+        {
+          title: "Organizations",
+          url: "/dashboard/organizations",
+          icon: Building,
+        },
+        {
+          title: "Multi-tenant",
+          url: "/dashboard/tenants",
+          icon: Database,
+        },
+        {
+          title: "Billing & Subscriptions",
+          url: "/dashboard/billing",
+          icon: DollarSign,
+        },
+      ]
     },
-    {
-      title: "Metrics",
-      url: "/dashboard/sla-monitoring/metrics",
-      icon: BarChart3,
-    },
-    {
-      title: "Reports",
-      url: "/dashboard/sla-monitoring/reports",
-      icon: FileText,
-    },
-  ]
-
-  // Administration items for super admins
-  const administrationItems: NavItem[] = [
     {
       title: "User Management",
       url: "/dashboard/users",
       icon: Users,
+      items: [
+        {
+          title: "All Users",
+          url: "/dashboard/users",
+          icon: Users,
+        },
+        {
+          title: "Support Staff",
+          url: "/dashboard/support-staff",
+          icon: UserPlus,
+        },
+        {
+          title: "Platform Team",
+          url: "/dashboard/platform-team",
+          icon: Shield,
+        },
+        {
+          title: "Invitations",
+          url: "/dashboard/invitations",
+          icon: UserPlus,
+        },
+      ]
     },
     {
-      title: "Organizations",
-      url: "/dashboard/organizations",
-      icon: Building,
-    },
-    {
-      title: "System Health",
-      url: "/dashboard/health",
-      icon: Monitor,
-    },
-    {
-      title: "Analytics",
-      url: "/dashboard/analytics",
-      icon: BarChart3,
-    },
-    {
-      title: "Invitations",
-      url: "/dashboard/invitations",
-      icon: UserPlus,
+      title: "System Configuration",
+      url: "/dashboard/system",
+      icon: Settings,
+      items: [
+        {
+          title: "System Health",
+          url: "/dashboard/health",
+          icon: Monitor,
+        },
+        {
+          title: "Global Settings",
+          url: "/dashboard/global-settings",
+          icon: Settings,
+        },
+        {
+          title: "Feature Flags",
+          url: "/dashboard/feature-flags",
+          icon: Flag,
+        },
+        {
+          title: "Analytics",
+          url: "/dashboard/analytics",
+          icon: BarChart3,
+        },
+      ]
     },
   ]
 
-  // Admin panel items for super admins (new section)
-  const adminPanelItems: NavItem[] = [
+  // Advanced Admin Tools (consolidated from Super Admin Panel)
+  const advancedAdminItems: NavItem[] = [
     {
-      title: "Admin Dashboard",
+      title: "Advanced Monitoring",
       url: "/admin",
-      icon: Brain,
+      icon: Zap,
     },
     {
-      title: "Admin Alerts",
+      title: "Advanced Alerts",
       url: "/admin/alerts",
       icon: AlertTriangle,
     },
     {
-      title: "Admin Metrics",
+      title: "Advanced Metrics",
       url: "/admin/metrics",
       icon: Zap,
     },
     {
-      title: "Admin Reports",
+      title: "Advanced Reports",
       url: "/admin/reports",
       icon: FileText,
     },
   ]
 
-  // Settings item (collapsible)
-  const settingsItem: NavItem = {
-    title: "Settings",
-    url: "/settings",
-    icon: Settings,
-    items: getSettingsItems(userRole),
-  }
-
   if (userRole === 'super_admin') {
     return {
       groups: [
         {
-          title: "SLA Monitoring",
-          icon: Activity,
-          items: slaMonitoringItems,
+          title: "Platform Management",
+          icon: Brain,
+          items: platformManagementItems,
           isCollapsible: true,
           defaultOpen: true,
         },
         {
-          title: "Administration",
-          icon: Shield,
-          items: administrationItems,
-          isCollapsible: true,
-          defaultOpen: false,
-        },
-        {
-          title: "Super Admin",
-          icon: Brain,
-          items: adminPanelItems,
-          isCollapsible: true,
-          defaultOpen: false,
-        },
-        {
-          title: "Configuration",
-          icon: Settings,
-          items: [settingsItem],
+          title: "Advanced Tools",
+          icon: Zap,
+          items: advancedAdminItems,
           isCollapsible: true,
           defaultOpen: false,
         },
@@ -252,16 +293,27 @@ const getNavigationItems = (userRole?: string): { groups: CollapsibleNavGroup[] 
     }
   }
 
-  // Regular user navigation
+  // Regular user navigation - simplified settings only
+  const userNavItems: NavItem[] = [
+    {
+      title: "Dashboard",
+      url: "/dashboard",
+      icon: Home,
+    },
+    {
+      title: "Profile",
+      url: "/profile",
+      icon: UserIcon,
+    },
+  ]
+
   return {
     groups: [
-      // For regular users, put settings in a collapsible group too
       {
-        title: "Settings",
-        icon: Settings,
-        items: [settingsItem],
-        isCollapsible: true,
-        defaultOpen: false,
+        title: "Main",
+        icon: Home,
+        items: userNavItems,
+        isCollapsible: false,
       },
     ],
   }
@@ -327,12 +379,12 @@ export function AppSidebar({ ...props }: React.ComponentProps<typeof Sidebar>) {
               onClick={() => toggleItem(item.title)}
               isActive={isActive}
               tooltip={item.title}
-              className="w-full"
+              className="w-full text-sm py-1.5 px-2"
             >
               <item.icon className="h-4 w-4" />
-              <span>{item.title}</span>
+              <span className="text-sm">{item.title}</span>
               <ChevronRight className={cn(
-                "ml-auto h-4 w-4 transition-transform duration-200",
+                "ml-auto h-3 w-3 transition-transform duration-200",
                 isExpanded && "rotate-90"
               )} />
             </SidebarMenuButton>
@@ -343,10 +395,10 @@ export function AppSidebar({ ...props }: React.ComponentProps<typeof Sidebar>) {
               <SidebarMenuSub>
                 {item.items.map((subItem) => (
                   <SidebarMenuSubItem key={subItem.title}>
-                    <SidebarMenuSubButton asChild isActive={pathname === subItem.url}>
+                    <SidebarMenuSubButton asChild isActive={pathname === subItem.url} className="text-xs py-1 px-2">
                       <Link href={subItem.url} className="flex items-center gap-2">
                         {subItem.icon && <subItem.icon className="h-3 w-3" />}
-                        <span>{subItem.title}</span>
+                        <span className="text-xs">{subItem.title}</span>
                       </Link>
                     </SidebarMenuSubButton>
                   </SidebarMenuSubItem>
@@ -355,12 +407,12 @@ export function AppSidebar({ ...props }: React.ComponentProps<typeof Sidebar>) {
             </div>
           </div>
         ) : (
-          <SidebarMenuButton asChild isActive={isActive} tooltip={item.title}>
+          <SidebarMenuButton asChild isActive={isActive} tooltip={item.title} className="text-sm py-1.5 px-2">
             <Link href={item.url} className="flex items-center gap-2">
               <item.icon className="h-4 w-4" />
-              <span>{item.title}</span>
+              <span className="text-sm">{item.title}</span>
               {item.badge && (
-                <span className="ml-auto flex h-5 w-5 shrink-0 items-center justify-center rounded-full bg-primary text-xs text-primary-foreground">
+                <span className="ml-auto flex h-4 w-4 shrink-0 items-center justify-center rounded-full bg-primary text-xs text-primary-foreground">
                   {item.badge}
                 </span>
               )}
@@ -373,6 +425,16 @@ export function AppSidebar({ ...props }: React.ComponentProps<typeof Sidebar>) {
 
   return (
     <Sidebar collapsible="icon" {...props}>
+      <SidebarHeader>
+        <Link href="/" className="flex items-center space-x-2 p-2 group">
+          <div className="w-8 h-8 bg-gradient-to-r from-blue-600 to-purple-600 rounded-lg flex items-center justify-center group-hover:shadow-lg transition-shadow duration-200">
+            <Zap className="h-5 w-5 text-white" />
+          </div>
+          <span className="group-data-[collapsible=icon]:hidden text-lg font-bold text-foreground group-hover:text-primary transition-colors duration-200">
+            SalesOptimizer
+          </span>
+        </Link>
+      </SidebarHeader>
       <SidebarContent>
         {/* Navigation Groups */}
         {navigation.groups.map((group) => (
@@ -384,14 +446,14 @@ export function AppSidebar({ ...props }: React.ComponentProps<typeof Sidebar>) {
                     <button
                       onClick={() => toggleGroup(group.title)}
                       className={cn(
-                        "w-full text-left group/label text-sm text-muted-foreground hover:text-foreground cursor-pointer flex items-center gap-2 py-2 transition-all duration-200",
-                        collapsedGroups[group.title] ? "mb-0" : "mb-2"
+                        "w-full text-left group/label text-xs text-muted-foreground hover:text-foreground cursor-pointer flex items-center gap-2 py-1.5 transition-all duration-200",
+                        collapsedGroups[group.title] ? "mb-0" : "mb-1"
                       )}
                     >
-                      <group.icon className="h-4 w-4 shrink-0" />
-                      <span className="group-data-[collapsible=icon]:hidden">{group.title}</span>
+                      <group.icon className="h-3.5 w-3.5 shrink-0" />
+                      <span className="group-data-[collapsible=icon]:hidden text-xs font-medium">{group.title}</span>
                       <ChevronDown className={cn(
-                        "ml-auto h-4 w-4 transition-transform duration-200 group-data-[collapsible=icon]:hidden",
+                        "ml-auto h-3 w-3 transition-transform duration-200 group-data-[collapsible=icon]:hidden",
                         collapsedGroups[group.title] ? "rotate-0" : "rotate-180"
                       )} />
                     </button>
@@ -471,11 +533,39 @@ export function AppSidebar({ ...props }: React.ComponentProps<typeof Sidebar>) {
                   </Link>
                 </DropdownMenuItem>
                 <DropdownMenuItem asChild>
-                  <Link href="/settings">
-                    <Settings className="mr-2 h-4 w-4" />
-                    Settings
+                  <Link href="/settings/security">
+                    <Shield className="mr-2 h-4 w-4" />
+                    Security
                   </Link>
                 </DropdownMenuItem>
+                <DropdownMenuItem asChild>
+                  <Link href="/settings/notifications">
+                    <Bell className="mr-2 h-4 w-4" />
+                    Notifications
+                  </Link>
+                </DropdownMenuItem>
+                <DropdownMenuItem asChild>
+                  <Link href="/settings/general">
+                    <Settings className="mr-2 h-4 w-4" />
+                    General Settings
+                  </Link>
+                </DropdownMenuItem>
+                {(user?.role === 'super_admin' || user?.role === 'org_admin') && (
+                  <>
+                    <DropdownMenuItem asChild>
+                      <Link href="/settings/organization">
+                        <Building className="mr-2 h-4 w-4" />
+                        Organization
+                      </Link>
+                    </DropdownMenuItem>
+                    <DropdownMenuItem asChild>
+                      <Link href="/settings/team">
+                        <Users className="mr-2 h-4 w-4" />
+                        Team Management
+                      </Link>
+                    </DropdownMenuItem>
+                  </>
+                )}
                 <DropdownMenuSeparator />
                 <DropdownMenuItem 
                   onClick={() => setTheme("light")}
