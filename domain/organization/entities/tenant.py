@@ -25,7 +25,7 @@ class Tenant:
     def __post_init__(self):
         if self.created_at is None:
             self.created_at = datetime.now(timezone.utc)
-
+ 
         # Ensure slug is generated from name if not provided
         if not self.slug:
             self.slug = self.name.to_slug()

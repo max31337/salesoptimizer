@@ -4,6 +4,7 @@ from domain.organization.services.invitation_service import InvitationService
 from domain.organization.services.tenant_service import TenantService
 from application.use_cases.auth_use_cases import AuthUseCases
 from application.use_cases.invitation_use_cases import InvitationUseCases
+from application.use_cases.organization_registration_use_cases import OrganizationRegistrationUseCases
 from application.use_cases.token_revocation_use_cases import TokenRevocationUseCases
 
 class ApplicationService:
@@ -18,6 +19,7 @@ class ApplicationService:
         # Use cases
         auth_use_cases: AuthUseCases,
         invitation_use_cases: InvitationUseCases,
+        organization_registration_use_cases: OrganizationRegistrationUseCases,
         token_revocation_use_cases: TokenRevocationUseCases,
         # Configuration
         oauth_config: OAuthConfig
@@ -30,6 +32,7 @@ class ApplicationService:
         # Use cases
         self._auth_use_cases = auth_use_cases
         self._invitation_use_cases = invitation_use_cases
+        self._organization_registration_use_cases = organization_registration_use_cases
         self.token_revocation_use_cases = token_revocation_use_cases
         
         # Configuration
@@ -42,6 +45,10 @@ class ApplicationService:
     @property
     def invitation_use_cases(self) -> InvitationUseCases:
         return self._invitation_use_cases
+
+    @property
+    def organization_registration_use_cases(self) -> OrganizationRegistrationUseCases:
+        return self._organization_registration_use_cases
 
     @property
     def config(self) -> OAuthConfig:

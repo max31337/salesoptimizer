@@ -34,6 +34,7 @@ from domain.monitoring.services.sla_monitoring_service import SLAMonitoringServi
 from application.services.application_service import ApplicationService
 from application.use_cases.auth_use_cases import AuthUseCases
 from application.use_cases.invitation_use_cases import InvitationUseCases
+from application.use_cases.organization_registration_use_cases import OrganizationRegistrationUseCases
 from application.use_cases.token_revocation_use_cases import TokenRevocationUseCases
 from application.use_cases.profile_update_use_cases import ProfileUpdateUseCase
 from application.use_cases.sla_monitoring_use_cases import SLAMonitoringUseCase
@@ -140,13 +141,22 @@ async def get_application_service(
     # Application use cases
     auth_use_cases = AuthUseCases(auth_service, oauth_service, activity_log_service)
     invitation_use_cases = InvitationUseCases(invitation_service, auth_service)
-      # Application service (orchestrates everything)
+    organization_registration_use_cases = OrganizationRegistrationUseCases(
+        auth_service=auth_service,
+        tenant_service=tenant_service,
+        invitation_service=invitation_service,
+        user_repository=user_repository,
+        password_service=password_service
+    )
+    
+    # Application service (orchestrates everything)
     return ApplicationService(
         auth_service=auth_service,
         invitation_service=invitation_service,
         tenant_service=tenant_service,
         auth_use_cases=auth_use_cases,
         invitation_use_cases=invitation_use_cases,
+        organization_registration_use_cases=organization_registration_use_cases,
         oauth_config=oauth_config,
         token_revocation_use_cases=token_revocation_use_cases
     )

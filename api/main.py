@@ -12,7 +12,7 @@ from contextlib import asynccontextmanager
 from infrastructure.db.models import register_models
 
 #Route registration imports
-from api.routes import auth, invitations, sla_monitoring, token_revocation, profile, websocket_routes
+from api.routes import auth, invitations, sla_monitoring, token_revocation, profile, websocket_routes, organization_registration
 
 @asynccontextmanager
 async def lifespan(app: FastAPI):
@@ -129,6 +129,15 @@ async def health_check() -> dict[str, str | bool]:
         "cookie_secure": settings.cookie_secure
     }
 
+from fastapi import Request, status
+from fastapi.responses import JSONResponse
+
+@app.exception_handler(Exception)
+async def generic_exception_handler(request: Request, exc: Exception) -> JSONResponse:
+    return JSONResponse(
+        status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+        content={"detail": "Internal Server Error"}
+    )
 
 # Include routers
 app.include_router(auth.router, prefix="/api/v1")
@@ -137,3 +146,4 @@ app.include_router(token_revocation.router, prefix="/api/v1")
 app.include_router(profile.router, prefix="/api/v1")
 app.include_router(sla_monitoring.router, prefix="/api/v1")
 app.include_router(websocket_routes.router, prefix="/api/v1")
+app.include_router(organization_registration.router, prefix="/api/v1")

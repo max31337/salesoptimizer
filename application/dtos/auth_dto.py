@@ -81,3 +81,47 @@ class LoginResponse(BaseModel):
     class Config:
         from_attributes = True
 
+
+class SignupRequest(BaseModel):
+    """Self-serve signup request DTO."""
+    
+    first_name: str
+    last_name: str
+    email: EmailStr
+    password: str
+    organization_name: str
+    subscription_tier: str = "free"  # free, basic, pro
+    
+    @field_validator('first_name', 'last_name', 'organization_name')
+    @classmethod
+    def validate_required_fields(cls, v: str) -> str:
+        if not v or not v.strip():
+            raise ValueError('Field cannot be empty')
+        return v.strip()
+    
+    @field_validator('password')
+    @classmethod
+    def validate_password(cls, v: str) -> str:
+        if not v or len(v) < 8:
+            raise ValueError('Password must be at least 8 characters long')
+        return v
+    
+    @field_validator('subscription_tier')
+    @classmethod
+    def validate_subscription_tier(cls, v: str) -> str:
+        allowed_tiers = ['free', 'basic', 'pro']
+        if v not in allowed_tiers:
+            raise ValueError(f'Subscription tier must be one of: {", ".join(allowed_tiers)}')
+        return v
+
+
+class SignupResponse(BaseModel):
+    """Signup response DTO."""
+    
+    success: bool
+    message: str
+    user_id: Optional[str] = None
+    organization_id: Optional[str] = None
+    organization_name: Optional[str] = None
+    organization_slug: Optional[str] = None
+
