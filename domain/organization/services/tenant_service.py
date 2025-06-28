@@ -31,7 +31,11 @@ class TenantService:
             raise ValueError(f"Tenant with name '{name.value}' already exists")
         
         # Create the tenant
-        tenant = Tenant.create(name, owner_id, subscription_tier) #type: ignore
+        tenant = Tenant.create(
+            name=name,
+            subscription_tier=subscription_tier,
+            owner_id=owner_id
+        )
         return await self._tenant_repository.save(tenant)
     
   

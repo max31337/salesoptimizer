@@ -71,7 +71,7 @@ class OrganizationRegistrationRequest(BaseModel):
     job_title: str = ""
     
     # Subscription details
-    subscription_tier: str = "trial"  # trial, basic, pro
+    subscription_tier: str  # trial, basic, pro
     
     # Legal agreements
     accept_terms: bool

@@ -44,8 +44,10 @@ class OrganizationRegistrationCommand:
             
         if not self.password or len(self.password) < 8:
             raise ValueError("Password must be at least 8 characters")
-            
-        if self.subscription_tier not in ["trial", "basic", "pro"]:
+        
+        print(f"DEBUG: subscription_tier received in command: '{self.subscription_tier}'")
+    
+        if self.subscription_tier not in ["trial", "basic", "pro", "enterprise", "system"]:
             raise ValueError("Invalid subscription tier selection")
 
         if not self.accept_terms:

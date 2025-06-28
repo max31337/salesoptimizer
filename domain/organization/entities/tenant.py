@@ -34,10 +34,12 @@ class Tenant:
     def create(
         cls,
         name: TenantName,
-        subscription_tier: str = "trial",
+        subscription_tier: str,
         slug: Optional[str] = None,
         owner_id: Optional[UserId] = None,
     ) -> "Tenant":
+        print(f"DEBUG: subscription_tier received in Tenant.create: '{subscription_tier}'")
+
         """Create a new tenant."""
         if subscription_tier not in ["trial", "basic", "pro", "enterprise", "system"]:
             raise ValueError("Invalid subscription tier. Must be: trial, basic, pro, enterprise, or system")        # Generate slug if not provided
@@ -113,7 +115,7 @@ class Tenant:
 
     def update_subscription_tier(self, tier: str) -> None:
         """Update subscription tier."""
-        valid_tiers = ["basic", "pro", "enterprise", "system"]
+        valid_tiers = ["trial", "basic", "pro", "enterprise", "system"]
         if tier not in valid_tiers:
             raise ValueError(f"Invalid subscription tier: {tier}. Must be one of {valid_tiers}")
 
