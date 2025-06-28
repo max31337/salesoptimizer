@@ -19,7 +19,7 @@ interface SignupFormData {
   password: string
   confirmPassword: string
   organizationName: string
-  subscriptionTier: 'free' | 'basic' | 'pro'
+  subscription_tier: 'trial' | 'basic' | 'pro'
 }
 
 export function SignupForm() {
@@ -30,7 +30,7 @@ export function SignupForm() {
     password: "",
     confirmPassword: "",
     organizationName: "",
-    subscriptionTier: "free"
+    subscription_tier: "trial"
   })
   const [isLoading, setIsLoading] = useState(false)
   const [error, setError] = useState("")
@@ -82,7 +82,14 @@ export function SignupForm() {
 
     try {
       // Call the signup API endpoint
-      const response = await authService.signup(formData)
+      const response = await authService.signup({
+        firstName: formData.firstName,
+        lastName: formData.lastName,
+        email: formData.email,
+        password: formData.password,
+        organizationName: formData.organizationName,
+        subscriptionTier: formData.subscription_tier as 'trial' | 'basic' | 'pro'
+      })
       
       if (response.success) {
         // Redirect to onboarding success or dashboard
@@ -100,7 +107,7 @@ export function SignupForm() {
 
   const subscriptionTiers = [
     {
-      value: "free",
+      value: "trial",
       label: "Free Trial",
       description: "14 days free, no credit card required"
     },
@@ -246,8 +253,8 @@ export function SignupForm() {
                 Plan Selection
               </Label>
               <Select 
-                value={formData.subscriptionTier} 
-                onValueChange={(value: 'free' | 'basic' | 'pro') => handleInputChange("subscriptionTier", value)}
+                value={formData.subscription_tier} 
+                onValueChange={(value: 'trial' | 'basic' | 'pro') => handleInputChange("subscription_tier", value)}
               >
                 <SelectTrigger className="bg-background border-border text-foreground">
                   <SelectValue placeholder="Select a plan" />

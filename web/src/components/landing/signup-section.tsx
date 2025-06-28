@@ -24,6 +24,7 @@ import {
   AlertTriangle
 } from "lucide-react"
 import Link from "next/link"
+import { apiClient } from '@/lib/api'
 
 // Organization signup interface
 interface OrganizationSignup {
@@ -32,13 +33,14 @@ interface OrganizationSignup {
   industry: string
   organizationSize: string
   website?: string
+  username: string
   firstName: string
   lastName: string
   email: string
   password: string
   confirmPassword: string
   jobTitle: string
-  plan: 'trial' | 'basic' | 'pro'
+  subscription_tier: 'trial' | 'basic' | 'pro'
   acceptTerms: boolean
   acceptPrivacy: boolean
   marketingOptIn: boolean
@@ -105,13 +107,14 @@ export function SignupSection() {
     industry: '',
     organizationSize: '',
     website: '',
+    username: '',
     firstName: '',
     lastName: '',
     email: '',
     password: '',
     confirmPassword: '',
     jobTitle: '',
-    plan: 'trial',
+    subscription_tier: 'trial',
     acceptTerms: false,
     acceptPrivacy: false,
     marketingOptIn: false
@@ -140,7 +143,7 @@ export function SignupSection() {
                  formData.password && formData.password === formData.confirmPassword &&
                  formData.password.length >= 8)
       case 3:
-        return !!(formData.plan)
+        return !!(formData.subscription_tier)
       case 4:
         return formData.acceptTerms && formData.acceptPrivacy
       default:
@@ -167,49 +170,30 @@ export function SignupSection() {
       setError('Please complete all required fields and accept the terms')
       return
     }
-    
     setIsLoading(true)
     setError(null)
-    
     try {
-      const response = await fetch('/api/v1/organizations/register', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        credentials: 'include',
-        body: JSON.stringify({
-          organization_name: formData.organizationName,
-          organization_slug: formData.organizationSlug,
-          industry: formData.industry,
-          organization_size: formData.organizationSize,
-          website: formData.website,
-          first_name: formData.firstName,
-          last_name: formData.lastName,
-          email: formData.email,
-          password: formData.password,
-          job_title: formData.jobTitle,
-          plan: formData.plan,
-          accept_terms: formData.acceptTerms,
-          accept_privacy: formData.acceptPrivacy,
-          marketing_opt_in: formData.marketingOptIn
-        })
-      })
-      
-      if (response.ok) {
-        const result = await response.json()
-        console.log('Registration successful:', result)
-        router.push('/dashboard')
-      } else {
-        const contentType = response.headers.get('content-type');
-        let errorMsg = 'Registration failed';
-        if (contentType && contentType.includes('application/json')) {
-          const error = await response.json();
-          errorMsg = error.detail || errorMsg;
-        } else {
-          const text = await response.text();
-          errorMsg = text || errorMsg;
-        }
-        throw new Error(errorMsg);
+      const payload = {
+        organization_name: formData.organizationName,
+        organization_slug: formData.organizationSlug,
+        industry: formData.industry,
+        organization_size: formData.organizationSize,
+        website: formData.website,
+        username: formData.username,
+        first_name: formData.firstName,
+        last_name: formData.lastName,
+        email: formData.email,
+        password: formData.password,
+        job_title: formData.jobTitle,
+        subscription_tier: formData.subscription_tier,
+        accept_terms: formData.acceptTerms,
+        accept_privacy: formData.acceptPrivacy,
+        marketing_opt_in: formData.marketingOptIn
       }
+      // Use apiClient.post with the correct endpoint
+      const result = await apiClient.post('/organizations/register', payload)
+      console.log('Registration successful:', result)
+      router.push('/dashboard')
     } catch (error: any) {
       console.error('Registration error:', error)
       setError(error.message || 'Registration failed. Please try again.')
@@ -436,6 +420,22 @@ export function SignupSection() {
                         />
                       </div>
                     </div>
+
+                    <div className="space-y-2">
+                      <Label htmlFor="username" className="text-sm font-medium text-card-foreground">
+                        Username *
+                      </Label>
+                      <Input
+                        id="username"
+                        type="text"
+                        placeholder="Choose a username"
+                        value={formData.username}
+                        onChange={(e) => updateField("username", e.target.value)}
+                        required
+                        disabled={isLoading}
+                        className="bg-background border-border text-foreground placeholder:text-muted-foreground focus:border-primary focus:ring-primary"
+                      />
+                    </div>
                     
                     <div className="space-y-2">
                       <Label htmlFor="email">Email Address *</Label>
@@ -492,11 +492,11 @@ export function SignupSection() {
                         <div
                           key={plan.id}
                           className={`border-2 rounded-lg p-4 cursor-pointer transition-all ${
-                            formData.plan === plan.id
+                            formData.subscription_tier === plan.id
                               ? 'border-blue-600 bg-blue-50 dark:bg-blue-900/20'
                               : 'border-gray-200 dark:border-gray-700 hover:border-gray-300'
                           } ${plan.popular ? 'relative' : ''}`}
-                          onClick={() => updateField('plan', plan.id)}
+                          onClick={() => updateField('subscription_tier', plan.id)}
                         >
                           {plan.popular && (
                             <div className="absolute -top-3 left-4 bg-blue-600 text-white px-3 py-1 rounded-full text-xs font-semibold">
@@ -504,7 +504,7 @@ export function SignupSection() {
                             </div>
                           )}
                           <div className="flex items-start space-x-3">
-                            <div className={`mt-1 ${formData.plan === plan.id ? 'text-blue-600' : 'text-gray-400'}`}>
+                            <div className={`mt-1 ${formData.subscription_tier === plan.id ? 'text-blue-600' : 'text-gray-400'}`}>
                               {plan.icon}
                             </div>
                             <div className="flex-1">

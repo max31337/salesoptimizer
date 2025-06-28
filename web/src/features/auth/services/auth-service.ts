@@ -34,7 +34,7 @@ interface SignupData {
   email: string
   password: string
   organizationName: string
-  subscriptionTier: 'free' | 'basic' | 'pro'
+  subscriptionTier: 'trial' | 'basic' | 'pro'
 }
 
 interface SignupResponse {
