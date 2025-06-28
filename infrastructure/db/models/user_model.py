@@ -88,6 +88,10 @@ class UserModel(Base):
     updated_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), nullable=True, onupdate=lambda: datetime.now(timezone.utc))
     oauth_provider: Mapped[str] = mapped_column(String(50), nullable=True)
     oauth_provider_id: Mapped[str] = mapped_column(String(255), nullable=True)    
+    job_title: Mapped[str] = mapped_column(String(100), nullable=True)
+    accept_terms: Mapped[bool] = mapped_column(Boolean, default=False)
+    accept_privacy: Mapped[bool] = mapped_column(Boolean, default=False)
+    marketing_opt_in: Mapped[bool] = mapped_column(Boolean, default=False)
     
     __table_args__ = (
         # Database-level constraints are handled by migration

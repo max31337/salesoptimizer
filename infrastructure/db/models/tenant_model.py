@@ -27,6 +27,9 @@ class TenantModel(Base):
     settings: Mapped[dict[str, Any]] = mapped_column(JSON, nullable=True, default=dict)
     created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=lambda: datetime.now(timezone.utc))
     updated_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), nullable=True, onupdate=lambda: datetime.now(timezone.utc))
+    industry: Mapped[str] = mapped_column(String(100), nullable=True)
+    organization_size: Mapped[str] = mapped_column(String(50), nullable=True)
+    website: Mapped[str] = mapped_column(String(255), nullable=True)
 
     # Relationships using string references (no imports needed)
     users: Mapped[list["UserModel"]] = relationship(

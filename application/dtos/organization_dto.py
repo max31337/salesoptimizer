@@ -64,6 +64,7 @@ class OrganizationRegistrationRequest(BaseModel):
     website: Optional[str] = None
     
     # Admin user details
+    username: str
     first_name: str
     last_name: str
     email: str

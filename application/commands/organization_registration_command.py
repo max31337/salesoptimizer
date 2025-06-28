@@ -14,6 +14,7 @@ class OrganizationRegistrationCommand:
     website: Optional[str]
     
     # Admin user details
+    username: str  # <-- Added username field
     first_name: str
     last_name: str
     email: str
@@ -32,6 +33,9 @@ class OrganizationRegistrationCommand:
         """Validate command data."""
         if not self.organization_name or not self.organization_name.strip():
             raise ValueError("Organization name is required")
+        
+        if not self.username or not self.username.strip():
+            raise ValueError("Username is required")
         
         if not self.first_name or not self.first_name.strip():
             raise ValueError("First name is required")

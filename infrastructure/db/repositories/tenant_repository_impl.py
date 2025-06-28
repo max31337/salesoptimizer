@@ -20,6 +20,8 @@ class TenantRepositoryImpl(TenantRepository):
     async def save(self, tenant: Tenant) -> Tenant:
         """Save a new tenant."""
         # Check for slug uniqueness
+        if not tenant.slug:
+            raise ValueError("Tenant slug cannot be None or empty")
         if await self.exists_by_slug(tenant.slug):
             # Generate unique slug by appending number
             base_slug = tenant.slug
@@ -108,7 +110,7 @@ class TenantRepositoryImpl(TenantRepository):
         model = result.scalar_one()
         
         # Update model fields
-        setattr(model, 'name', tenant.name.value)
+        setattr(model, 'name', tenant.name)
         setattr(model, 'slug', tenant.slug)
         setattr(model, 'subscription_tier', tenant.subscription_tier)
         setattr(model, 'is_active', tenant.is_active)
@@ -153,7 +155,7 @@ class TenantRepositoryImpl(TenantRepository):
         """Convert database model to domain entity."""
         return Tenant(
             id=TenantId(model.id), # type: ignore
-            name=TenantName(str(model.name)),
+            name=str(model.name),
             slug=getattr(model, 'slug', ''),
             subscription_tier=getattr(model, 'subscription_tier', ''),
             is_active=getattr(model, 'is_active', False),
@@ -167,7 +169,7 @@ class TenantRepositoryImpl(TenantRepository):
         """Convert domain entity to database model."""
         return TenantModel(
             id=tenant.id.value if tenant.id else None,
-            name=tenant.name.value,
+            name=tenant.name,
             slug=tenant.slug,
             subscription_tier=tenant.subscription_tier,
             is_active=tenant.is_active,

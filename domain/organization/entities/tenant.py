@@ -12,12 +12,15 @@ from domain.organization.value_objects.tenant_id import TenantId
 class Tenant:
     """Tenant aggregate root representing an organization."""
 
-    id: TenantId
-    name: TenantName
-    slug: str
-    subscription_tier: str
+    id: Optional[TenantId]
+    name: str  # Ensure this is a string, not a custom type
+    owner_id: Optional[UserId]
+    slug: Optional[str] = None
+    industry: Optional[str] = None
+    organization_size: Optional[str] = None
+    website: Optional[str] = None
+    subscription_tier: Optional[str] = None
     is_active: bool = True
-    owner_id: Optional[UserId] = None
     settings: Optional[Dict[str, Any]] = None
     created_at: Optional[datetime] = None
     updated_at: Optional[datetime] = None
@@ -28,33 +31,46 @@ class Tenant:
  
         # Ensure slug is generated from name if not provided
         if not self.slug:
-            self.slug = self.name.to_slug()
+            self.slug = self._generate_slug_from_name(self.name)
+        if self.industry is None:
+            self.industry = ""
+        if self.organization_size is None:
+            self.organization_size = ""
+        if self.website is None:
+            self.website = ""
 
     @classmethod
     def create(
         cls,
         name: TenantName,
         subscription_tier: str,
-        slug: Optional[str] = None,
         owner_id: Optional[UserId] = None,
+        slug: Optional[str] = None,
+        industry: Optional[str] = None,
+        organization_size: Optional[str] = None,
+        website: Optional[str] = None,
     ) -> "Tenant":
         print(f"DEBUG: subscription_tier received in Tenant.create: '{subscription_tier}'")
 
         """Create a new tenant."""
         if subscription_tier not in ["trial", "basic", "pro", "enterprise", "system"]:
-            raise ValueError("Invalid subscription tier. Must be: trial, basic, pro, enterprise, or system")        # Generate slug if not provided
-        if slug is None:
-            slug = cls._generate_slug_from_name(name.value)
+            raise ValueError("Invalid subscription tier. Must be: trial, basic, pro, enterprise, or system")
+        # Use provided slug or generate from name
+        if slug:
+            slug_val = cls._validate_and_normalize_slug(slug)
         else:
-            slug = cls._validate_and_normalize_slug(slug)
+            slug_val = cls._generate_slug_from_name(str(name))
 
         return cls(
             id=TenantId.generate(),
-            name=name,
-            slug=slug,
+            name=str(name),
+            slug=slug_val,
             subscription_tier=subscription_tier,
             owner_id=owner_id,
             settings={},
+            industry=industry,
+            organization_size=organization_size,
+            website=website,
         )
 
     @staticmethod
@@ -109,7 +125,7 @@ class Tenant:
 
     def update_name(self, name: TenantName) -> None:
         """Update tenant name and regenerate slug."""
-        self.name = name
+        self.name = str(name)
         self.slug = name.to_slug()
         self.updated_at = datetime.now(timezone.utc)
 
@@ -154,4 +170,4 @@ class Tenant:
         return self.owner_id is not None and self.owner_id == user_id
 
     def __str__(self) -> str:
-        return f"Tenant({self.name.value})"
+        return f"Tenant({self.name})"

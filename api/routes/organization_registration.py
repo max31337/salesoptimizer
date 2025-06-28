@@ -44,6 +44,12 @@ async def register_organization(
                 detail="Privacy policy must be accepted"
             )
         
+        if not registration_request.username or not registration_request.username.strip():
+            raise HTTPException(
+                status_code=status.HTTP_400_BAD_REQUEST,
+                detail="Username is required"
+            )
+        
         # Create command
         command = OrganizationRegistrationCommand(
             organization_name=registration_request.organization_name,
@@ -51,6 +57,7 @@ async def register_organization(
             industry=registration_request.industry,
             organization_size=registration_request.organization_size,
             website=registration_request.website,
+            username=registration_request.username,  # <-- Pass username
             first_name=registration_request.first_name,
             last_name=registration_request.last_name,
             email=registration_request.email,
@@ -109,10 +116,10 @@ async def register_organization(
             first_name=admin_user.first_name,
             last_name=admin_user.last_name,
             role=admin_user.role.value,
-            tenant_id=str(tenant.id.value),
-            organization_name=tenant.name.value,
-            organization_slug=tenant.slug,
-            subscription_tier=tenant.subscription_tier,
+            tenant_id=str(tenant.id.value) if tenant.id is not None else "",
+            organization_name=tenant.name,
+            organization_slug=tenant.slug if tenant.slug is not None else "",
+            subscription_tier=tenant.subscription_tier if tenant.subscription_tier is not None else "",
             message="Organization registered successfully! You are now logged in."
         )
         
@@ -193,7 +200,7 @@ async def complete_invitation_signup(
             last_name=admin_user.last_name,
             role=admin_user.role.value,
             tenant_id=str(admin_user.tenant_id),
-            organization_name=tenant.name.value,
+            organization_name=tenant.name,
             message="Account setup completed successfully! You are now logged in."
         )
         

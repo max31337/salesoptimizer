@@ -35,6 +35,10 @@ class User:
     updated_at: datetime = field(default_factory=lambda: datetime.now(timezone.utc))
     _oauth_provider: Optional[str] = None
     _oauth_provider_id: Optional[str] = None
+    job_title: Optional[str] = None
+    accept_terms: Optional[bool] = None
+    accept_privacy: Optional[bool] = None
+    marketing_opt_in: Optional[bool] = None
 
 
     def __post_init__(self) -> None:
@@ -44,6 +48,15 @@ class User:
         
         if not self.last_name or not self.last_name.strip():
             raise ValueError("Last name cannot be empty")
+        
+        if self.job_title is None:
+            self.job_title = ""
+        if self.accept_terms is None:
+            self.accept_terms = False
+        if self.accept_privacy is None:
+            self.accept_privacy = False
+        if self.marketing_opt_in is None:
+            self.marketing_opt_in = False
     
     @property
     def full_name(self) -> str:

@@ -13,6 +13,7 @@ from domain.organization.value_objects.user_role import UserRole
 from domain.organization.value_objects.user_status import UserStatus
 from domain.organization.value_objects.user_id import UserId
 from infrastructure.services.password_service import PasswordService
+from infrastructure.db.database import AsyncSessionLocal
 
 
 class OrganizationRegistrationUseCases:
@@ -42,56 +43,77 @@ class OrganizationRegistrationUseCases:
         Returns:
             Tuple of (admin_user, tenant, access_token, refresh_token)
         """
-        try:
-            # Check if user already exists
-            email = Email(command.email)
-            existing_user = await self._user_repository.get_by_email(email)
-            if existing_user:
-                raise ValueError(f"User with email {command.email} already exists")
-            
-            # Create the organization/tenant first
-            tenant_name = TenantName(command.organization_name)
-            tenant = await self._tenant_service.create_tenant(
-                name=tenant_name,
-                subscription_tier=command.subscription_tier
-            )
-            
-            # Create the admin user manually
-            password_hash = self._password_service.hash_password(command.password)
-            
-            admin_user = User(
-                id=UserId.generate(),
-                email=email,
-                username=None,
-                first_name=command.first_name,
-                last_name=command.last_name,
-                password_hash=password_hash,
-                role=UserRole.org_admin(),
-                status=UserStatus.active(),
-                tenant_id=tenant.id.value,
-                team_id=None,
-                phone=None,
-                profile_picture_url=None,
-                bio=f"{command.job_title} at {command.organization_name}" if command.job_title else None,
-                is_email_verified=True  # Auto-verify for self-registration
-            )
-            
-            # Save the user
-            admin_user = await self._user_repository.save(admin_user)
-            
-            # Generate tokens for immediate login
-            access_token, refresh_token = await self._auth_service.create_tokens(admin_user)
-            
-            # TODO: Send welcome email to admin user
-            # TODO: Send notification to super admins about new organization
-            # TODO: Store additional metadata (industry, size, etc.) in tenant settings
-            
-            return admin_user, tenant, access_token, refresh_token
-            
-        except Exception as e:
-            # If anything fails, we should clean up any partially created resources
-            # This would be handled by a proper transaction/unit of work pattern
-            raise e
+        async with AsyncSessionLocal() as session:
+            try:
+                # Check if user already exists (by email)
+                email = Email(command.email)
+                existing_user = await self._user_repository.get_by_email(email)
+                if existing_user:
+                    raise ValueError("A user with this email already exists.")
+
+                # Check if username already exists
+                if command.username:
+                    existing_username = await self._user_repository.get_by_username(command.username)
+                    if existing_username:
+                        raise ValueError("A user with this username already exists.")
+
+                # Generate a new user ID inside the transaction
+                new_user_id = UserId.generate()
+                password_hash: str = self._password_service.hash_password(command.password)
+
+                # Create the admin user first (without tenant_id yet)
+                admin_user = User(
+                    id=new_user_id,
+                    email=email,
+                    username=command.username,  # <-- Set username
+                    first_name=command.first_name,
+                    last_name=command.last_name,
+                    password_hash=password_hash,
+                    role=UserRole.org_admin(),
+                    status=UserStatus.active(),
+                    tenant_id=None,
+                    team_id=None,
+                    phone=None,
+                    profile_picture_url=None,
+                    bio=f"{command.job_title} at {command.organization_name}" if command.job_title else None,
+                    is_email_verified=True,  # Auto-verify for self-registration
+                    job_title=command.job_title,
+                    accept_terms=command.accept_terms,
+                    accept_privacy=command.accept_privacy,
+                    marketing_opt_in=command.marketing_opt_in
+                )
+
+                # Save the user (without tenant_id)
+                admin_user = await self._user_repository.save(admin_user)
+
+                # Create the tenant/organization with the new user's ID as owner_id
+                tenant_name = TenantName(command.organization_name)
+                tenant = await self._tenant_service.create_tenant(
+                    name=tenant_name,
+                    subscription_tier=command.subscription_tier,
+                    slug=command.organization_slug,
+                    owner_id=admin_user.id,
+                    industry=command.industry,
+                    organization_size=command.organization_size,
+                    website=command.website
+                )
+
+                # Update the user with the tenant_id
+                if tenant.id is not None:
+                    admin_user.tenant_id = tenant.id.value  # Assign the UUID, not the TenantId object
+                else:
+                    raise ValueError("Tenant ID is None after tenant creation")
+                admin_user = await self._user_repository.update(admin_user)
+
+                # Generate tokens (assuming auth_service.create_tokens exists)
+                access_token, refresh_token = await self._auth_service.create_tokens(admin_user)
+
+                await session.commit()
+                return admin_user, tenant, access_token, refresh_token
+
+            except Exception as e:
+                await session.rollback()
+                raise Exception(f"Failed to register organization: {e}")
     
     async def complete_invitation_signup(
         self,

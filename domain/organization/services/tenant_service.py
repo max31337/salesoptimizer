@@ -22,7 +22,11 @@ class TenantService:
         self,
         name: TenantName,
         owner_id: Optional[UserId] = None,
-        subscription_tier: str = "basic"
+        subscription_tier: str = "basic",
+        slug: Optional[str] = None,
+        industry: Optional[str] = None,
+        organization_size: Optional[str] = None,
+        website: Optional[str] = None
     ) -> Tenant:
         """Create a new tenant."""
         # Check if tenant with same name already exists
@@ -30,13 +34,27 @@ class TenantService:
         if existing_tenant:
             raise ValueError(f"Tenant with name '{name.value}' already exists")
         
+        # If slug is not provided, generate from name
+        slug_str: str
+        if not slug:
+            # Use TenantName's to_slug, then validate/normalize with Tenant's method
+            base_slug = name.to_slug()
+            slug_str = Tenant._validate_and_normalize_slug(base_slug)
+        else:
+            # Validate/normalize slug
+            slug_str = Tenant._validate_and_normalize_slug(str(slug))
+        
         # Create the tenant
         tenant = Tenant.create(
             name=name,
             subscription_tier=subscription_tier,
-            owner_id=owner_id
+            owner_id=owner_id,
+            slug=slug_str,
+            industry=industry,
+            organization_size=organization_size,
+            website=website
         )
-        return await self._tenant_repository.save(tenant)
+        return await self._tenant_repository.save(tenant)  # type: ignore[arg-type]
     
   
     async def update_tenant_name(self, tenant_id: UUID, name: TenantName) -> Tenant:
