@@ -56,6 +56,14 @@ class UserRepositoryImpl(UserRepository):
         model = result.scalar_one_or_none()
         
         return self._model_to_entity(model) if model else None
+
+    async def get_by_email_verification_token(self, token: str) -> Optional[User]:
+        """Get user by email verification token."""
+        stmt = select(UserModel).where(UserModel.email_verification_token == token)
+        result = await self._session.execute(stmt)
+        model = result.scalar_one_or_none()
+        
+        return self._model_to_entity(model) if model else None
     
     async def count_superadmins(self) -> int:
         """Count the number of superadmin users."""
@@ -109,6 +117,10 @@ class UserRepositoryImpl(UserRepository):
         if user.bio is not None:
             model.bio = user.bio
         model.is_email_verified = user.is_email_verified
+        if user.email_verification_token is not None:
+            model.email_verification_token = user.email_verification_token
+        if user.email_verification_sent_at is not None:
+            model.email_verification_sent_at = user.email_verification_sent_at
         if user.oauth_provider is not None:
             model.oauth_provider = user.oauth_provider
         if user.oauth_provider_id is not None:
@@ -141,7 +153,6 @@ class UserRepositoryImpl(UserRepository):
             first_name=model.first_name,
             last_name=model.last_name,
             password_hash=model.password_hash,
-            password_strength=model.password_strength,
             role=UserRole(model.role),
             status=UserStatus(model.status),
             tenant_id=model.tenant_id,
@@ -149,14 +160,18 @@ class UserRepositoryImpl(UserRepository):
             phone=model.phone,
             profile_picture_url=model.profile_picture_url,
             bio=model.bio,
+            job_title=model.job_title,
             is_email_verified=model.is_email_verified,
+            email_verification_token=model.email_verification_token,
+            email_verification_sent_at=model.email_verification_sent_at,
             last_login=model.last_login,
-            invitation_token=model.invitation_token,
-            invitation_expires_at=model.invitation_expires_at,
             created_at=model.created_at,
             updated_at=model.updated_at,
             _oauth_provider=model.oauth_provider,
-            _oauth_provider_id=model.oauth_provider_id
+            _oauth_provider_id=model.oauth_provider_id,
+            accept_terms=model.accept_terms,
+            accept_privacy=model.accept_privacy,
+            marketing_opt_in=model.marketing_opt_in
         )
     def _entity_to_model(self, user: User) -> UserModel:
         """Convert domain entity to database model."""
@@ -167,7 +182,6 @@ class UserRepositoryImpl(UserRepository):
             first_name=user.first_name,
             last_name=user.last_name,
             password_hash=user.password_hash,
-            password_strength=user.password_strength,
             role=user.role.value,
             status=user.status.value,
             tenant_id=user.tenant_id,
@@ -175,12 +189,16 @@ class UserRepositoryImpl(UserRepository):
             phone=user.phone,
             profile_picture_url=user.profile_picture_url,
             bio=user.bio,
+            job_title=user.job_title,
             is_email_verified=user.is_email_verified,
+            email_verification_token=user.email_verification_token,
+            email_verification_sent_at=user.email_verification_sent_at,
             last_login=user.last_login,
-            invitation_token=user.invitation_token,
-            invitation_expires_at=user.invitation_expires_at,
             created_at=user.created_at,
             updated_at=user.updated_at,
             oauth_provider=user.oauth_provider,
-            oauth_provider_id=user.oauth_provider_id
+            oauth_provider_id=user.oauth_provider_id,
+            accept_terms=user.accept_terms,
+            accept_privacy=user.accept_privacy,
+            marketing_opt_in=user.marketing_opt_in
         )

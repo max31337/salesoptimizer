@@ -1,0 +1,22 @@
+Welcome to SalesOptimizer!
+
+Hello {{ first_name }}!
+
+Thank you for registering your organization {{ organization_name }} on SalesOptimizer.
+
+To activate your account and start using all features, please verify your email address by visiting the link below:
+
+{{ verify_url }}
+
+If the link doesn't work, you can copy and paste it into your browser.
+
+---
+Questions? Need help getting started? Reply to this email and we'll be happy to assist you.
+
+We're excited to have you on board! 🚀
+
+---
+This email was sent by SalesOptimizer.
+If you didn't register, you can safely ignore this email.
+
+© 2025 SalesOptimizer. All rights reserved.

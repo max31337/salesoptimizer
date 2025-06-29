@@ -81,6 +81,8 @@ class UserModel(Base):
     role: Mapped[str] = mapped_column(String(50), nullable=False, default="sales_rep")
     status: Mapped[str] = mapped_column(String(20), nullable=False, default="pending")
     is_email_verified: Mapped[bool] = mapped_column(Boolean, default=False)
+    email_verification_token: Mapped[str] = mapped_column(String(255), nullable=True, index=True)
+    email_verification_sent_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), nullable=True)
     last_login: Mapped[datetime] = mapped_column(DateTime(timezone=True), nullable=True)
     invitation_token: Mapped[str] = mapped_column(String(255), nullable=True, index=True)
     invitation_expires_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), nullable=True)

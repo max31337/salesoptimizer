@@ -117,27 +117,21 @@ async def get_application_service(
         password_service=password_service,
         jwt_service=jwt_service
     )
-    
     tenant_service = TenantService(tenant_repository)
-    
     email_service = get_email_service()
-    
     invitation_service = InvitationService(
         invitation_repository=invitation_repository,
         tenant_repository=tenant_repository,
         email_service=email_service
     )
-      # Token revocation use cases
+    # Token revocation use cases
     token_revocation_use_cases = TokenRevocationUseCases(
         auth_service,
         token_blacklist_service
     )
-    
     # Activity log service
-
     activity_log_repository = ActivityLogRepositoryImpl(session)
     activity_log_service = ActivityLogService(activity_log_repository)
-    
     # Application use cases
     auth_use_cases = AuthUseCases(auth_service, oauth_service, activity_log_service)
     invitation_use_cases = InvitationUseCases(invitation_service, auth_service)
@@ -146,9 +140,9 @@ async def get_application_service(
         tenant_service=tenant_service,
         invitation_service=invitation_service,
         user_repository=user_repository,
-        password_service=password_service
+        password_service=password_service,
+        email_service=email_service  # <-- Pass email_service here
     )
-    
     # Application service (orchestrates everything)
     return ApplicationService(
         auth_service=auth_service,

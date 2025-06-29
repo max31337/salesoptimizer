@@ -39,10 +39,10 @@ class TenantService:
         if not slug:
             # Use TenantName's to_slug, then validate/normalize with Tenant's method
             base_slug = name.to_slug()
-            slug_str = Tenant._validate_and_normalize_slug(base_slug)
+            slug_str = Tenant._validate_and_normalize_slug(base_slug)  # type: ignore[no-redef]
         else:
             # Validate/normalize slug
-            slug_str = Tenant._validate_and_normalize_slug(str(slug))
+            slug_str = Tenant._validate_and_normalize_slug(str(slug)) # type: ignore[no-redef]  
         
         # Create the tenant
         tenant = Tenant.create(

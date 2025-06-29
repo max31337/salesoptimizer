@@ -52,6 +52,8 @@ async def create_org_admin_invitation_with_tenant(
             current_user
         )
         
+        assert tenant.id is not None
+
         return InvitationWithTenantResponse(
             invitation=InvitationResponse(
                 id=invitation.id.value,
@@ -68,9 +70,9 @@ async def create_org_admin_invitation_with_tenant(
             ),
             tenant=TenantResponse(
                 id=tenant.id.value,
-                name=tenant.name.value,
-                slug=tenant.slug,
-                subscription_tier=tenant.subscription_tier,
+                name=tenant.name,
+                slug=tenant.slug if tenant.slug else "",
+                subscription_tier=tenant.subscription_tier if tenant.subscription_tier else "basic",
                 is_active=tenant.is_active,
                 owner_id=tenant.owner_id.value if tenant.owner_id else None,
                 created_at=tenant.created_at or datetime.now()

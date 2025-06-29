@@ -3,16 +3,10 @@ from typing import Tuple, Optional
 from domain.organization.entities.user import User
 from domain.organization.services.auth_service import AuthService
 from domain.organization.services.activity_log_service import ActivityLogService
-from domain.organization.services.tenant_service import TenantService
 from infrastructure.services.oauth_service import OAuthService
-from application.commands.auth_command import LoginCommand, SignupCommand
+from application.commands.auth_command import LoginCommand
 from application.commands.oauth_command import OAuthLoginCommand, OAuthAuthorizationCommand
 from application.dtos.auth_dto import ChangePasswordRequest
-from domain.organization.value_objects.email import Email
-from domain.organization.value_objects.tenant_name import TenantName
-from domain.organization.entities.tenant import Tenant
-from domain.organization.value_objects.user_role import UserRole
-from domain.organization.value_objects.user_status import UserStatus
 
 
 class AuthUseCases:

@@ -1,7 +1,7 @@
 "use client"
 
 import { useState } from "react"
-import { useRouter } from "next/navigation"
+import { useRouter, useSearchParams } from "next/navigation"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { PasswordInput } from "@/components/ui/password-input"
@@ -11,7 +11,10 @@ import { Alert, AlertDescription } from "@/components/ui/alert"
 import { useAuth } from "@/features/auth/hooks/useAuth"
 
 export function LoginForm() {
-  const [emailOrUsername, setEmailOrUsername] = useState("")
+  const searchParams = useSearchParams();
+  const prefillUsername = searchParams.get('username') || '';
+  
+  const [emailOrUsername, setEmailOrUsername] = useState(prefillUsername);
   const [password, setPassword] = useState("")
   const [isLoading, setIsLoading] = useState(false)
   const [error, setError] = useState("")

@@ -54,3 +54,8 @@ class UserRepository(ABC):
     async def count_team_members(self, team_id: UUID) -> int:
         """Count the number of members in a specific team."""
         pass
+    
+    @abstractmethod
+    async def get_by_email_verification_token(self, token: str) -> Optional[User]:
+        """Get user by email verification token."""
+        pass

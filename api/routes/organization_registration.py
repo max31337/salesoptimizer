@@ -1,5 +1,6 @@
 from typing import Annotated, Any
 from fastapi import APIRouter, Depends, HTTPException, status, Response, Request
+from fastapi.responses import RedirectResponse
 
 from application.services.application_service import ApplicationService
 from application.dtos.organization_dto import (
@@ -80,7 +81,10 @@ async def register_organization(
                 detail="Organization registration is not yet implemented"
             )
         
-        admin_user, tenant, access_token, refresh_token = await app_service.organization_registration_use_cases.register_organization(command)
+        admin_user, tenant = await app_service.organization_registration_use_cases.register_organization(command)
+        
+        # Create tokens for the new user
+        access_token, refresh_token = await app_service.auth_service.create_tokens(admin_user)
         
         # Validate that user ID exists
         if admin_user.id is None:
@@ -249,3 +253,32 @@ async def get_invitation_details(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
             detail=f"Failed to get invitation details: {str(e)}"
         )
+
+
+@router.get("/verify-email")
+async def verify_email(
+    token: str,
+    app_service: Annotated[ApplicationService, Depends(get_application_service)]
+):
+    """
+    Verify a user's email using the token and redirect to login with username pre-filled.
+    """
+    import logging
+    logger = logging.getLogger("verify-email")
+    try:
+        logger.info(f"[VERIFY-EMAIL] Received token: {token}")
+        logger.debug(f"[VERIFY-EMAIL] App service: {app_service}")
+        logger.debug(f"[VERIFY-EMAIL] Use case: {getattr(app_service, 'organization_registration_use_cases', None)}")
+        status, username = await app_service.organization_registration_use_cases.verify_email(token)
+        logger.info(f"[VERIFY-EMAIL] Verification result status: {status}, username: {username}")
+        
+        redirect_url = f"{settings.FRONTEND_URL}/verify-email?status={status}"
+        if username:
+            redirect_url += f"&username={username}"
+            
+        logger.info(f"[VERIFY-EMAIL] Redirecting to: {redirect_url}")
+        return RedirectResponse(url=redirect_url)
+        
+    except Exception as e:
+        logger.error(f"[VERIFY-EMAIL] Exception during verification: {e}", exc_info=True)
+        return RedirectResponse(url=f"{settings.FRONTEND_URL}/verify-email?status=fail")

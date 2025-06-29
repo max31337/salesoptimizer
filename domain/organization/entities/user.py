@@ -28,6 +28,8 @@ class User:
     profile_picture_url: Optional[str] = None
     bio: Optional[str] = None
     is_email_verified: bool = False
+    email_verification_token: Optional[str] = None
+    email_verification_sent_at: Optional[datetime] = None
     last_login: Optional[datetime] = None
     invitation_token: Optional[str] = None
     invitation_expires_at: Optional[datetime] = None

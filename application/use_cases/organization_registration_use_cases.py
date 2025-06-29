@@ -1,4 +1,6 @@
 from typing import Tuple, Optional
+from datetime import datetime, timezone
+from uuid import uuid4
 
 from application.commands.organization_registration_command import OrganizationRegistrationCommand
 from domain.organization.entities.user import User
@@ -14,6 +16,8 @@ from domain.organization.value_objects.user_status import UserStatus
 from domain.organization.value_objects.user_id import UserId
 from infrastructure.services.password_service import PasswordService
 from infrastructure.db.database import AsyncSessionLocal
+from infrastructure.email.template_service import EmailTemplateService
+from domain.shared.services.email_service import EmailMessage, EmailService
 
 
 class OrganizationRegistrationUseCases:
@@ -25,23 +29,25 @@ class OrganizationRegistrationUseCases:
         tenant_service: TenantService,
         invitation_service: InvitationService,
         user_repository: UserRepository,
-        password_service: PasswordService
+        password_service: PasswordService,
+        email_service: EmailService,  # <-- Injected from DI container
     ):
         self._auth_service = auth_service
         self._tenant_service = tenant_service
         self._invitation_service = invitation_service
         self._user_repository = user_repository
         self._password_service = password_service
+        self._email_service = email_service  # <-- Store for use
     
     async def register_organization(
-        self, 
+        self,
         command: OrganizationRegistrationCommand
-    ) -> Tuple[User, Tenant, str, str]:
+    ) -> Tuple[User, Tenant]:
         """
         Register a new organization with admin user (self-serve).
         
         Returns:
-            Tuple of (admin_user, tenant, access_token, refresh_token)
+            Tuple of (admin_user, tenant)
         """
         async with AsyncSessionLocal() as session:
             try:
@@ -61,6 +67,10 @@ class OrganizationRegistrationUseCases:
                 new_user_id = UserId.generate()
                 password_hash: str = self._password_service.hash_password(command.password)
 
+                # Email verification
+                email_verification_token = str(uuid4())
+                email_verification_sent_at = datetime.now(timezone.utc)
+
                 # Create the admin user first (without tenant_id yet)
                 admin_user = User(
                     id=new_user_id,
@@ -76,7 +86,9 @@ class OrganizationRegistrationUseCases:
                     phone=None,
                     profile_picture_url=None,
                     bio=f"{command.job_title} at {command.organization_name}" if command.job_title else None,
-                    is_email_verified=True,  # Auto-verify for self-registration
+                    is_email_verified=False,  # Require verification
+                    email_verification_token=email_verification_token,
+                    email_verification_sent_at=email_verification_sent_at,
                     job_title=command.job_title,
                     accept_terms=command.accept_terms,
                     accept_privacy=command.accept_privacy,
@@ -105,11 +117,33 @@ class OrganizationRegistrationUseCases:
                     raise ValueError("Tenant ID is None after tenant creation")
                 admin_user = await self._user_repository.update(admin_user)
 
-                # Generate tokens (assuming auth_service.create_tokens exists)
-                access_token, refresh_token = await self._auth_service.create_tokens(admin_user)
+                # Send verification email
+                template_service = EmailTemplateService()
+                # Use the frontend_url from the injected email_service if available, else fallback to settings
+                frontend_url = getattr(self._email_service, "base_url", None)
+                if not frontend_url:
+                    # fallback to OAuthConfig or settings if needed
+                    try:
+                        from infrastructure.config.oauth_config import OAuthConfig
+                        frontend_url = OAuthConfig().frontend_url
+                    except Exception:
+                        frontend_url = "http://localhost:3000"
+                verify_url = f"{frontend_url}/verify-email?token={email_verification_token}"
+                html_content = template_service.env.get_template("welcome_verify_email.html").render(
+                    first_name=admin_user.first_name,
+                    organization_name=tenant.name,
+                    verify_url=verify_url
+                )
+                subject = "Welcome to SalesOptimizer! Please verify your email"
+                email_message = EmailMessage(
+                    to_email=str(admin_user.email),
+                    subject=subject,
+                    html_content=html_content
+                )
+                await self._email_service.send_email(email_message)
 
                 await session.commit()
-                return admin_user, tenant, access_token, refresh_token
+                return admin_user, tenant
 
             except Exception as e:
                 await session.rollback()
@@ -173,3 +207,23 @@ class OrganizationRegistrationUseCases:
         access_token, refresh_token = await self._auth_service.create_tokens(admin_user)
         
         return admin_user, tenant, access_token, refresh_token
+    
+    async def verify_email(self, token: str) -> Tuple[str, Optional[str]]:
+        import logging
+        logger = logging.getLogger("verify-email-usecase")
+        logger.info(f"[verify_email] Called with token: {token}")
+        async with AsyncSessionLocal() as session:
+            user = await self._user_repository.get_by_email_verification_token(token)
+            if not user:
+                logger.warning(f"[verify_email] No user found for token: {token}")
+                return "fail", None
+            logger.info(f"[verify_email] Found user: {user.username or user.email}, is_email_verified={user.is_email_verified}, token={user.email_verification_token}")
+            if user.is_email_verified:
+                logger.warning(f"[verify_email] User already verified: {user.username or user.email}")
+                return "already_verified", user.username or str(user.email)
+            user.is_email_verified = True
+            user.email_verification_token = None
+            await self._user_repository.update(user)
+            await session.commit()
+            logger.info(f"[verify_email] User verified and token cleared: {user.username or user.email}")
+            return "success", user.username or str(user.email)

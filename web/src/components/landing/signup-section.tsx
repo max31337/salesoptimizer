@@ -25,6 +25,7 @@ import {
 } from "lucide-react"
 import Link from "next/link"
 import { apiClient } from '@/lib/api'
+import { Modal } from '@/components/ui/modal'
 
 // Organization signup interface
 interface OrganizationSignup {
@@ -101,6 +102,7 @@ export function SignupSection() {
   const [currentStep, setCurrentStep] = useState(1)
   const [isLoading, setIsLoading] = useState(false)
   const [error, setError] = useState<string | null>(null)
+  const [showSuccessModal, setShowSuccessModal] = useState(false)
   const [formData, setFormData] = useState<OrganizationSignup>({
     organizationName: '',
     organizationSlug: '',
@@ -193,7 +195,7 @@ export function SignupSection() {
       // Use apiClient.post with the correct endpoint
       const result = await apiClient.post('/organizations/register', payload)
       console.log('Registration successful:', result)
-      router.push('/dashboard')
+      setShowSuccessModal(true)
     } catch (error: any) {
       console.error('Registration error:', error)
       setError(error.message || 'Registration failed. Please try again.')
@@ -223,16 +225,36 @@ export function SignupSection() {
   }
 
   return (
-    <section id="signup" className="py-20 px-4 sm:px-6 lg:px-8 bg-gradient-to-b from-blue-50/50 to-purple-50/50 dark:from-gray-900 dark:to-gray-800">
-      <div className="max-w-6xl mx-auto">
-        <div className="text-center mb-12">
-          <h2 className="text-3xl sm:text-4xl font-bold text-foreground mb-4">
-            Start Your Free Trial Today
-          </h2>
-          <p className="text-xl text-muted-foreground max-w-2xl mx-auto">
-            Create your organization account and get started with SalesOptimizer in minutes
+    <>
+      <Modal
+        isOpen={showSuccessModal}
+        onClose={() => setShowSuccessModal(false)}
+        title="Registration Successful"
+      >
+        <div className="text-center">
+          <CheckCircle className="mx-auto h-12 w-12 text-green-500" />
+          <h3 className="mt-4 text-lg font-semibold">Please check your email</h3>
+          <p className="mt-2 text-sm text-muted-foreground">
+            We've sent a verification link to your email address. Please click the link to activate your account.
           </p>
+          <Button
+            onClick={() => setShowSuccessModal(false)}
+            className="mt-6 w-full"
+          >
+            Close
+          </Button>
         </div>
+      </Modal>
+      <section id="signup" className="py-20 px-4 sm:px-6 lg:px-8 bg-gradient-to-b from-blue-50/50 to-purple-50/50 dark:from-gray-900 dark:to-gray-800">
+        <div className="max-w-6xl mx-auto">
+          <div className="text-center mb-12">
+            <h2 className="text-3xl sm:text-4xl font-bold text-foreground mb-4">
+              Start Your Free Trial Today
+            </h2>
+            <p className="text-xl text-muted-foreground max-w-2xl mx-auto">
+              Create your organization account and get started with SalesOptimizer in minutes
+            </p>
+          </div>
 
         <div className="grid lg:grid-cols-2 gap-12 items-start">
           {/* Benefits Column */}
@@ -640,7 +662,8 @@ export function SignupSection() {
             </div>
           </div>
         </div>
-      </div>
-    </section>
+        </div>
+      </section>
+    </>
   )
 }
