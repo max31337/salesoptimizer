@@ -225,7 +225,7 @@ class OrganizationRegistrationUseCases:
         logger.info(f"[verify_email] Called with token: {token}")
         async with AsyncSessionLocal() as session:
             email_verification = await self._email_verification_repository.get_by_token(token)
-            if not email_verification or email_verification.is_expired() or email_verification.is_verified:
+            if not email_verification or email_verification.is_expired():
                 logger.warning(f"[verify_email] No valid email verification found for token: {token}")
                 return "fail", None
 
@@ -238,12 +238,11 @@ class OrganizationRegistrationUseCases:
                 logger.warning(f"[verify_email] User already verified: {user.username or user.email}")
                 return "already_verified", user.username or str(user.email)
 
+            # Only mark as verified if not already
             user.is_email_verified = True
             await self._user_repository.update(user)
-            
             email_verification.verify()
             await self._email_verification_repository.update(email_verification)
-
             await session.commit()
             logger.info(f"[verify_email] User verified: {user.username or user.email}")
             return "success", user.username or str(user.email)

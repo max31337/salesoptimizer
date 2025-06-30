@@ -271,7 +271,13 @@ async def verify_email(
         # Call the use case to verify the email
         status, username = await app_service.organization_registration_use_cases.verify_email(token)
         logger.info(f"[VERIFY-EMAIL] Verification result status: {status}, username: {username}")
-        # Always include username param, even if None or empty
+        # If already verified, redirect directly to login with username and status
+        if status == "already_verified":
+            username_param = f"&username={username}" if username else "&username="
+            redirect_url = f"{settings.FRONTEND_URL}/login?verified=already_verified{username_param}"
+            logger.info(f"[VERIFY-EMAIL] Redirecting to: {redirect_url}")
+            return RedirectResponse(url=redirect_url)
+        # Normal success/fail
         username_param = f"&username={username}" if username else "&username="
         redirect_url = f"{settings.FRONTEND_URL}/verify-email?status={status}{username_param}"
         logger.info(f"[VERIFY-EMAIL] Redirecting to: {redirect_url}")

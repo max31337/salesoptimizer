@@ -76,13 +76,6 @@ export default function VerifyEmailPage() {
           <p className="text-muted-foreground">Redirecting to login...</p>
         </div>
       )}
-      {status === "fail" && (
-        <div className="flex flex-col items-center gap-4">
-          <XCircle className="h-10 w-10 text-red-600" />
-          <p className="text-lg font-semibold text-red-700">Verification failed</p>
-          <p className="text-muted-foreground">Redirecting to login...</p>
-        </div>
-      )}
     </div>
   );
 }

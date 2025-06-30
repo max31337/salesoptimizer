@@ -1,6 +1,6 @@
 "use client"
 
-import { useState } from "react"
+import React, { useState } from "react"
 import { useRouter, useSearchParams } from "next/navigation"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
@@ -13,13 +13,22 @@ import { useAuth } from "@/features/auth/hooks/useAuth"
 export function LoginForm() {
   const searchParams = useSearchParams();
   const prefillUsername = searchParams.get('username') || '';
-  
+  const verified = searchParams.get('verified');
+
   const [emailOrUsername, setEmailOrUsername] = useState(prefillUsername);
+  const [info, setInfo] = useState("");
   const [password, setPassword] = useState("")
   const [isLoading, setIsLoading] = useState(false)
   const [error, setError] = useState("")
   const { login } = useAuth()
   const router = useRouter()
+
+  // Show info if already_verified
+  React.useEffect(() => {
+    if (verified === "already_verified") {
+      setInfo("Your email has already been verified. You can log in.");
+    }
+  }, [verified]);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
@@ -47,13 +56,15 @@ export function LoginForm() {
         </CardDescription>
       </CardHeader>
       <CardContent>
+        {info && (
+          <div className="mb-4 text-green-600 text-center text-sm">{info}</div>
+        )}
         <form onSubmit={handleSubmit} className="space-y-4">
           {error && (
             <Alert variant="destructive" className="border-destructive/50 text-destructive dark:border-destructive [&>svg]:text-destructive">
               <AlertDescription>{error}</AlertDescription>
             </Alert>
           )}
-          
           <div className="space-y-2">
             <Label htmlFor="emailOrUsername" className="text-sm font-medium text-card-foreground">
               Email or Username
@@ -69,7 +80,7 @@ export function LoginForm() {
               className="bg-background border-border text-foreground placeholder:text-muted-foreground focus:border-primary focus:ring-primary"
             />
           </div>
-            <div className="space-y-2">
+          <div className="space-y-2">
             <Label htmlFor="password" className="text-sm font-medium text-card-foreground">
               Password
             </Label>
@@ -83,7 +94,6 @@ export function LoginForm() {
               className="bg-background border-border text-foreground placeholder:text-muted-foreground focus:border-primary focus:ring-primary"
             />
           </div>
-          
           <Button 
             type="submit" 
             className="w-full bg-gradient-to-r from-blue-600 to-purple-600 hover:from-blue-700 hover:to-purple-700 text-white font-semibold shadow-lg hover:shadow-xl transition-all duration-200" 
@@ -92,7 +102,6 @@ export function LoginForm() {
             {isLoading ? "Signing in..." : "Sign In"}
           </Button>
         </form>
-        
         <div className="mt-6 text-center space-y-2">
           <p className="text-sm text-muted-foreground">
             Forgot your password?{" "}
