@@ -9,6 +9,9 @@ from domain.organization.value_objects.password import Password
 from domain.organization.value_objects.user_role import UserRole
 from domain.organization.value_objects.user_status import UserStatus
 from domain.organization.repositories.user_repository import UserRepository
+from domain.organization.repositories.oauth_provider_repository import OAuthProviderRepository
+from domain.organization.repositories.email_verification_repository import EmailVerificationRepository
+from domain.organization.entities.oauth_provider import OAuthProvider
 from domain.organization.exceptions.auth_exceptions import (
     AuthenticationError,
     InvalidCredentialsError,
@@ -30,10 +33,14 @@ class AuthService:
     def __init__(
         self,
         user_repository: UserRepository,
+        oauth_provider_repository: OAuthProviderRepository,
+        email_verification_repository: EmailVerificationRepository,
         password_service: PasswordService,
         jwt_service: JWTService
     ) -> None:
         self._user_repository = user_repository
+        self._oauth_provider_repository = oauth_provider_repository
+        self._email_verification_repository = email_verification_repository
         self._password_service = password_service
         self._jwt_service = jwt_service
         self._logger = logging.getLogger(__name__)
@@ -73,10 +80,21 @@ class AuthService:
         ):
             raise InvalidCredentialsError()
         
-        # Update last login
-        user.record_login()
+        # Log login activity instead of last_login
+        from domain.organization.entities.login_activity import LoginActivity
+        if user.id is None:
+            raise AuthenticationError("User ID is missing for login activity")
+        login_activity = LoginActivity(
+            id=None,
+            user_id=user.id,
+            ip_address=None,  # You may want to pass these from the command/request
+            user_agent=None
+        )
+        if hasattr(user, 'login_activities'):
+            user.login_activities.append(login_activity)
+        else:
+            user.login_activities = [login_activity]
         await self._user_repository.update(user)
-        
         return user
     
     async def authenticate_oauth_user(
@@ -94,22 +112,61 @@ class AuthService:
         except ValueError as e:
             raise AuthenticationError(f"Invalid email format: {email_str}") from e
         
-        # Try to find existing user
-        user = await self._user_repository.get_by_email(email)
-        is_new_user = False
-        
+        # Try to find existing user by OAuth provider details first
+        oauth_provider_id = str(user_info.get('id', ''))
+        oauth_provider_entity = await self._oauth_provider_repository.get_by_provider_user_id(provider, oauth_provider_id)
+
+        if oauth_provider_entity:
+            user = await self._user_repository.get_by_id(oauth_provider_entity.user_id)
+            is_new_user = False
+        else:
+            user = await self._user_repository.get_by_email(email)
+            is_new_user = False
+
         if not user:
             # Create new user
             is_new_user = True
             user = self._create_oauth_user(provider, user_info, email)
             user = await self._user_repository.save(user)
+            # Create and save the oauth provider link
+            if user.id:
+                oauth_provider_entity = OAuthProvider(
+                    id=uuid4(),
+                    user_id=user.id,
+                    provider=provider,
+                    provider_user_id=oauth_provider_id
+                )
+                await self._oauth_provider_repository.add(oauth_provider_entity)
         else:
             # Check if user is active
             if not user.is_active():
                 raise InactiveUserError()
-            
-            # Update last login
-            user.record_login()
+
+            # Link the OAuth provider if it's not already linked
+            if not oauth_provider_entity:
+                if user.id:
+                    oauth_provider_entity = OAuthProvider(
+                        id=uuid4(),
+                        user_id=user.id,
+                        provider=provider,
+                        provider_user_id=oauth_provider_id
+                    )
+                    await self._oauth_provider_repository.add(oauth_provider_entity)
+
+            # Log login activity instead of last_login
+            from domain.organization.entities.login_activity import LoginActivity
+            if user.id is None:
+                raise AuthenticationError("User ID is missing for login activity")
+            login_activity = LoginActivity(
+                id=None,
+                user_id=user.id,
+                ip_address=None,  # You may want to pass these from the command/request
+                user_agent=None
+            )
+            if hasattr(user, 'login_activities'):
+                user.login_activities.append(login_activity)
+            else:
+                user.login_activities = [login_activity]
             user = await self._user_repository.update(user)
         
         return user, is_new_user
@@ -155,8 +212,20 @@ class AuthService:
                 user.tenant_id = tenant_id.value
                 user = await self._user_repository.update(user)
             
-            # Update last login
-            user.record_login()
+            # Log login activity instead of last_login
+            from domain.organization.entities.login_activity import LoginActivity
+            if user.id is None:
+                raise AuthenticationError("User ID is missing for login activity")
+            login_activity = LoginActivity(
+                id=None,
+                user_id=user.id,
+                ip_address=None,  # You may want to pass these from the command/request
+                user_agent=None
+            )
+            if hasattr(user, 'login_activities'):
+                user.login_activities.append(login_activity)
+            else:
+                user.login_activities = [login_activity]
             user = await self._user_repository.update(user)
         
         return user, is_new_user
@@ -404,8 +473,7 @@ class AuthService:
             password_hash='',  # Empty string for OAuth users (not None)
             role=UserRole.sales_rep(),
             status=UserStatus.active(),
-            _oauth_provider=provider,
-            _oauth_provider_id=str(user_info.get('id', ''))
+            is_email_verified=True # OAuth users have verified emails
         )
 
     def _create_oauth_user_with_tenant(

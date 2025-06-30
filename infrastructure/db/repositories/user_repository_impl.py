@@ -56,14 +56,6 @@ class UserRepositoryImpl(UserRepository):
         model = result.scalar_one_or_none()
         
         return self._model_to_entity(model) if model else None
-
-    async def get_by_email_verification_token(self, token: str) -> Optional[User]:
-        """Get user by email verification token."""
-        stmt = select(UserModel).where(UserModel.email_verification_token == token)
-        result = await self._session.execute(stmt)
-        model = result.scalar_one_or_none()
-        
-        return self._model_to_entity(model) if model else None
     
     async def count_superadmins(self) -> int:
         """Count the number of superadmin users."""
@@ -117,16 +109,6 @@ class UserRepositoryImpl(UserRepository):
         if user.bio is not None:
             model.bio = user.bio
         model.is_email_verified = user.is_email_verified
-        if user.email_verification_token is not None:
-            model.email_verification_token = user.email_verification_token
-        if user.email_verification_sent_at is not None:
-            model.email_verification_sent_at = user.email_verification_sent_at
-        if user.oauth_provider is not None:
-            model.oauth_provider = user.oauth_provider
-        if user.oauth_provider_id is not None:
-            model.oauth_provider_id = user.oauth_provider_id
-        if user.last_login is not None:
-            model.last_login = user.last_login
         model.updated_at = datetime.now()
         
         await self._session.flush()
@@ -162,13 +144,8 @@ class UserRepositoryImpl(UserRepository):
             bio=model.bio,
             job_title=model.job_title,
             is_email_verified=model.is_email_verified,
-            email_verification_token=model.email_verification_token,
-            email_verification_sent_at=model.email_verification_sent_at,
-            last_login=model.last_login,
             created_at=model.created_at,
             updated_at=model.updated_at,
-            _oauth_provider=model.oauth_provider,
-            _oauth_provider_id=model.oauth_provider_id,
             accept_terms=model.accept_terms,
             accept_privacy=model.accept_privacy,
             marketing_opt_in=model.marketing_opt_in
@@ -191,13 +168,8 @@ class UserRepositoryImpl(UserRepository):
             bio=user.bio,
             job_title=user.job_title,
             is_email_verified=user.is_email_verified,
-            email_verification_token=user.email_verification_token,
-            email_verification_sent_at=user.email_verification_sent_at,
-            last_login=user.last_login,
             created_at=user.created_at,
             updated_at=user.updated_at,
-            oauth_provider=user.oauth_provider,
-            oauth_provider_id=user.oauth_provider_id,
             accept_terms=user.accept_terms,
             accept_privacy=user.accept_privacy,
             marketing_opt_in=user.marketing_opt_in

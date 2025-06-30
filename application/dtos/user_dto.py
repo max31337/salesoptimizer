@@ -1,5 +1,5 @@
 from pydantic import BaseModel
-from typing import Optional, Dict, Any
+from typing import Optional, Dict, Any, List
 from datetime import datetime
 
 class TeamInfoResponse(BaseModel):
@@ -68,6 +68,7 @@ class UserProfilePublicResponse(BaseModel):
     password_strength: Optional[str] = None
     is_email_verified: bool = False
     last_login: Optional[datetime] = None
+    login_activities: Optional[List[Dict[str, Optional[str]]]] = None
     created_at: datetime
     updated_at: datetime
     team_info: Optional[TeamInfoResponse] = None

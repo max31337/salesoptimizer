@@ -101,31 +101,7 @@ class TestUser:
         assert user_with_password.has_password() is True
         assert user_without_password.has_password() is False
     
-    def test_record_login_method(self):
-        """Test record_login method."""
-        user = User(
-            id=None,
-            email=Email("test@example.com"),
-            username=None,
-            first_name="Test",
-            last_name="User",
-            password_hash="hashed_password",
-            role=UserRole.SALES_REP,
-            status=UserStatus.ACTIVE
-        )
-        
-        # Initially no last login
-        assert user.last_login is None
-        
-        # Record login
-        before_login = datetime.now(timezone.utc)
-        user.record_login()
-        after_login = datetime.now(timezone.utc)
-        
-        # Check that last_login and updated_at are set
-        assert user.last_login is not None
-        assert before_login <= user.last_login <= after_login
-        assert before_login <= user.updated_at <= after_login
+    # Removed test_record_login_method since last_login is deprecated and replaced by login_activity tracking
     
     def test_empty_first_name_raises_error(self):
         """Test empty first name raises ValueError."""

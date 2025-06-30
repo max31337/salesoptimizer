@@ -22,7 +22,7 @@ class InvitationModel(Base):
     role: Mapped[str] = mapped_column(String(50), nullable=False)
     token: Mapped[str] = mapped_column(String(255), nullable=False, unique=True, index=True)
     invited_by_id: Mapped[uuid.UUID] = mapped_column(GUID(), ForeignKey("users.id"), nullable=False)
-    organization_name: Mapped[str] = mapped_column(String(255), nullable=False)
+    organization_name: Mapped[str] = mapped_column(String(255), nullable=True)
     expires_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), nullable=False)
     is_used: Mapped[bool] = mapped_column(Boolean, default=False, nullable=False)
     used_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), nullable=True)

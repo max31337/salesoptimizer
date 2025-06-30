@@ -1,5 +1,5 @@
 from pydantic import BaseModel, EmailStr, field_validator
-from typing import Optional
+from typing import Optional, List, Dict
 from uuid import UUID
 
 
@@ -76,6 +76,7 @@ class LoginResponse(BaseModel):
     profile_picture_url: Optional[str] = None
     bio: Optional[str] = None
     status: str = "active"
+    login_activities: Optional[List[Dict[str, Optional[str]]]] = None  # login_at, logout_at, ip_address, user_agent
     message: Optional[str] = None
 
     class Config:

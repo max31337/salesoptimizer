@@ -2,66 +2,44 @@ from typing import Tuple, Optional
 
 from domain.organization.entities.user import User
 from domain.organization.services.auth_service import AuthService
-from domain.organization.services.activity_log_service import ActivityLogService
+from domain.organization.services.login_activity_service import LoginActivityService
 from infrastructure.services.oauth_service import OAuthService
 from application.commands.auth_command import LoginCommand
 from application.commands.oauth_command import OAuthLoginCommand, OAuthAuthorizationCommand
 from application.dtos.auth_dto import ChangePasswordRequest
+from domain.organization.value_objects.user_id import UserId
 
 
 class AuthUseCases:
     """Authentication use cases."""
     
     def __init__(
-        self, 
+        self,
         auth_service: AuthService,
         oauth_service: OAuthService,
-        activity_log_service: Optional[ActivityLogService] = None
+        login_activity_service: LoginActivityService
     ) -> None:
         self._auth_service = auth_service
         self._oauth_service = oauth_service
-        self._activity_log_service = activity_log_service
+        self._login_activity_service = login_activity_service
     
     async def login(self, command: LoginCommand) -> Tuple[User, str, str]:
-        """Login user and return user with tokens."""
+        """Login user and return user with tokens. Tracks device info if provided."""
         user = await self._auth_service.authenticate_user(
             command.email_or_username,
             command.password
         )
-        
-        access_token, refresh_token = await self._auth_service.create_tokens(user)
-        
-        return user, access_token, refresh_token
-    
-    async def login_with_device_info(
-        self, 
-        command: LoginCommand, 
-        user_agent: str, 
-        ip_address: str
-    ) -> Tuple[User, str, str]:
-        """Login user with device information and return user with tokens."""
-        user = await self._auth_service.authenticate_user(
-            command.email_or_username,
-            command.password
-        )
-        
-        # Log the login activity
-        if self._activity_log_service and user.id:
-            try:
-                await self._activity_log_service.record_user_login(
-                    user_id=user.id,
-                    tenant_id=user.tenant_id,
-                    ip_address=ip_address,
-                    user_agent=user_agent
-                )
-            except Exception as e:
-                # Don't fail login if activity logging fails
-                print(f"Failed to log login activity: {e}")
-        
+        # Record login activity
+        if user.id:
+            login_activity = await self._login_activity_service.record_login(
+                user_id=user.id,
+                ip_address=command.ip_address,
+                user_agent=command.user_agent
+            )
+            user.login_activities.append(login_activity)
         access_token, refresh_token = await self._auth_service.create_tokens_with_device_info(
-            user, user_agent, ip_address
+            user, command.user_agent, command.ip_address
         )
-        
         return user, access_token, refresh_token
     
     async def oauth_login(self, command: OAuthLoginCommand) -> Tuple[User, str, str, bool]:
@@ -112,3 +90,7 @@ class AuthUseCases:
             request.current_password,
             request.new_password
         )
+
+    async def logout(self, user_id: UserId) -> None:
+        """Logout user and record logout activity."""
+        await self._login_activity_service.record_logout(user_id)

@@ -1,8 +1,8 @@
-"""add_sla_monitoring_tables
+"""system related tables migration
 
-Revision ID: 47cf2e40fa2f
-Revises: b9f1a99fa4b6
-Create Date: 2025-06-19 17:13:16.953388
+Revision ID: 367650b7017e
+Revises: db418831f852
+Create Date: 2025-06-29 22:48:05.091595
 
 """
 from typing import Sequence, Union
@@ -12,8 +12,8 @@ import sqlalchemy as sa
 from infrastructure.db.models.user_model import GUID
 
 # revision identifiers, used by Alembic.
-revision: str = '47cf2e40fa2f'
-down_revision: Union[str, None] = 'b9f1a99fa4b6'
+revision: str = '367650b7017e'
+down_revision: Union[str, None] = 'db418831f852'
 branch_labels: Union[str, Sequence[str], None] = None
 depends_on: Union[str, Sequence[str], None] = None
 
@@ -77,6 +77,41 @@ def upgrade() -> None:
         batch_op.create_index(batch_op.f('ix_sla_thresholds_is_active'), ['is_active'], unique=False)
         batch_op.create_index(batch_op.f('ix_sla_thresholds_metric_type'), ['metric_type'], unique=False)
 
+    op.create_table('uptime_events',
+    sa.Column('id', GUID(), nullable=False),
+    sa.Column('event_type', sa.String(length=20), nullable=False),
+    sa.Column('service_name', sa.String(length=100), nullable=False),
+    sa.Column('timestamp', sa.DateTime(timezone=True), nullable=False),
+    sa.Column('duration_seconds', sa.Float(), nullable=True),
+    sa.Column('reason', sa.String(length=500), nullable=True),
+    sa.Column('severity', sa.String(length=20), nullable=False),
+    sa.Column('auto_detected', sa.Boolean(), nullable=False),
+    sa.Column('meta_data', sa.JSON(), nullable=True),
+    sa.Column('created_at', sa.DateTime(timezone=True), nullable=False),
+    sa.PrimaryKeyConstraint('id')
+    )
+    with op.batch_alter_table('uptime_events', schema=None) as batch_op:
+        batch_op.create_index(batch_op.f('ix_uptime_events_event_type'), ['event_type'], unique=False)
+        batch_op.create_index(batch_op.f('ix_uptime_events_service_name'), ['service_name'], unique=False)
+        batch_op.create_index(batch_op.f('ix_uptime_events_timestamp'), ['timestamp'], unique=False)
+
+    op.create_table('uptime_metrics',
+    sa.Column('id', GUID(), nullable=False),
+    sa.Column('service_name', sa.String(length=100), nullable=False),
+    sa.Column('period_start', sa.DateTime(timezone=True), nullable=False),
+    sa.Column('period_end', sa.DateTime(timezone=True), nullable=False),
+    sa.Column('uptime_percentage', sa.Float(), nullable=False),
+    sa.Column('total_downtime_seconds', sa.Float(), nullable=False),
+    sa.Column('downtime_incidents', sa.Integer(), nullable=False),
+    sa.Column('calculated_at', sa.DateTime(timezone=True), nullable=False),
+    sa.Column('meta_data', sa.JSON(), nullable=True),
+    sa.PrimaryKeyConstraint('id')
+    )
+    with op.batch_alter_table('uptime_metrics', schema=None) as batch_op:
+        batch_op.create_index(batch_op.f('ix_uptime_metrics_period_end'), ['period_end'], unique=False)
+        batch_op.create_index(batch_op.f('ix_uptime_metrics_period_start'), ['period_start'], unique=False)
+        batch_op.create_index(batch_op.f('ix_uptime_metrics_service_name'), ['service_name'], unique=False)
+
     op.create_table('sla_alerts',
     sa.Column('id', GUID(), nullable=False),
     sa.Column('alert_type', sa.String(length=20), nullable=False),
@@ -116,6 +151,19 @@ def downgrade() -> None:
         batch_op.drop_index(batch_op.f('ix_sla_alerts_acknowledged'))
 
     op.drop_table('sla_alerts')
+    op.drop_table('oauth_providers', schema='shared')
+    with op.batch_alter_table('uptime_metrics', schema=None) as batch_op:
+        batch_op.drop_index(batch_op.f('ix_uptime_metrics_service_name'))
+        batch_op.drop_index(batch_op.f('ix_uptime_metrics_period_start'))
+        batch_op.drop_index(batch_op.f('ix_uptime_metrics_period_end'))
+
+    op.drop_table('uptime_metrics')
+    with op.batch_alter_table('uptime_events', schema=None) as batch_op:
+        batch_op.drop_index(batch_op.f('ix_uptime_events_timestamp'))
+        batch_op.drop_index(batch_op.f('ix_uptime_events_service_name'))
+        batch_op.drop_index(batch_op.f('ix_uptime_events_event_type'))
+
+    op.drop_table('uptime_events')
     with op.batch_alter_table('sla_thresholds', schema=None) as batch_op:
         batch_op.drop_index(batch_op.f('ix_sla_thresholds_metric_type'))
         batch_op.drop_index(batch_op.f('ix_sla_thresholds_is_active'))

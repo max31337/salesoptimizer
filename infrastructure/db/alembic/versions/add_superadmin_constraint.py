@@ -1,8 +1,8 @@
 """Add database-level superadmin constraint
 
 Revision ID: add_superadmin_constraint
-Revises: 86071c358ba2
-Create Date: 2025-06-08 17:00:00.000000
+Revises: b112295d15e8
+Create Date: 2025-06-29 22:20:23.562942
 
 """
 from alembic import op
@@ -10,7 +10,7 @@ from sqlalchemy.sql import text
 
 # revision identifiers, used by Alembic.
 revision = 'add_superadmin_constraint'
-down_revision = '86071c358ba2'
+down_revision = 'b112295d15e8'
 branch_labels = None
 depends_on = None
 

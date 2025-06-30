@@ -6,6 +6,8 @@ from domain.organization.services.profile_update_service import ProfileUpdateSer
 from domain.organization.value_objects.email import Email
 from domain.organization.value_objects.user_id import UserId
 from domain.organization.repositories.user_repository import UserRepository
+from domain.organization.entities.login_activity import LoginActivity
+from domain.organization.repositories.login_activity_repository import LoginActivityRepository
 from domain.organization.repositories.profile_update_request_repository import ProfileUpdateRequestRepository
 from application.dtos.user_dto import (
     UpdateProfileRequest,
@@ -22,17 +24,24 @@ class ProfileUpdateUseCase:
         self,
         user_repository: UserRepository,
         profile_service: ProfileUpdateService,
-        profile_update_request_repository: ProfileUpdateRequestRepository
+        profile_update_request_repository: ProfileUpdateRequestRepository,
+        login_activity_repository: LoginActivityRepository
     ):
         self.user_repository = user_repository
         self.profile_service = profile_service
         self.profile_update_request_repository = profile_update_request_repository
+        self.login_activity_repository = login_activity_repository
 
     async def get_user_profile(self, user_id: UUID) -> UserProfileResponse:
         """Get user profile information."""
-        user = await self.user_repository.get_by_id(UserId(user_id))        
+        user = await self.user_repository.get_by_id(UserId(user_id))
         if not user:
             raise ValueError("User not found")
+
+        if not user.id:
+            raise ValueError("User ID not found")
+
+        last_login_activity: Optional[LoginActivity] = await self.login_activity_repository.get_latest_by_user_id(user.id)
         
         return UserProfileResponse(
             user_id=str(user.id.value) if user.id else str(user_id),
@@ -47,7 +56,7 @@ class ProfileUpdateUseCase:
             status=user.status.value,
             password_strength=user.password_strength,
             is_email_verified=user.is_email_verified,
-            last_login=user.last_login,
+            last_login=last_login_activity.login_at if last_login_activity else None,
             created_at=user.created_at,
             updated_at=user.updated_at
         )

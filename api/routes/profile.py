@@ -70,7 +70,7 @@ async def get_my_profile(
                 print(f"Error fetching team info: {e}")
         
         # Return different response models based on user role
-        if current_user.role.value in ['super_admin', 'org_admin']:
+        if current_user.role.value in ['super_admin']:
             # Admins get full profile with UUIDs and technical details
             return UserProfileAdminResponse(
                 **profile_data.model_dump(),
@@ -131,10 +131,10 @@ async def get_organization_info(
         if current_user.role.value in ['super_admin', 'org_admin']:
             # Admins get full organization details with UUIDs
             organization_response = OrganizationResponse(
-                id=str(tenant.id.value),
-                name=tenant.name.value,
-                slug=tenant.slug,
-                subscription_tier=tenant.subscription_tier,
+                id=str(tenant.id.value) if tenant.id is not None else "",
+                name=tenant.name,
+                slug=tenant.slug or "",
+                subscription_tier=tenant.subscription_tier or "",
                 is_active=tenant.is_active,
                 owner_id=str(tenant.owner_id.value) if tenant.owner_id else None,
                 settings=tenant.settings,
@@ -145,8 +145,8 @@ async def get_organization_info(
         else:
             # Regular users get public organization details without UUIDs
             organization_response = OrganizationPublicResponse(
-                name=tenant.name.value,
-                subscription_tier=tenant.subscription_tier,
+                name=tenant.name,
+                subscription_tier=tenant.subscription_tier or "",
                 is_active=tenant.is_active,
                 created_at=tenant.created_at or datetime.now(),
                 updated_at=tenant.updated_at or datetime.now()

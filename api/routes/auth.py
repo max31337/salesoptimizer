@@ -1,3 +1,4 @@
+from typing import List
 from typing import Annotated, Dict, Any, Literal, cast
 from fastapi import APIRouter, Depends, HTTPException, status, Query, Response, Request
 from fastapi.security import OAuth2PasswordRequestForm
@@ -34,26 +35,18 @@ async def login(
     """Authenticate user and return user data with httpOnly cookies."""
     
     try:
-        command = LoginCommand(
-            email_or_username=form_data.username,
-            password=form_data.password
-        )
-        
-        # Extract device information
         user_agent = request.headers.get("user-agent", "")
         ip_address = request.client.host if request.client else "unknown"
-        
-        user, access_token, refresh_token = await app_service.auth_use_cases.login_with_device_info(
-            command, user_agent, ip_address
+        command = LoginCommand(
+            email_or_username=form_data.username,
+            password=form_data.password,
+            user_agent=user_agent,
+            ip_address=ip_address
         )
-        
+        user, access_token, refresh_token = await app_service.auth_use_cases.login(command)
         if not user.id:
-            raise HTTPException(
-                status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-                detail="User ID is missing"
-            )
-        
-        # 🔧 FIX: Updated cookie settings for cross-origin
+            raise HTTPException(status_code=400, detail="User ID missing after login")
+        # Set cookies
         response.set_cookie(
             key="access_token",
             value=access_token,
@@ -73,10 +66,19 @@ async def login(
             domain=settings.cookie_domain,  
             path="/"
         )
-        
+        # Optionally, include login activity in response
+        login_activities: List[Dict[str, Any]] = []
+        if hasattr(user, 'login_activities'):
+            for act in getattr(user, 'login_activities', []):
+                login_activities.append({
+                    "login_at": str(getattr(act, 'login_at', None)),
+                    "logout_at": str(getattr(act, 'logout_at', None)),
+                    "ip_address": getattr(act, 'ip_address', None),
+                    "user_agent": getattr(act, 'user_agent', None)
+                })
         return LoginResponse(
-            access_token="",  # Don't return tokens in response body
-            refresh_token="",
+            access_token=access_token,
+            refresh_token=refresh_token,
             token_type="bearer",
             user_id=user.id.value,
             tenant_id=user.tenant_id,
@@ -85,7 +87,9 @@ async def login(
             first_name=user.first_name,
             last_name=user.last_name,
             profile_picture_url=user.profile_picture_url,
-            bio=user.bio
+            bio=user.bio,
+            status=user.status.value,
+            login_activities=login_activities
         )
     
     except (InvalidCredentialsError, UserNotFoundError):
@@ -114,8 +118,15 @@ async def login(
 
 
 @router.post("/logout")
-async def logout(response: Response):
+async def logout(
+    response: Response,
+    app_service: Annotated[ApplicationService, Depends(get_application_service)],
+    current_user: User = Depends(get_current_user_from_cookie)
+):
     """Logout and clear httpOnly cookies."""
+    if current_user and current_user.id:
+        await app_service.auth_use_cases.logout(current_user.id)
+
     response.delete_cookie(key="access_token", path="/")
     response.delete_cookie(key="refresh_token", path="/")
 

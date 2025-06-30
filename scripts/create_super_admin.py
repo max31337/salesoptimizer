@@ -22,6 +22,8 @@ from infrastructure.db.models.team_model import TeamModel
 from infrastructure.services.password_service import PasswordService
 from domain.organization.entities.user import UserRole, UserStatus
 from domain.organization.services.superadmin_management_service import SuperadminManagementService
+from domain.organization.value_objects.password import Password
+
 from scripts.system_organization_manager import SystemOrganizationManager
 
 
@@ -159,7 +161,6 @@ def initialize_platform(email: str = "admin@salesoptimizer.com", password: str =
             password_hash = password_service.hash_password(password)
             
             # Calculate password strength
-            from domain.organization.value_objects.password import Password
             password_obj = Password(password)
             password_strength = password_obj.strength.value
             
@@ -179,8 +180,6 @@ def initialize_platform(email: str = "admin@salesoptimizer.com", password: str =
                 is_email_verified=True,
                 created_at=datetime.now(timezone.utc),
                 updated_at=datetime.now(timezone.utc),
-                oauth_provider=None,
-                oauth_provider_id=None
             )
             
             session.add(superadmin)

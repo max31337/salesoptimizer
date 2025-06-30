@@ -10,7 +10,6 @@ from sqlalchemy.engine import Dialect
 
 from infrastructure.db.database import Base
 
-# Use TYPE_CHECKING for forward references
 if TYPE_CHECKING:
     from infrastructure.db.models.tenant_model import TenantModel
     from infrastructure.db.models.team_model import TeamModel
@@ -18,7 +17,7 @@ if TYPE_CHECKING:
     from infrastructure.db.models.refresh_token_model import RefreshTokenModel
     from infrastructure.db.models.profile_update_request_model import ProfileUpdateRequestModel
     from infrastructure.db.models.activity_log_model import ActivityLogModel
-
+    from infrastructure.db.models.login_activity_model import LoginActivityModel
 
 class GUID(TypeDecorator[uuid.UUID]):
     """Platform-independent GUID type."""
@@ -81,15 +80,9 @@ class UserModel(Base):
     role: Mapped[str] = mapped_column(String(50), nullable=False, default="sales_rep")
     status: Mapped[str] = mapped_column(String(20), nullable=False, default="pending")
     is_email_verified: Mapped[bool] = mapped_column(Boolean, default=False)
-    email_verification_token: Mapped[str] = mapped_column(String(255), nullable=True, index=True)
-    email_verification_sent_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), nullable=True)
-    last_login: Mapped[datetime] = mapped_column(DateTime(timezone=True), nullable=True)
-    invitation_token: Mapped[str] = mapped_column(String(255), nullable=True, index=True)
-    invitation_expires_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), nullable=True)
+    # last_login removed; now tracked in login_activity table
     created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=lambda: datetime.now(timezone.utc))
     updated_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), nullable=True, onupdate=lambda: datetime.now(timezone.utc))
-    oauth_provider: Mapped[str] = mapped_column(String(50), nullable=True)
-    oauth_provider_id: Mapped[str] = mapped_column(String(255), nullable=True)    
     job_title: Mapped[str] = mapped_column(String(100), nullable=True)
     accept_terms: Mapped[bool] = mapped_column(Boolean, default=False)
     accept_privacy: Mapped[bool] = mapped_column(Boolean, default=False)
@@ -154,6 +147,14 @@ class UserModel(Base):
     activity_logs: Mapped[list["ActivityLogModel"]] = relationship(
         "ActivityLogModel",
         foreign_keys="ActivityLogModel.user_id",
+        back_populates="user",
+        cascade="all, delete-orphan"
+    )
+
+    # Login activity relationship
+    login_activities: Mapped[list["LoginActivityModel"]] = relationship(
+        "LoginActivityModel",
+        foreign_keys="LoginActivityModel.user_id",
         back_populates="user",
         cascade="all, delete-orphan"
     )

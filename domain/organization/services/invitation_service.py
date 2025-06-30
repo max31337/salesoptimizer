@@ -8,7 +8,9 @@ from domain.organization.value_objects.tenant_name import TenantName
 from domain.organization.value_objects.invitation_token import InvitationToken
 from domain.organization.repositories.invitation_repository import InvitationRepository
 from domain.organization.repositories.tenant_repository import TenantRepository
+from domain.organization.repositories.user_repository import UserRepository
 from domain.shared.services.email_service import EmailService
+from domain.organization.entities.user import UserRole
 
 
 class InvitationService:
@@ -18,10 +20,12 @@ class InvitationService:
         self,
         invitation_repository: InvitationRepository,
         tenant_repository: TenantRepository,
+        user_repository: UserRepository,
         email_service: EmailService
     ):
         self._invitation_repository = invitation_repository
         self._tenant_repository = tenant_repository
+        self._user_repository = user_repository
         self._email_service = email_service
     
     async def create_org_admin_invitation_with_tenant(
@@ -54,12 +58,16 @@ class InvitationService:
         )
         created_tenant = await self._tenant_repository.save(tenant)
         
+        # Ensure the created tenant has a valid id before proceeding
+        tenant_id_value = getattr(created_tenant.id, "value", None)
+        if tenant_id_value is None:
+            raise ValueError("Created tenant does not have a valid id.")
         # Create invitation with the created tenant
         invitation = Invitation.create_org_admin_invitation(
             email, 
             invited_by_id, 
             organization_name,
-            created_tenant.id.value
+            tenant_id_value
         )
         created_invitation = await self._invitation_repository.save(invitation)
         
@@ -79,7 +87,54 @@ class InvitationService:
             logger.warning(f"Failed to send invitation email to {email}")
         
         return created_invitation, created_tenant
-    
+
+    async def create_user_invitation(
+        self,
+        email: Email,
+        invited_by_id: UserId,
+        tenant_id: TenantId,
+        role: UserRole,
+        invited_by_name: str = "Your administrator"
+    ) -> Invitation:
+        """Create and send an invitation for a new user to join an existing organization."""
+        # Check if there's already an active invitation for this email
+        existing_invitation = await self._invitation_repository.get_by_email(email)
+        if existing_invitation and existing_invitation.is_valid():
+            raise ValueError(f"Active invitation already exists for {email}")
+
+        # Check if a user with this email already exists in the tenant
+        existing_user = await self._user_repository.get_by_email(email)
+        if existing_user and existing_user.tenant_id == tenant_id.value:
+            raise ValueError(f"User with email {email} already exists in this organization.")
+
+        # Create invitation
+        invitation = Invitation.create_user_invitation(
+            email=email,
+            invited_by_id=invited_by_id,
+            tenant_id=tenant_id.value,
+            role=role
+        )
+        created_invitation = await self._invitation_repository.save(invitation)
+
+        # Send invitation email
+        tenant = await self._tenant_repository.get_by_id(tenant_id)
+        organization_name = str(tenant.name) if tenant and tenant.name else "Your Organization"
+
+        email_sent = await self._email_service.send_invitation_email(
+            to_email=str(email),
+            organization_name=organization_name,
+            invitation_token=created_invitation.token.value,
+            invited_by_name=invited_by_name,
+            expires_at=str(created_invitation.expires_at)
+        )
+
+        if not email_sent:
+            import logging
+            logger = logging.getLogger(__name__)
+            logger.warning(f"Failed to send invitation email to {email}")
+
+        return created_invitation
+
     async def get_all_invitations(self) -> List[Invitation]:
         """Get all invitations."""
         return await self._invitation_repository.get_all()

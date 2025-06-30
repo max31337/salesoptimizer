@@ -60,6 +60,32 @@ class Invitation:
             tenant_id=tenant_id,
             expires_at=expires_at
         )
+
+    @classmethod
+    def create_user_invitation(
+        cls,
+        email: Email,
+        invited_by_id: UserId,
+        tenant_id: UUID,
+        role: UserRole,
+        expires_in_days: int = 7
+    ) -> 'Invitation':
+        """Create a new user invitation for an existing organization."""
+        if not tenant_id:
+            raise ValueError("Tenant ID is required")
+            
+        expires_at = datetime.now(timezone.utc) + timedelta(days=expires_in_days)
+        
+        return cls(
+            id=UserId.generate(),
+            email=email,
+            role=role,
+            token=InvitationToken.generate(),
+            invited_by_id=invited_by_id,
+            organization_name="", # Not needed for user invitations
+            tenant_id=tenant_id,
+            expires_at=expires_at
+        )
     
     def is_expired(self) -> bool:
         """Check if invitation has expired."""

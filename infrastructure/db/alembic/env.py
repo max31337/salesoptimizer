@@ -20,20 +20,30 @@ if config.config_file_name is not None:
 try:
     from infrastructure.db.database import Base, get_database_url
     # Import ALL model files here to register them with SQLAlchemy
-    from infrastructure.db.models.user_model import UserModel, GUID  # Add GUID import
+    from infrastructure.db.models.user_model import UserModel, GUID 
     from infrastructure.db.models.tenant_model import TenantModel
     from infrastructure.db.models.team_model import TeamModel
-    from infrastructure.db.models.invitation_model import InvitationModel
-    from infrastructure.db.models.refresh_token_model import RefreshTokenModel
-    from infrastructure.db.models.profile_update_request_model import ProfileUpdateRequestModel
+    from infrastructure.db.models.oauth_provider_model import OAuthProviderModel
+    from infrastructure.db.models.email_verification_model import EmailVerificationModel
+    from infrastructure.db.models.login_activity_model import LoginActivityModel
     from infrastructure.db.models.activity_log_model import ActivityLogModel
-    from infrastructure.db.models.sla_metric_model import SLAMetricModel
-    from infrastructure.db.models.sla_threshold_model import SLAThresholdModel
-    from infrastructure.db.models.sla_report_model import SLAReportModel
+    from infrastructure.db.models.profile_update_request_model import ProfileUpdateRequestModel
+    from infrastructure.db.models.refresh_token_model import RefreshTokenModel
+    from infrastructure.db.models.invitation_model import InvitationModel
     from infrastructure.db.models.sla_alert_model import SLAAlertModel
+    from infrastructure.db.models.sla_metric_model import SLAMetricModel
+    from infrastructure.db.models.sla_report_model import SLAReportModel
+    from infrastructure.db.models.sla_threshold_model import SLAThresholdModel
+    from infrastructure.db.models.uptime_event_model import UptimeEventModel
+
     
     # Reference models to avoid "import not accessed" warning
-    _models: list[type] = [UserModel, TenantModel, TeamModel, InvitationModel, RefreshTokenModel, ProfileUpdateRequestModel, ActivityLogModel, SLAMetricModel, SLAThresholdModel, SLAReportModel, SLAAlertModel]
+    _models: list[type] = [UserModel, TenantModel, TeamModel, 
+                           OAuthProviderModel, EmailVerificationModel, 
+                           LoginActivityModel, ActivityLogModel, 
+                           ProfileUpdateRequestModel, RefreshTokenModel, 
+                           InvitationModel, SLAAlertModel, SLAMetricModel, 
+                           SLAReportModel, SLAThresholdModel, UptimeEventModel]
 
     print(f"✅ Successfully imported Base and models")
     print(f"📋 Registered tables: {list(Base.metadata.tables.keys())}")

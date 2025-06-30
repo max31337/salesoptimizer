@@ -12,7 +12,10 @@ from infrastructure.db.repositories.tenant_repository_impl import TenantReposito
 from infrastructure.db.repositories.team_repository_impl import TeamRepositoryImpl
 from infrastructure.db.repositories.refresh_token_repository_impl import RefreshTokenRepositoryImpl
 from infrastructure.db.repositories.profile_update_request_repository_impl import ProfileUpdateRequestRepositoryImpl
+from infrastructure.db.repositories.login_activity_repository_impl import LoginActivityRepositoryImpl
 from infrastructure.db.repositories.activity_log_repository_impl import ActivityLogRepositoryImpl
+from infrastructure.db.repositories.email_verification_repository_impl import EmailVerificationRepositoryImpl
+from infrastructure.db.repositories.oauth_provider_repository_impl import OAuthProviderRepositoryImpl
 from infrastructure.email.smtp_email_service import SMTPEmailService
 from infrastructure.services.password_service import PasswordService
 from infrastructure.services.jwt_service import JWTService
@@ -28,6 +31,7 @@ from domain.organization.services.tenant_service import TenantService
 from domain.organization.services.team_service import TeamService
 from domain.organization.services.profile_update_service import ProfileUpdateService
 from domain.organization.services.activity_log_service import ActivityLogService
+from domain.organization.services.login_activity_service import LoginActivityService
 from domain.monitoring.services.sla_monitoring_service import SLAMonitoringService
 
 # Application layer
@@ -97,6 +101,8 @@ async def get_application_service(
     tenant_repository = TenantRepositoryImpl(session)
     invitation_repository = InvitationRepositoryImpl(session)
     refresh_token_repository = RefreshTokenRepositoryImpl(session)
+    email_verification_repository = EmailVerificationRepositoryImpl(session)
+    oauth_provider_repository = OAuthProviderRepositoryImpl(session)
     
     # Token blacklist service (use Redis in production)
     token_blacklist_service = InMemoryTokenBlacklistService()  # or RedisTokenBlacklistService()
@@ -114,6 +120,8 @@ async def get_application_service(
     # Domain services
     auth_service = AuthService(
         user_repository=user_repository,
+        oauth_provider_repository=oauth_provider_repository,
+        email_verification_repository=email_verification_repository,
         password_service=password_service,
         jwt_service=jwt_service
     )
@@ -122,6 +130,7 @@ async def get_application_service(
     invitation_service = InvitationService(
         invitation_repository=invitation_repository,
         tenant_repository=tenant_repository,
+        user_repository=user_repository,
         email_service=email_service
     )
     # Token revocation use cases
@@ -131,9 +140,13 @@ async def get_application_service(
     )
     # Activity log service
     activity_log_repository = ActivityLogRepositoryImpl(session)
-    activity_log_service = ActivityLogService(activity_log_repository)
+    ActivityLogService(activity_log_repository)
+    
+    # Login activity service
+    login_activity_repository = LoginActivityRepositoryImpl(session)
+    login_activity_service = LoginActivityService(login_activity_repository)
     # Application use cases
-    auth_use_cases = AuthUseCases(auth_service, oauth_service, activity_log_service)
+    auth_use_cases = AuthUseCases(auth_service, oauth_service, login_activity_service)
     invitation_use_cases = InvitationUseCases(invitation_service, auth_service)
     organization_registration_use_cases = OrganizationRegistrationUseCases(
         auth_service=auth_service,
@@ -164,13 +177,15 @@ async def get_profile_update_use_case(
     # Repositories
     user_repository = UserRepositoryImpl(session)
     profile_update_request_repository = ProfileUpdateRequestRepositoryImpl(session)
+    login_activity_repository = LoginActivityRepositoryImpl(session)
     
     # Domain services
     profile_service = ProfileUpdateService()    # Use case
     return ProfileUpdateUseCase(
         user_repository=user_repository,
         profile_service=profile_service,
-        profile_update_request_repository=profile_update_request_repository
+        profile_update_request_repository=profile_update_request_repository,
+        login_activity_repository=login_activity_repository
     )
 
 
