@@ -264,21 +264,19 @@ async def verify_email(
     Verify a user's email using the token and redirect to login with username pre-filled.
     """
     import logging
+    import logging
     logger = logging.getLogger("verify-email")
     try:
         logger.info(f"[VERIFY-EMAIL] Received token: {token}")
-        logger.debug(f"[VERIFY-EMAIL] App service: {app_service}")
-        logger.debug(f"[VERIFY-EMAIL] Use case: {getattr(app_service, 'organization_registration_use_cases', None)}")
+        # Call the use case to verify the email
         status, username = await app_service.organization_registration_use_cases.verify_email(token)
         logger.info(f"[VERIFY-EMAIL] Verification result status: {status}, username: {username}")
-        
-        redirect_url = f"{settings.FRONTEND_URL}/verify-email?status={status}"
-        if username:
-            redirect_url += f"&username={username}"
-            
+        # Always include username param, even if None or empty
+        username_param = f"&username={username}" if username else "&username="
+        redirect_url = f"{settings.FRONTEND_URL}/verify-email?status={status}{username_param}"
         logger.info(f"[VERIFY-EMAIL] Redirecting to: {redirect_url}")
         return RedirectResponse(url=redirect_url)
-        
     except Exception as e:
         logger.error(f"[VERIFY-EMAIL] Exception during verification: {e}", exc_info=True)
-        return RedirectResponse(url=f"{settings.FRONTEND_URL}/verify-email?status=fail")
+        # Also include username param as empty for fail case
+        return RedirectResponse(url=f"{settings.FRONTEND_URL}/verify-email?status=fail&username=")
