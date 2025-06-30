@@ -1,5 +1,5 @@
 from typing import Tuple, Optional
-from datetime import datetime, timezone
+from datetime import datetime, timezone, timedelta
 from uuid import uuid4
 
 from application.commands.organization_registration_command import OrganizationRegistrationCommand
@@ -14,6 +14,8 @@ from domain.organization.value_objects.tenant_name import TenantName
 from domain.organization.value_objects.user_role import UserRole
 from domain.organization.value_objects.user_status import UserStatus
 from domain.organization.value_objects.user_id import UserId
+from domain.organization.entities.email_verification import EmailVerification
+from domain.organization.repositories.email_verification_repository import EmailVerificationRepository
 from infrastructure.services.password_service import PasswordService
 from infrastructure.db.database import AsyncSessionLocal
 from infrastructure.email.template_service import EmailTemplateService
@@ -30,14 +32,16 @@ class OrganizationRegistrationUseCases:
         invitation_service: InvitationService,
         user_repository: UserRepository,
         password_service: PasswordService,
-        email_service: EmailService,  # <-- Injected from DI container
+        email_service: EmailService,
+        email_verification_repository: EmailVerificationRepository
     ):
         self._auth_service = auth_service
         self._tenant_service = tenant_service
         self._invitation_service = invitation_service
         self._user_repository = user_repository
         self._password_service = password_service
-        self._email_service = email_service  # <-- Store for use
+        self._email_service = email_service
+        self._email_verification_repository = email_verification_repository
     
     async def register_organization(
         self,
@@ -67,10 +71,6 @@ class OrganizationRegistrationUseCases:
                 new_user_id = UserId.generate()
                 password_hash: str = self._password_service.hash_password(command.password)
 
-                # Email verification
-                email_verification_token = str(uuid4())
-                email_verification_sent_at = datetime.now(timezone.utc)
-
                 # Create the admin user first (without tenant_id yet)
                 admin_user = User(
                     id=new_user_id,
@@ -87,8 +87,6 @@ class OrganizationRegistrationUseCases:
                     profile_picture_url=None,
                     bio=f"{command.job_title} at {command.organization_name}" if command.job_title else None,
                     is_email_verified=False,  # Require verification
-                    email_verification_token=email_verification_token,
-                    email_verification_sent_at=email_verification_sent_at,
                     job_title=command.job_title,
                     accept_terms=command.accept_terms,
                     accept_privacy=command.accept_privacy,
@@ -97,6 +95,19 @@ class OrganizationRegistrationUseCases:
 
                 # Save the user (without tenant_id)
                 admin_user = await self._user_repository.save(admin_user)
+
+                if not admin_user.id:
+                    raise ValueError("User ID is missing after saving")
+
+                # Email verification
+                email_verification = EmailVerification(
+                    id=uuid4(),
+                    user_id=admin_user.id,
+                    token=str(uuid4()),
+                    sent_at=datetime.now(timezone.utc),
+                    expires_at=datetime.now(timezone.utc) + timedelta(days=1)
+                )
+                await self._email_verification_repository.add(email_verification)
 
                 # Create the tenant/organization with the new user's ID as owner_id
                 tenant_name = TenantName(command.organization_name)
@@ -128,7 +139,7 @@ class OrganizationRegistrationUseCases:
                         frontend_url = OAuthConfig().frontend_url
                     except Exception:
                         frontend_url = "http://localhost:3000"
-                verify_url = f"{frontend_url}/verify-email?token={email_verification_token}"
+                verify_url = f"{frontend_url}/verify-email?token={email_verification.token}"
                 html_content = template_service.env.get_template("welcome_verify_email.html").render(
                     first_name=admin_user.first_name,
                     organization_name=tenant.name,
@@ -213,17 +224,26 @@ class OrganizationRegistrationUseCases:
         logger = logging.getLogger("verify-email-usecase")
         logger.info(f"[verify_email] Called with token: {token}")
         async with AsyncSessionLocal() as session:
-            user = await self._user_repository.get_by_email_verification_token(token)
-            if not user:
-                logger.warning(f"[verify_email] No user found for token: {token}")
+            email_verification = await self._email_verification_repository.get_by_token(token)
+            if not email_verification or email_verification.is_expired() or email_verification.is_verified:
+                logger.warning(f"[verify_email] No valid email verification found for token: {token}")
                 return "fail", None
-            logger.info(f"[verify_email] Found user: {user.username or user.email}, is_email_verified={user.is_email_verified}, token={user.email_verification_token}")
+
+            user = await self._user_repository.get_by_id(email_verification.user_id)
+            if not user:
+                logger.warning(f"[verify_email] No user found for user_id: {email_verification.user_id}")
+                return "fail", None
+
             if user.is_email_verified:
                 logger.warning(f"[verify_email] User already verified: {user.username or user.email}")
                 return "already_verified", user.username or str(user.email)
+
             user.is_email_verified = True
-            user.email_verification_token = None
             await self._user_repository.update(user)
+            
+            email_verification.verify()
+            await self._email_verification_repository.update(email_verification)
+
             await session.commit()
-            logger.info(f"[verify_email] User verified and token cleared: {user.username or user.email}")
+            logger.info(f"[verify_email] User verified: {user.username or user.email}")
             return "success", user.username or str(user.email)

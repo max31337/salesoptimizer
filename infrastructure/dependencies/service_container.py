@@ -154,7 +154,8 @@ async def get_application_service(
         invitation_service=invitation_service,
         user_repository=user_repository,
         password_service=password_service,
-        email_service=email_service  # <-- Pass email_service here
+        email_service=email_service,
+        email_verification_repository=email_verification_repository
     )
     # Application service (orchestrates everything)
     return ApplicationService(

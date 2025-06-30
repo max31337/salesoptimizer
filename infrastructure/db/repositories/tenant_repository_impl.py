@@ -6,7 +6,6 @@ from sqlalchemy.orm import selectinload
 from domain.organization.entities.tenant import Tenant
 from domain.organization.repositories.tenant_repository import TenantRepository
 from domain.organization.value_objects.user_id import UserId
-from domain.organization.value_objects.tenant_name import TenantName
 from domain.organization.value_objects.tenant_id import TenantId
 from infrastructure.db.models.tenant_model import TenantModel
 
