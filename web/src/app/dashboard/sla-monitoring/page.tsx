@@ -134,7 +134,9 @@ export default function SLAMonitoringPage() {
 
   const getStatusColor = (status: string) => {
     switch (status) {
-      case 'healthy': return 'text-green-600 dark:text-green-400'
+      case 'healthy': 
+      case 'operational': // Add operational as a healthy state
+        return 'text-green-600 dark:text-green-400'
       case 'warning': return 'text-yellow-600 dark:text-yellow-400'
       case 'critical': return 'text-red-600 dark:text-red-400'
       default: return 'text-gray-600 dark:text-gray-400'
@@ -143,7 +145,9 @@ export default function SLAMonitoringPage() {
 
   const getStatusBadgeVariant = (status: string) => {
     switch (status) {
-      case 'healthy': return 'default' as const
+      case 'healthy': 
+      case 'operational': // Add operational as a healthy state
+        return 'default' as const
       case 'warning': return 'secondary' as const
       case 'critical': return 'destructive' as const
       default: return 'outline' as const
@@ -243,7 +247,7 @@ export default function SLAMonitoringPage() {
                 <div className="w-2 h-2 rounded-full bg-gray-300 animate-pulse" />
               ) : (
                 <div className={`w-2 h-2 rounded-full ${
-                  systemHealth?.uptime_status === 'healthy' ? 'bg-green-500' :
+                  (systemHealth?.uptime_status === 'healthy' || systemHealth?.uptime_status === 'operational') ? 'bg-green-500' :
                   systemHealth?.uptime_status === 'warning' ? 'bg-yellow-500' : 'bg-red-500'
                 }`} />
               )}
@@ -255,10 +259,7 @@ export default function SLAMonitoringPage() {
               <div className="text-2xl font-bold">
                 {isLoading ? '...' : `${systemHealth?.uptime_percentage?.toFixed(2) || '0.00'}%`}
               </div>
-              <Badge variant={
-                systemHealth?.uptime_status === 'healthy' ? 'default' :
-                systemHealth?.uptime_status === 'warning' ? 'secondary' : 'destructive'
-              }>
+              <Badge variant={getStatusBadgeVariant(systemHealth?.uptime_status || 'unknown')}>
                 {systemHealth?.uptime_status || 'Unknown'}
               </Badge>
             </div>

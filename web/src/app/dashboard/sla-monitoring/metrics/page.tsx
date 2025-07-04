@@ -219,7 +219,9 @@ export default function MetricsPage() {
 
   const getStatusColor = (status: string) => {
     switch (status) {
-      case 'healthy': return 'text-green-600 dark:text-green-400'
+      case 'healthy':
+      case 'operational': // Add operational as a healthy state
+        return 'text-green-600 dark:text-green-400'
       case 'warning': return 'text-yellow-600 dark:text-yellow-400'
       case 'critical': return 'text-red-600 dark:text-red-400'
       default: return 'text-gray-600 dark:text-gray-400'
@@ -228,7 +230,9 @@ export default function MetricsPage() {
 
   const getStatusBadgeVariant = (status: string) => {
     switch (status) {
-      case 'healthy': return 'default' as const
+      case 'healthy':
+      case 'operational': // Add operational as a healthy state
+        return 'default' as const
       case 'warning': return 'secondary' as const
       case 'critical': return 'destructive' as const
       default: return 'outline' as const

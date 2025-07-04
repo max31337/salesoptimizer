@@ -290,7 +290,11 @@ export function DashboardLayout({ children, breadcrumbs: customBreadcrumbs }: Da
                   <Bell className="h-4 w-4" />
                   {unreadCount > 0 && (
                     <Badge 
-                      variant="destructive" 
+                      variant={
+                        notifications.some(n => !n.isRead && (n.type === 'error' || n.type === 'warning')) 
+                          ? "destructive" 
+                          : "default"
+                      }
                       className="absolute -top-1 -right-1 h-5 w-5 rounded-full p-0 text-xs flex items-center justify-center"
                     >
                       {unreadCount > 9 ? '9+' : unreadCount}
