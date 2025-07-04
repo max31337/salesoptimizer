@@ -224,25 +224,35 @@ class OrganizationRegistrationUseCases:
         logger = logging.getLogger("verify-email-usecase")
         logger.info(f"[verify_email] Called with token: {token}")
         async with AsyncSessionLocal() as session:
+            # Get email verification record
             email_verification = await self._email_verification_repository.get_by_token(token)
-            if not email_verification or email_verification.is_expired():
-                logger.warning(f"[verify_email] No valid email verification found for token: {token}")
+            if not email_verification:
+                logger.warning(f"[verify_email] No email verification found for token: {token}")
                 return "fail", None
 
+            # Get user to return username/email regardless of verification status
             user = await self._user_repository.get_by_id(email_verification.user_id)
             if not user:
                 logger.warning(f"[verify_email] No user found for user_id: {email_verification.user_id}")
                 return "fail", None
 
-            if user.is_email_verified:
-                logger.warning(f"[verify_email] User already verified: {user.username or user.email}")
-                return "already_verified", user.username or str(user.email)
+            username_or_email = user.username or str(user.email)
 
-            # Only mark as verified if not already
+            # Check if user is already verified BEFORE checking expiration
+            if user.is_email_verified:
+                logger.warning(f"[verify_email] User already verified: {username_or_email}")
+                return "already_verified", username_or_email
+
+            # Check if token is expired (domain logic)
+            if email_verification.is_expired():
+                logger.warning(f"[verify_email] Token expired for user: {username_or_email}")
+                return "expired", username_or_email
+
+            # Verify the email
             user.is_email_verified = True
             await self._user_repository.update(user)
             email_verification.verify()
             await self._email_verification_repository.update(email_verification)
             await session.commit()
-            logger.info(f"[verify_email] User verified: {user.username or user.email}")
-            return "success", user.username or str(user.email)
+            logger.info(f"[verify_email] User verified: {username_or_email}")
+            return "success", username_or_email

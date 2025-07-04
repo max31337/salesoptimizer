@@ -23,10 +23,12 @@ export function LoginForm() {
   const { login } = useAuth()
   const router = useRouter()
 
-  // Show info if already_verified
+  // Show info if already_verified or expired
   React.useEffect(() => {
     if (verified === "already_verified") {
       setInfo("Your email has already been verified. You can log in.");
+    } else if (verified === "expired") {
+      setInfo("Your verification link has expired. Please request a new verification email.");
     }
   }, [verified]);
 

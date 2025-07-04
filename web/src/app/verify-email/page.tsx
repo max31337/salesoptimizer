@@ -7,7 +7,7 @@ import { Loader2, CheckCircle, XCircle } from "lucide-react";
 export default function VerifyEmailPage() {
   const router = useRouter();
   const searchParams = useSearchParams();
-  const [status, setStatus] = React.useState<"pending" | "success" | "fail" | "already_verified">("pending");
+  const [status, setStatus] = React.useState<"pending" | "success" | "fail" | "already_verified" | "expired">("pending");
 
   useEffect(() => {
     const token = searchParams.get("token");
@@ -33,6 +33,8 @@ export default function VerifyEmailPage() {
         setStatus("success");
       } else if (statusParam === "already_verified") {
         setStatus("already_verified");
+      } else if (statusParam === "expired") {
+        setStatus("expired");
       } else {
         setStatus("fail");
       }
@@ -73,6 +75,26 @@ export default function VerifyEmailPage() {
         <div className="flex flex-col items-center gap-4">
           <CheckCircle className="h-10 w-10 text-blue-600" />
           <p className="text-lg font-semibold text-blue-700">Email already verified</p>
+          <p className="text-muted-foreground">Redirecting to login...</p>
+        </div>
+      )}
+      {status === "expired" && (
+        <div className="flex flex-col items-center gap-4">
+          <XCircle className="h-10 w-10 text-orange-600" />
+          <p className="text-lg font-semibold text-orange-700">Verification link expired</p>
+          <p className="text-muted-foreground text-center">
+            Your verification link has expired. Please request a new verification email.
+          </p>
+          <p className="text-muted-foreground">Redirecting to login...</p>
+        </div>
+      )}
+      {status === "fail" && (
+        <div className="flex flex-col items-center gap-4">
+          <XCircle className="h-10 w-10 text-red-600" />
+          <p className="text-lg font-semibold text-red-700">Verification failed</p>
+          <p className="text-muted-foreground text-center">
+            The verification link is invalid or has been used already.
+          </p>
           <p className="text-muted-foreground">Redirecting to login...</p>
         </div>
       )}

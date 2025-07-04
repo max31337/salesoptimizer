@@ -264,24 +264,31 @@ async def verify_email(
     Verify a user's email using the token and redirect to login with username pre-filled.
     """
     import logging
-    import logging
     logger = logging.getLogger("verify-email")
     try:
         logger.info(f"[VERIFY-EMAIL] Received token: {token}")
         # Call the use case to verify the email
         status, username = await app_service.organization_registration_use_cases.verify_email(token)
         logger.info(f"[VERIFY-EMAIL] Verification result status: {status}, username: {username}")
-        # If already verified, redirect directly to login with username and status
+        
+        # Handle different statuses
+        username_param = f"&username={username}" if username else "&username="
+        
         if status == "already_verified":
-            username_param = f"&username={username}" if username else "&username="
+            # Redirect directly to login with already_verified status
             redirect_url = f"{settings.FRONTEND_URL}/login?verified=already_verified{username_param}"
             logger.info(f"[VERIFY-EMAIL] Redirecting to: {redirect_url}")
             return RedirectResponse(url=redirect_url)
-        # Normal success/fail
-        username_param = f"&username={username}" if username else "&username="
-        redirect_url = f"{settings.FRONTEND_URL}/verify-email?status={status}{username_param}"
-        logger.info(f"[VERIFY-EMAIL] Redirecting to: {redirect_url}")
-        return RedirectResponse(url=redirect_url)
+        elif status == "expired":
+            # Redirect to verify-email page to show expired message, then redirect to login
+            redirect_url = f"{settings.FRONTEND_URL}/verify-email?status=expired{username_param}"
+            logger.info(f"[VERIFY-EMAIL] Redirecting to: {redirect_url}")
+            return RedirectResponse(url=redirect_url)
+        else:
+            # For success or fail, redirect to verify-email page
+            redirect_url = f"{settings.FRONTEND_URL}/verify-email?status={status}{username_param}"
+            logger.info(f"[VERIFY-EMAIL] Redirecting to: {redirect_url}")
+            return RedirectResponse(url=redirect_url)
     except Exception as e:
         logger.error(f"[VERIFY-EMAIL] Exception during verification: {e}", exc_info=True)
         # Also include username param as empty for fail case
