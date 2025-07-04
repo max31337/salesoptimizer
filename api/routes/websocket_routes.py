@@ -11,7 +11,7 @@ router = APIRouter()
 logger = logging.getLogger(__name__)
 
 
-@router.websocket("/ws/sla-monitoring(disconnect-for-now)")
+@router.websocket("/ws/sla-monitoring")
 async def sla_monitoring_websocket(websocket: WebSocket):
     """WebSocket endpoint for real-time SLA monitoring updates."""
     user = None

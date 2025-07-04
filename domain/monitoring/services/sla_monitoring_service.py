@@ -9,7 +9,7 @@ from sqlalchemy import text, func, select
 from domain.monitoring.entities.sla_monitoring import (
     SLAMetric, SLAThreshold, SLAReport, SLAStatus, MetricType
 )
-from infrastructure.db.models.activity_log_model import ActivityLogModel
+from infrastructure.db.models.refresh_token_model import RefreshTokenModel
 from infrastructure.db.repositories.sla_repository_impl import SLARepositoryImpl
 from infrastructure.services.uptime_monitoring_service import UptimeMonitoringService
 
@@ -78,7 +78,7 @@ class SLAMonitoringService:
         """Calculate real system uptime percentage over the last 24 hours using uptime monitoring."""
         # This method is now deprecated in favor of the uptime monitoring service
         # Return default value for backward compatibility
-        return 100.0  # Fallback value
+        return 000.0  # Fallback value
     
     def _format_uptime_duration(self, start_time: datetime, current_time: datetime) -> str:
         """Format uptime duration as human-readable string."""
@@ -255,14 +255,42 @@ class SLAMonitoringService:
         """Collect application-specific metrics."""
         metrics: List[SLAMetric] = []
         
-        # Active users in the last 24 hours
-        yesterday = datetime.now(timezone.utc) - timedelta(hours=24)
+        current_time = datetime.now(timezone.utc)
         
-        stmt = select(func.count(func.distinct(ActivityLogModel.user_id))).where(
-            ActivityLogModel.created_at >= yesterday
+        # Active users - Multiple approaches for comprehensive SLA monitoring
+        
+        # 1. Users with valid authentication sessions (current approach)
+        stmt_valid_tokens = select(func.count(func.distinct(RefreshTokenModel.user_id))).where(
+            RefreshTokenModel.is_revoked == False,
+            RefreshTokenModel.expires_at > current_time
         )
-        result = await self.session.execute(stmt)
-        active_users_count = result.scalar() or 0
+        result_valid_tokens = await self.session.execute(stmt_valid_tokens)
+        users_with_valid_tokens = result_valid_tokens.scalar() or 0
+        
+        # 2. Users who have been active in the last 24 hours (better for SLA)
+        try:
+            from infrastructure.db.models.login_activity_model import LoginActivityModel
+            twenty_four_hours_ago = current_time - timedelta(hours=24)
+            
+            stmt_recent_activity = select(func.count(func.distinct(LoginActivityModel.user_id))).where(
+                LoginActivityModel.login_at >= twenty_four_hours_ago
+            )
+            result_recent_activity = await self.session.execute(stmt_recent_activity)
+            users_active_24h = result_recent_activity.scalar() or 0
+        except Exception:
+            # Fallback if login activity tracking is not available
+            users_active_24h = users_with_valid_tokens
+        
+        # 3. Real-time active users (WebSocket connections)
+        try:
+            from infrastructure.websocket.websocket_manager import websocket_manager
+            users_online_now = len(websocket_manager.connections)
+        except Exception:
+            users_online_now = 0
+        
+        # Use the most comprehensive metric for SLA monitoring
+        # Priority: Recent activity > Valid tokens > Online now
+        primary_active_users = max(users_active_24h, users_with_valid_tokens)
         
         # Create dynamic threshold for active users
         active_users_threshold = SLAThreshold(
@@ -274,11 +302,18 @@ class SLAMonitoringService:
         
         active_users_metric = SLAMetric.create(
             metric_type=MetricType.ACTIVE_USERS,
-            value=float(active_users_count),
+            value=float(primary_active_users),
             threshold=active_users_threshold,
             additional_data={
                 "period": "24_hours",
-                "measurement_time": yesterday.isoformat()
+                "measurement_time": current_time.isoformat(),
+                "description": "Users active in the last 24 hours",
+                "breakdown": {
+                    "users_with_valid_tokens": users_with_valid_tokens,
+                    "users_active_24h": users_active_24h,
+                    "users_online_now": users_online_now,
+                    "primary_metric": "users_active_24h" if users_active_24h > 0 else "users_with_valid_tokens"
+                }
             }
         )
         metrics.append(active_users_metric)

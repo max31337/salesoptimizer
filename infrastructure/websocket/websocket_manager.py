@@ -2,9 +2,19 @@ import json
 from typing import Dict, Set, Optional, Any
 from fastapi import WebSocket
 from datetime import datetime, timezone
+from uuid import UUID
 import logging
 
 logger = logging.getLogger(__name__)
+
+
+def json_serializer(obj: Any) -> Any:
+    """JSON serializer function that handles datetime and UUID objects."""
+    if isinstance(obj, datetime):
+        return obj.isoformat()
+    elif isinstance(obj, UUID):
+        return str(obj)
+    raise TypeError(f"Object of type {type(obj)} is not JSON serializable")
 
 
 class WebSocketManager:
@@ -57,7 +67,7 @@ class WebSocketManager:
     async def send_to_websocket(self, websocket: WebSocket, data: Dict[str, Any]):
         """Send data to a specific WebSocket connection."""
         try:
-            await websocket.send_text(json.dumps(data))
+            await websocket.send_text(json.dumps(data, default=json_serializer))
         except Exception as e:
             logger.error(f"Error sending to WebSocket: {e}")
             # Connection might be closed, we'll handle cleanup in the endpoint
