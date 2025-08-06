@@ -101,11 +101,24 @@ class Password:
         """Check if password avoids common weak patterns."""
         password_lower = self.value.lower()
         
-        # Common weak patterns
-        weak_patterns = [
-            r'123', r'abc', r'qwerty', r'password', r'admin',
-            r'000', r'111', r'999', r'aaa', r'zzz'
+        # weak passwords and common patterns (case-insensitive)
+        weak_passwords = [
+            r'^password\d*$',       # password, password1, password123
+            r'^admin\d*$',          # admin, admin2024
+            r'^123456$',            # common password
+            r'^qwerty\d*$',         # qwerty, qwerty123
+            r'^abc123$',            # abc123
+            r'^letmein$',           # letmein
+            r'^welcome\d*$',        # welcome, welcome1
+            r'^iloveyou$',          # iloveyou
+            r'^monkey$',            # monkey
+            r'^dragon$',            # dragon
+            r'^football$',          # football
+            r'^baseball$',          # baseball
+            r'^[a-z]{1}\d{6,}$',    # a123456, b12345678
+            r'^\d{4,}$',            # 1234, 0000, 999999
         ]
+
         
         for pattern in weak_patterns:
             if re.search(pattern, password_lower):
