@@ -13,6 +13,9 @@ class JWTService(TokenService):
     def __init__(
         self,
         secret_key: str = settings.JWT_SECRET_KEY,
+
+# update this to assymetric stateless token. signing when i have another service and/or clients
+  # use EdDSA or something better lmao 
         algorithm: str = settings.JWT_ALGORITHM if hasattr(settings, 'JWT_ALGORITHM') else "HS256",
         access_token_expire_minutes: int = settings.JWT_EXPIRE_MINUTES if hasattr(settings, 'JWT_EXPIRE_MINUTES') else 30,
         refresh_token_expire_days: int = settings.REFRESH_TOKEN_EXPIRE_DAYS if hasattr(settings, 'REFRESH_TOKEN_EXPIRE_DAYS') else 7,
